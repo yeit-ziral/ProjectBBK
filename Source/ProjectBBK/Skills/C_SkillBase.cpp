@@ -96,11 +96,11 @@ bool UC_SkillBase::CastSkill()
 	return true;
 }
 
-void UC_SkillBase::UpdateSkill(float deltaTime)
+void UC_SkillBase::UpdateSkill(float DeltaTime)
 {
 	if (currentCooldown > 0.0f)
 	{
-		currentCooldown -= deltaTime;
+		currentCooldown -= DeltaTime;
 
 		if (currentCooldown <= 0.0f)
 		{
@@ -113,7 +113,7 @@ void UC_SkillBase::UpdateSkill(float deltaTime)
 	// 시전 시간 체크 (필요시)
 	if (bIsCasting)
 	{
-		currentCastTime += deltaTime;
+		currentCastTime += DeltaTime;
 
 		if (castTime > 0.0f && currentCastTime >= castTime)
 		{
@@ -169,16 +169,16 @@ void UC_SkillBase::PlaySkillAnimation()
 	}
 }
 
-void UC_SkillBase::SpawnSkillEffect(int32 effectType, FVector location)
+void UC_SkillBase::SpawnSkillEffect(int32 EffectType, FVector Location)
 {
 	UNiagaraSystem* EffectToSpawn = nullptr;
 
-	if (effectType == 0)
+	if (EffectType == 0)
 	{
 		// Cast Effect
 		EffectToSpawn = skillData.castEffect;
 	}
-	else if (effectType == 1)
+	else if (EffectType == 1)
 	{
 		// Impact Effect
 		EffectToSpawn = skillData.impactEffect;
@@ -189,7 +189,7 @@ void UC_SkillBase::SpawnSkillEffect(int32 effectType, FVector location)
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			owner->GetWorld(),
 			EffectToSpawn,
-			location,
+			Location,
 			FRotator::ZeroRotator,
 			FVector(1.0f),
 			true,
@@ -197,20 +197,20 @@ void UC_SkillBase::SpawnSkillEffect(int32 effectType, FVector location)
 			ENCPoolMethod::AutoRelease
 		);
 
-		UE_LOG(LogTemp, Log, TEXT("Spawned effect at location: %s"), *location.ToString());
+		UE_LOG(LogTemp, Log, TEXT("Spawned effect at location: %s"), *Location.ToString());
 	}
 }
 
-void UC_SkillBase::PlaySkillSound(int32 soundType)
+void UC_SkillBase::PlaySkillSound(int32 SoundType)
 {
 	USoundBase* SoundToPlay = nullptr;
 
-	if (soundType == 0)
+	if (SoundType == 0)
 	{
 		// Cast Sound
 		SoundToPlay = skillData.castSound;
 	}
-	else if (soundType == 1)
+	else if (SoundType == 1)
 	{
 		// Impact Sound
 		SoundToPlay = skillData.impactSound;

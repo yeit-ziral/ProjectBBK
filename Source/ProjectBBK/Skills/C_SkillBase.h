@@ -21,7 +21,7 @@ public:
 	UC_SkillBase();
 
 	UFUNCTION(BlueprintCallable, Category = "Skill")
-	virtual void InitializeSkill(AActor* inOwner, const FSkillData& inSkillData);
+	virtual void InitializeSkill(AActor* InOwner, const FSkillData& InSkillData);
 
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	virtual bool CanUseSkill() const;
@@ -56,10 +56,10 @@ protected:
 	void PlaySkillAnimation();
 
 	UFUNCTION(BlueprintCallable, Category = "Skill|VFX")
-	void SpawnSkillEffect(int32 effectType, FVector location);
+	void SpawnSkillEffect(int32 EffectType, FVector Location);
 
 	UFUNCTION(BlueprintCallable, Category = "Skill|Sound")
-	void PlaySkillSound(int32 soundType);
+	void PlaySkillSound(int32 SoundType);
 
 	UFUNCTION(BlueprintCallable, Category = "Skill|Cooldown")
 	void StartCooldown();
