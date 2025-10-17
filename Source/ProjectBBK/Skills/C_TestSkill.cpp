@@ -25,7 +25,7 @@ void UC_TestSkill::ExecuteSkill_Implementation()
 	}
 
 	FVector ForwardVector = OwnerCharacter->GetActorForwardVector();
-	FVector DashDestination = OwnerCharacter->GetActorLocation() + (ForwardVector * DashDestination);
+	FVector DashDestination = OwnerCharacter->GetActorLocation() + (ForwardVector * dashDistance);
 
 	UE_LOG(LogTemp, Warning, TEXT("Dashing from %s to %s"), *OwnerCharacter->GetActorLocation().ToString(), *DashDestination.ToString());
 	
