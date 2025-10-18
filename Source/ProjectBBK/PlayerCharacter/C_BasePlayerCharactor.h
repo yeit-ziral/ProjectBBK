@@ -4,12 +4,42 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "InputActionValue.h"
+#include "Logging/LogMacros.h"
 #include "C_BasePlayerCharactor.generated.h"
 
-UCLASS()
+class USpringArmComponent;
+class UCameraComponent;
+class UInputMappingContext;
+class UInputAction;
+struct FInputActionValue;
+
+DECLARE_LOG_CATEGORY_EXTERN(LogBasePlayerCharacter, Log, All);
+
+UCLASS(Blueprintable, config = Game)
 class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter
 {
 	GENERATED_BODY()
+
+	/** Camera boom positioning the camera behind the character */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	USpringArmComponent* springArm;
+
+	/** Follow camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UCameraComponent* camera;
+
+	/** MappingContext */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputMappingContext* playerMappingContext;
+
+	/** Move Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* moveAction;
+
+	/** Look Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* lookAction;
 
 public:
 	// Sets default values for this character's properties
@@ -19,11 +49,8 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	void MyMoveForward(float Value);
-	void MyMoveRight(float Value);
-
-	void Turn(float Value);
-	void LookUp(float Value);
+	void MyMove(const FInputActionValue& Value);
+	void MyLook(const FInputActionValue& Value);
 
 public:	
 	// Called every frame
@@ -32,14 +59,7 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-
-
 protected:
-	UPROPERTY(EditDefaultsOnly)
-	class USpringArmComponent* springArm;
-
-	UPROPERTY(EditDefaultsOnly)
-	class UCameraComponent* camera;
 
 	float Health = 100.0f;
 	float Stamina = 100.0f;
