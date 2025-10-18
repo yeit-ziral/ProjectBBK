@@ -6,7 +6,7 @@
 #include "GameFramework/Character.h"
 #include "C_BasePlayerCharactor.generated.h"
 
-UCLASS()
+UCLASS(Blueprintable)
 class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter
 {
 	GENERATED_BODY()
