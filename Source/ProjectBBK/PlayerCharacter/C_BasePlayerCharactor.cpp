@@ -23,11 +23,6 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor()
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
-	// Don't rotate when the controller rotates. Let that just affect the camera.
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
-
 	// Note: For faster iteration times these variables, and many more, can be tweaked in the Character Blueprint
 	// instead of recompiling to adjust them
 	GetCharacterMovement()->JumpZVelocity = 700.f;
@@ -46,6 +41,11 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor()
 	camera = CreateDefaultSubobject<UCameraComponent>("camera");
 	camera->SetupAttachment(springArm, USpringArmComponent::SocketName);
 	camera->bUsePawnControlRotation = false;
+
+	// Don't rotate when the controller rotates. Let that just affect the camera.
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
 }
 
 // Called when the game starts or when spawned
