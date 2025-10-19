@@ -41,6 +41,10 @@ class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* lookAction;
 
+	/** Sprint Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* sprintAction;
+
 public:
 	// Sets default values for this character's properties
 	AC_BasePlayerCharactor();
@@ -49,8 +53,16 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Movement
 	void MyMove(const FInputActionValue& Value);
 	void MyLook(const FInputActionValue& Value);
+
+	// Sprint
+	void StartSprint();
+	void EndSprint();
+
+	//Stamina
+	void UpdateStamina();
 
 public:	
 	// Called every frame
@@ -62,12 +74,31 @@ public:
 protected:
 
 	float Health = 100.0f;
-	float Stamina = 100.0f;
-
 	const float MAX_HEALTH = 100.0f;
-	const float MAX_STAMINA = 100.0f;
+
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float curStamina = 100.0f;
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float max_Stamina = 100.0f;
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float staminaDrainTime;
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float staminaRefillTime;
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float delayBeforeRefill;
+
+	float curRefillDelayTime;
+	bool bHasStamina = true;
 
 	FVector movementInput;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float walkSpeed = 600.0f;
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float sprintSpeed = 900.0f;
+
+	bool bIsSprinting = false;
 
 	// 스위칭용 (Week 1에는 구조만)
 	int32 ActiveCharacterIndex = 0;

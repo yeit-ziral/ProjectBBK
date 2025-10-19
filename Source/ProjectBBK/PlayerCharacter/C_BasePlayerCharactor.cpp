@@ -66,6 +66,8 @@ void AC_BasePlayerCharactor::BeginPlay()
 void AC_BasePlayerCharactor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	UpdateStamina();
 }
 
 // Called to bind functionality to input
@@ -80,6 +82,10 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 
 		// Looking
 		EnhancedInputComponent->BindAction(lookAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::MyLook);
+
+		// Sprinting
+		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
+		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
 	}
 	else
 	{
@@ -116,5 +122,57 @@ void AC_BasePlayerCharactor::MyLook(const FInputActionValue& Value)
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
+	}
+}
+
+void AC_BasePlayerCharactor::StartSprint()
+{
+	if (bHasStamina)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = sprintSpeed;
+
+		if (GetVelocity().Size() >= 0.5)
+		{
+			bIsSprinting = true;
+		}
+		else
+		{
+			bIsSprinting = false;
+		}
+	}
+}
+
+void AC_BasePlayerCharactor::EndSprint()
+{
+	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
+	bIsSprinting = false;
+}
+
+void AC_BasePlayerCharactor::UpdateStamina()
+{
+	if (bIsSprinting)
+	{
+		curStamina -= staminaDrainTime;
+		curRefillDelayTime = delayBeforeRefill;
+	}
+
+	if (!bIsSprinting && curStamina < max_Stamina)
+	{
+		curRefillDelayTime--;
+
+		if(curRefillDelayTime <= 0)
+		{
+			curStamina += staminaRefillTime;
+		}
+	}
+
+	if (curStamina <= 0)
+	{
+		bHasStamina = false;
+		EndSprint();
+	}
+	else
+	{
+		bHasStamina = true;
 	}
 }
