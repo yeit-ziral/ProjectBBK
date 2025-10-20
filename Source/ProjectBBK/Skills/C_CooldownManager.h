@@ -104,4 +104,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Debug")
 	bool bShowDebugInfo = false;
 
+	UPROPERTY(EditAnywhere, Category = "Cooldown")
+	float globalCooldownDuration = 0.5f;
+
+	UPROPERTY()
+	float currentGlobalCooldown = 0.0f;
 };

@@ -2,30 +2,47 @@
 
 
 #include "C_SkillBase.h"
+#include "C_CooldownManager.h"
 #include "GameFramework/Character.h"
 #include "Animation/AnimInstance.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
+
 
 UC_SkillBase::UC_SkillBase()
 {
 	owner = nullptr;
+	cooldownManager = nullptr;
 	currentState = ESkillState::Ready;
-	currentCooldown = 0.0f;
 	bIsCasting = false;
 	castTime = 0.0f;
 	currentCastTime = 0.0f;
 }
 
-void UC_SkillBase::InitializeSkill(AActor* inOwner, const FSkillData& inSkillData)
+void UC_SkillBase::InitializeSkill(AActor* InOwner, const FSkillData& InSkillData)
 {
-	owner = inOwner;
-	skillData = inSkillData;
+	owner = InOwner;
+	skillData = InSkillData;
 	currentState = ESkillState::Ready;
-	currentCooldown = 0.0f;
+	bIsCasting = false;
 
 	UE_LOG(LogTemp, Log, TEXT("Skill Initialized: %s"), *skillData.skillName.ToString());
+}
+
+void UC_SkillBase::SetCooldownManager(UC_CooldownManager* Manager)
+{
+	cooldownManager = Manager;
+
+	if (cooldownManager)
+	{
+		UE_LOG(LogTemp, Log, TEXT("CooldownManager set for skill: %s"), *skillData.skillName.ToString());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CooldownManager is null!"));
+	}
 }
 
 
@@ -43,9 +60,10 @@ bool UC_SkillBase::CanUseSkill() const
 		return false;
 	}
 
-	if (IsOnCooldown())
+	if (cooldownManager->IsOnCooldown(skillData.skillID))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Cannot use skill: On cooldown (%.1f seconds remaining)"), currentCooldown);
+		float remaining = cooldownManager->GetRemainingCooldown(skillData.skillID);
+		UE_LOG(LogTemp, Warning, TEXT("CanUseSkill: On cooldown (%.1fs remaining)"), remaining);
 		return false;
 	}
 
@@ -98,18 +116,6 @@ bool UC_SkillBase::CastSkill()
 
 void UC_SkillBase::UpdateSkill(float DeltaTime)
 {
-	if (currentCooldown > 0.0f)
-	{
-		currentCooldown -= DeltaTime;
-
-		if (currentCooldown <= 0.0f)
-		{
-			currentCooldown = 0.0f;
-			currentState = ESkillState::Ready;
-			UE_LOG(LogTemp, Log, TEXT("Skill ready: %s"), *skillData.skillName.ToString());
-		}
-	}
-
 	// 시전 시간 체크 (필요시)
 	if (bIsCasting)
 	{
@@ -122,6 +128,15 @@ void UC_SkillBase::UpdateSkill(float DeltaTime)
 			OnSkillEnd();
 		}
 	}
+
+	if (currentState == ESkillState::Cooldown)
+	{
+		if (cooldownManager && !cooldownManager->IsOnCooldown(skillData.skillID))
+		{
+			currentState = ESkillState::Ready;
+			UE_LOG(LogTemp, Log, TEXT("Skill ready: %s"), *skillData.skillName.ToString());
+		}
+	}
 }
 
 void UC_SkillBase::CancelSkill()
@@ -130,6 +145,8 @@ void UC_SkillBase::CancelSkill()
 	{
 		bIsCasting = false;
 		currentState = ESkillState::Ready;
+		currentCastTime = 0.0f;
+
 		OnSkillCancelled();
 
 		UE_LOG(LogTemp, Warning, TEXT("Skill cancelled: %s"), *skillData.skillName.ToString());
@@ -228,16 +245,37 @@ void UC_SkillBase::PlaySkillSound(int32 SoundType)
 
 void UC_SkillBase::StartCooldown()
 {
-	currentCooldown = skillData.cooldown;
-	currentState = ESkillState::Cooldown;
+	if (!cooldownManager)
+	{
+		UE_LOG(LogTemp, Error, TEXT("StartCooldown: CooldownManager is null!"));
+		return;
+	}
 
-	UE_LOG(LogTemp, Log, TEXT("Cooldown started: %s (%.1f seconds)"), *skillData.skillName.ToString(), currentCooldown);
+	cooldownManager->StartCooldown(skillData.skillID, skillData.cooldown);
+	currentState = ESkillState::Cooldown;
 }
+
+bool UC_SkillBase::IsOnCooldown() const
+{
+	if (!cooldownManager)
+		return false;
+
+	return cooldownManager->IsOnCooldown(skillData.skillID);
+}
+
+float UC_SkillBase::GetCurrentCooldown() const
+{
+	if (!cooldownManager)
+		return 0.0f;
+
+	return cooldownManager->GetRemainingCooldown(skillData.skillID);
+}
+
 
 float UC_SkillBase::GetCooldownPercent() const
 {
-	if (skillData.cooldown <= 0.0f)
+	if (!cooldownManager)
 		return 0.0f;
 
-	return FMath::Clamp(currentCooldown / skillData.cooldown, 0.0f, 1.0f);
+	return cooldownManager->GetCooldownPercent(skillData.skillID);
 }

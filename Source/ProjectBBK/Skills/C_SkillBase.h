@@ -8,8 +8,11 @@
 #include "C_SkillBase.generated.h"
 
 class AActor;
-class APlayerCharacter;
-class UCooldownManager;
+class ACharacter;
+class UC_CooldownManager;
+class UAnimMontage;
+class UNiagaraSystem;
+class USoundBase;
 
 //Parent class of all skills
 UCLASS(Blueprintable, Abstract)
@@ -22,6 +25,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	virtual void InitializeSkill(AActor* InOwner, const FSkillData& InSkillData);
+
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void SetCooldownManager(UC_CooldownManager* Manager);
 
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	virtual bool CanUseSkill() const;
@@ -66,10 +72,10 @@ protected:
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Skill")
-	bool IsOnCooldown() const { return currentCooldown > 0.0f; }
+	bool IsOnCooldown() const;
 
 	UFUNCTION(BlueprintPure, Category = "Skill")
-	float GetCurrentCooldown() const { return currentCooldown; }
+	float GetCurrentCooldown() const;
 
 	UFUNCTION(BlueprintPure, Category = "Skill")
 	float GetMaxCooldown() const { return skillData.cooldown; }
@@ -86,6 +92,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Skill")
 	AActor* GetOwner() const { return owner; }
 
+	UFUNCTION(BlueprintPure, Category = "Skill")
+	bool IsCasting() const { return bIsCasting; }
+
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Skill")
 	AActor* owner;
@@ -98,10 +107,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Skill")
 	ESkillState currentState;
 
-	// 쿨타임
-	UPROPERTY(BlueprintReadOnly, Category = "Skill")
-	float currentCooldown;
-
 	// 시전 중 여부
 	UPROPERTY(BlueprintReadOnly, Category = "Skill")
 	bool bIsCasting;
@@ -113,4 +118,7 @@ protected:
 	// 현재 시전 경과 시간
 	UPROPERTY(BlueprintReadOnly, Category = "Skill")
 	float currentCastTime;
+
+	UPROPERTY()
+	UC_CooldownManager* cooldownManager;
 };

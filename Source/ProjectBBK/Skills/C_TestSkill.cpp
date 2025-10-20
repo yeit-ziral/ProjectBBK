@@ -29,10 +29,16 @@ void UC_TestSkill::ExecuteSkill_Implementation()
 
 	UE_LOG(LogTemp, Warning, TEXT("Dashing from %s to %s"), *OwnerCharacter->GetActorLocation().ToString(), *DashDestination.ToString());
 	
+	// Method 1: Teleport (instant)
 	OwnerCharacter->SetActorLocation(DashDestination, true);
+
+	// Method 2: Launch (smooth)
+	// FVector launchVelocity = forward * dashSpeed;
+	// ownerChar->LaunchCharacter(launchVelocity, true, true);
 
 	//SpawnSkillEffect(1, DashDestination);
 	//PlaySkillSound(1);
+
 
 	UE_LOG(LogTemp, Warning, TEXT("=== DASH SKILL COMPLETED ==="));
 }

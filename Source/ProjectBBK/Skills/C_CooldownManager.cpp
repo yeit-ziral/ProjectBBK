@@ -48,6 +48,11 @@ void UC_CooldownManager::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 		activeCooldowns.Remove(SkillID);
 	}
 
+	if (currentGlobalCooldown > 0.0f)
+	{
+		currentGlobalCooldown -= DeltaTime;
+	}
+
 	if (bShowDebugInfo && GEngine)
 	{
 		int32 Index = 0;
@@ -82,12 +87,17 @@ void UC_CooldownManager::StartCooldown(FName SkillID, float Duration)
 	FCooldownInfo NewInfo(SkillID, Duration, Duration);
 	activeCooldowns.Add(SkillID, NewInfo);
 
+	currentGlobalCooldown = globalCooldownDuration;
+
 	UE_LOG(LogTemp, Log, TEXT("Cooldown started: %s (%.1f seconds)"),
 		*SkillID.ToString(), Duration);
 }
 
 bool UC_CooldownManager::IsOnCooldown(FName SkillID) const
 {
+	if (currentGlobalCooldown > 0.0f)
+		return true;
+
 	return activeCooldowns.Contains(SkillID);
 }
 
