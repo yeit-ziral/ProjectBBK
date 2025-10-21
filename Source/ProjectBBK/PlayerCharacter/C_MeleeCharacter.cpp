@@ -14,8 +14,6 @@ AC_MeleeCharacter::AC_MeleeCharacter()
 	GetMesh()->SetRelativeLocation(FVector(0, 0, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0, -90.0f, 0));
 	GetMesh()->SetRelativeScale3D(FVector(0.9f, 0.9f, 0.9f));
-
-	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
 void AC_MeleeCharacter::BeginPlay()
