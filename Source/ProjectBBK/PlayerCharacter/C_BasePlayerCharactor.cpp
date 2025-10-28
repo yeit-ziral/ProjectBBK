@@ -14,11 +14,15 @@
 #include "../GAS/Abilities/C_ChaAbilitySystemComponent.h"
 #include "../GAS/Abilities/C_CharacterGameplayAbility.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
+#include "C_PlayerState.h"
+#include "PlayerAI/C_PlayerAIController.h"
+#include "PlayerAI/C_PlayerController.h"
 
 DEFINE_LOG_CATEGORY(LogBasePlayerCharacter);
 
 // Sets default values
-AC_BasePlayerCharactor::AC_BasePlayerCharactor() // replace this if i want to make movement system with GAS "AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitalizer)// replace this if i want to make movement system with GAS and Legacy style "AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+	:Super(ObjectInitalizer)
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -56,6 +60,8 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor() // replace this if i want to ma
 
 	deadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
 	effectRemoveOnDeathTag = FGameplayTag::RequestGameplayTag(FName("State.RemoveOnDeath"));
+
+	AIControllerClass = AC_PlayerAIController::StaticClass();
 }
 
 // Called when the game starts or when spawned
@@ -101,6 +107,84 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	{
 		UE_LOG(LogBasePlayerCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
 	}
+}
+
+void AC_BasePlayerCharactor::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+
+	if (PS)
+	{
+		InitializeStartingValues(PS);
+
+		AddStartupEffects();
+
+		AddCharacterAbilities();
+	}
+}
+
+void AC_BasePlayerCharactor::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+
+	if (PS)
+	{
+		InitializeStartingValues(PS);
+
+		BindASCInput();
+
+		InitializeAttributes();
+	}
+}
+
+void AC_BasePlayerCharactor::BindASCInput()
+{
+	if (bASCInputBound || !abilitySystemComponent.IsValid() /* && IsValid(InputComponent)*/) // IsValid(InputComponent) this is for legacy input
+		return;
+
+	/*
+	abilitySystemComponenet->BindAbilityActivationToInputComponent(InputComponent, FGameplayAbilityInputBind(FString("ConfirmTarget"), FString("CancelTarget"), FString("ProjectBBKAbilityID"), static_cast<int32>(ProjectBBKAbilityID::Confirm), static_cast<int32>(ProjectBBKAbilityID::Cancel)));
+	bASCInputBound = true;
+	*/
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PC->InputComponent))
+		{
+			// Ability Input Mapping (¿¹: GA_Sprint, GA_Attack µî)
+			const FGameplayAbilityInputBinds Binds(
+				TEXT("Confirm"), 
+				TEXT("Cancel"), 
+				FTopLevelAssetPath(TEXT("/Script/ProjectBBK"), TEXT("ProjectBBKAbilityID")),
+				static_cast<int32>(ProjectBBKAbilityID::Confirm),
+				static_cast<int32>(ProjectBBKAbilityID::Cancel)
+			);
+
+			abilitySystemComponent->BindAbilityActivationToInputComponent(EIC, Binds);
+			bASCInputBound = true;
+		}
+	}
+}
+
+void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
+{
+	abilitySystemComponent = Cast<UC_ChaAbilitySystemComponent>(PS->GetAbilitySystemComponent());
+
+	PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
+
+	attributeSetBase = PS->GetAttributeSetBase();
+
+	abilitySystemComponent->SetTagMapCount(deadTag, 0);
+
+	SetHealth(GetMaxHealth());
+	SetShield(GetMaxShield());
+
+	// Input binding (client)
+	BindASCInput();
 }
 
 UAbilitySystemComponent* AC_BasePlayerCharactor::GetAbilitySystemComponent() const

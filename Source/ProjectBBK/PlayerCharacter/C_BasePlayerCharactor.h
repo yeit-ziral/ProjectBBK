@@ -10,6 +10,7 @@
 #include "AbilitySystemInterface.h"
 #include "Delegates/DelegateCombinations.h"
 #include "../ProjectBBK.h"
+#include "C_PlayerState.h"
 #include "C_BasePlayerCharactor.generated.h"
 
 class USpringArmComponent;
@@ -28,33 +29,10 @@ class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter, public IAbility
 {
 	GENERATED_BODY()
 
-	/** Camera boom positioning the camera behind the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* springArm;
-
-	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* camera;
-
-	/** MappingContext */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputMappingContext* playerMappingContext;
-
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* moveAction;
-
-	/** Look Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* lookAction;
-
-	/** Sprint Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* sprintAction;
 
 public:
 	// Sets default values for this character's properties
-	AC_BasePlayerCharactor(); // replace this if i want to make movement system with GAS "AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer)"
+	AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitalizer); // replace this if i want to make movement system with GAS "AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer)"
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -98,6 +76,15 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void PossessedBy(AController* NewController) override;
+
+	virtual void OnRep_PlayerState() override;
+
+	// Binding Input with GAS
+	virtual void BindASCInput();
+
+	void InitializeStartingValues(AC_PlayerState* PS);
+
 	// Movement
 	void MyMove(const FInputActionValue& Value);
 	void MyLook(const FInputActionValue& Value);
@@ -124,6 +111,8 @@ protected:
 	float Health = 100.0f;
 	const float MAX_HEALTH = 100.0f;
 
+	// Protecting from duplication
+	bool bASCInputBound = false;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float curStamina = 100.0f;
@@ -147,6 +136,30 @@ protected:
 	float sprintSpeed = 900.0f;
 
 	bool bIsSprinting = false;
+
+	/** Camera boom positioning the camera behind the character */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	USpringArmComponent* springArm;
+
+	/** Follow camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UCameraComponent* camera;
+
+	/** MappingContext */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputMappingContext* playerMappingContext;
+
+	/** Move Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* moveAction;
+
+	/** Look Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* lookAction;
+
+	/** Sprint Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* sprintAction;
 
 	// 스위칭용 (Week 1에는 구조만)
 	int32 ActiveCharacterIndex = 0;
