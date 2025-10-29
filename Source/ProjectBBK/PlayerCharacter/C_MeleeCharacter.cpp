@@ -3,8 +3,7 @@
 
 #include "ProjectBBK/PlayerCharacter/C_MeleeCharacter.h"
 
-AC_MeleeCharacter::AC_MeleeCharacter(const class FObjectInitializer& ObjectInitalizer)
-	: Super(ObjectInitalizer)
+AC_MeleeCharacter::AC_MeleeCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 

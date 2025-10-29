@@ -16,7 +16,7 @@ class PROJECTBBK_API AC_MeleeCharacter : public AC_BasePlayerCharactor
 	
 public:
 	// Sets default values for this character's properties
-	AC_MeleeCharacter(const class FObjectInitializer& ObjectInitalizer);
+	AC_MeleeCharacter();
 
 protected:
 	// Called when the game starts or when spawned
@@ -28,5 +28,4 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
 };
