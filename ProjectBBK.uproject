@@ -10,14 +10,9 @@
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
 				"CoreUObject",
 				"Engine",
 				"UMG"
-=======
-				"Engine",
-				"GameplayAbilities"
->>>>>>> Stashed changes
 =======
 				"Engine",
 				"GameplayAbilities"
