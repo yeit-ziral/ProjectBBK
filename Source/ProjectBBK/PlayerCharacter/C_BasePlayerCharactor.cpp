@@ -2,7 +2,6 @@
 
 
 #include "C_BasePlayerCharactor.h"
-#include "../ProjectBBK.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -12,9 +11,6 @@
 #include "Engine/LocalPlayer.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Controller.h"
-#include "AbilitySystemComponent.h"
-#include "../GAS/GGGameplayAbility.h"
-#include "../GAS/AttributeSets/GGHealthSet.h"
 
 DEFINE_LOG_CATEGORY(LogBasePlayerCharacter);
 
@@ -50,10 +46,6 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-
-	abilitySystemComp = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComp"));
-
-	healthSet = CreateDefaultSubobject<UGGHealthSet>(TEXT("HealthSet"));
 }
 
 // Called when the game starts or when spawned
@@ -68,11 +60,6 @@ void AC_BasePlayerCharactor::BeginPlay()
 			Subsystem->AddMappingContext(playerMappingContext, 0);
 		}
 	}
-
-	healthSet->OnDamageTaken.AddUObject(this, &AC_BasePlayerCharactor::OnDamageTakenChanged);
-	
-	abilitySystemComp->GetGameplayAttributeValueChangeDelegate(healthSet->GetHealthAttribute()).AddUObject(this, &AC_BasePlayerCharactor::OnHealthAttributeChanged);
-	abilitySystemComp->GetGameplayAttributeValueChangeDelegate(healthSet->GetHealthAttribute()).AddUObject(this, &AC_BasePlayerCharactor::OnShieldAttributeChanged);
 }
 
 // Called every frame
@@ -99,34 +86,11 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		// Sprinting
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
-
-		// Attack Ability
-		EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::AttackAbility);
 	}
 	else
 	{
 		UE_LOG(LogBasePlayerCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
 	}
-}
-
-void AC_BasePlayerCharactor::SendAbilityLocalInput(const FInputActionValue& Value, int32 InputID)
-{
-	if(!abilitySystemComp)
-		return;
-
-	if(Value.Get<bool>())
-	{
-		abilitySystemComp->AbilityLocalInputPressed(InputID);
-	}
-	else
-	{
-		abilitySystemComp->AbilityLocalInputReleased(InputID);
-	}
-}
-
-void AC_BasePlayerCharactor::AttackAbility(const FInputActionValue& Value)
-{
-	SendAbilityLocalInput(Value, static_cast<int32>(EAbilityInputID::Attack));
 }
 
 void AC_BasePlayerCharactor::MyMove(const FInputActionValue& Value)
@@ -211,68 +175,4 @@ void AC_BasePlayerCharactor::UpdateStamina()
 	{
 		bHasStamina = true;
 	}
-}
-
-UAbilitySystemComponent* AC_BasePlayerCharactor::GetAbilitySystemComponent() const
-{
-	return abilitySystemComp;
-}
-
-void AC_BasePlayerCharactor::InitializeAbilities()
-{
-	// Give Abilities, Server only
-	if (!HasAuthority() || !abilitySystemComp)
-		return;
-
-	for (TSubclassOf<UGGGameplayAbility>& Ability : defaultAbilities)
-	{
-		FGameplayAbilitySpecHandle SpecHandle = abilitySystemComp->GiveAbility(
-			FGameplayAbilitySpec(Ability, 1, static_cast<int32>(Ability.GetDefaultObject()->GetAbilityInputID()), this));
-	}
-}
-
-void AC_BasePlayerCharactor::InitializeEffects()
-{
-	if(!abilitySystemComp)
-		return;
-
-	FGameplayEffectContextHandle EffectContext = abilitySystemComp->MakeEffectContext();
-	EffectContext.AddSourceObject(this);
-
-	for (TSubclassOf<UGameplayEffect>& Effect : defaultEffects)
-	{
-		FGameplayEffectSpecHandle SpecHandle = abilitySystemComp->MakeOutgoingSpec(Effect, 1, EffectContext);
-		if(SpecHandle.IsValid())
-		{
-			FActiveGameplayEffectHandle GEHandle = abilitySystemComp->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
-	}
-}
-
-void AC_BasePlayerCharactor::PostInitializeComponents()
-{
-	Super::PostInitializeComponents();
-
-	if(!abilitySystemComp)
-		return;
-
-	abilitySystemComp->InitAbilityActorInfo(this, this);
-
-	InitializeEffects();
-	InitializeAbilities();
-}
-
-void AC_BasePlayerCharactor::OnDamageTakenChanged(AActor* DamageInstigator, AActor* DamageCauser, const FGameplayTagContainer& GameplayTagContainer, float Damage)
-{
-	OnDamageTaken(DamageInstigator, DamageCauser, GameplayTagContainer, Damage);
-}
-
-void AC_BasePlayerCharactor::OnHealthAttributeChanged(const FOnAttributeChangeData& Data)
-{
-	OnHealthChanged(Data.OldValue, Data.NewValue);
-}
-
-void AC_BasePlayerCharactor::OnShieldAttributeChanged(const FOnAttributeChangeData& Data)
-{
-	OnShieldChanged(Data.OldValue, Data.NewValue);
 }
