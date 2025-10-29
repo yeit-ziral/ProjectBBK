@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayEffectTypes.h"
 #include "InputActionValue.h"
 #include "Logging/LogMacros.h"
 #include "C_BasePlayerCharactor.generated.h"
@@ -17,7 +19,7 @@ struct FInputActionValue;
 DECLARE_LOG_CATEGORY_EXTERN(LogBasePlayerCharacter, Log, All);
 
 UCLASS(Blueprintable, config = Game)
-class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter
+class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -45,6 +47,23 @@ class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* sprintAction;
 
+	/** Attack Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* attackAction;
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+	class UAbilitySystemComponent* abilitySystemComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+	class UGGHealthSet* healthSet;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
+	TArray < TSubclassOf<class UGGGameplayAbility>> defaultAbilities;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
+	TArray < TSubclassOf<class UGameplayEffect>> defaultEffects;
+
 public:
 	// Sets default values for this character's properties
 	AC_BasePlayerCharactor();
@@ -64,6 +83,28 @@ protected:
 	//Stamina
 	void UpdateStamina();
 
+	UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	virtual void InitializeAbilities();
+	virtual void InitializeEffects();
+
+	virtual void PostInitializeComponents() override;
+
+	virtual void OnDamageTakenChanged(AActor* DamageInstigator, AActor* DamageCauser, const FGameplayTagContainer& GameplayTagContainer, float Damage);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
+	void OnDamageTaken(AActor* DamageInstigator, AActor* DamageCauser, const FGameplayTagContainer& GameplayTagContainer, float Damage);
+
+	virtual void OnHealthAttributeChanged(const FOnAttributeChangeData& Data);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
+	void OnHealthChanged(float OldValue, float NewValue);
+
+	virtual void OnShieldAttributeChanged(const FOnAttributeChangeData& Data);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
+	void OnShieldChanged(float OldValue, float NewValue);
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -71,10 +112,14 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void SendAbilityLocalInput(const FInputActionValue& Value, int32 InputID);
+
+	void AttackAbility(const FInputActionValue& Value);
+
 protected:
 
-	float Health = 100.0f;
-	const float MAX_HEALTH = 100.0f;
+	//float Health = 100.0f;
+	//const float MAX_HEALTH = 100.0f;
 
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
