@@ -9,5 +9,5 @@ enum class ProjectBBKAbilityID : uint8
 {
 	None UMETA(DisplayName = "None"),
 	Confirm UMETA(DisplayName = "Confirm"),
-	Cancel UMETA(DisplayName = "Cancel")
+	Cancel UMETA(DisplayName = "Cancel"),
 };
