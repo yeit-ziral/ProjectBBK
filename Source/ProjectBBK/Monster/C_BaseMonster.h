@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemComponent.h"
+#include "M_Gas/C_MonsterAttributeSet.h"
 #include "C_BaseMonster.generated.h"
 
 class UDataTable;
@@ -35,42 +37,38 @@ protected:	 //protected variables
 	TSoftObjectPtr<UDataTable> monsterTable;
 #pragma endregion
 
-#pragma region stats(monsterId, hp, attack, movespeed, attackRange, attackCooldown)
+#pragma region stats(monsterId)
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
 	int32 monsterId;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	int32 hp;
+#pragma endregion
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	int32 attack;
+#pragma region Gas(MonsterASC, MonsterAttributeSet, InitializeAttributesFromDataTable)
+	UPROPERTY(VisibleAnywhere)
+	UAbilitySystemComponent* MonsterASC;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float moveSpeed;
+	UPROPERTY()
+	UC_MonsterAttributeSet* MonsterAttributeSet;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float attackRange;
+	void InitializeAttributesFromDataTable();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float attackCooldown;
 #pragma endregion
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Manager")
 	UC_AttackManagerComponent* attackManager = nullptr;
 
 public: // public functions
-	void ApplyData(const struct FMonsterData& Data);
 
 	int32 GetMonsterID() const { return monsterId; }
 
-	int32 GetHP() const { return hp; }
+	int32 GetHP() const { return MonsterAttributeSet->GetMaxHP(); }
 
-	int32 GetAttack() const { return attack; }
+	int32 GetAttack() const { return MonsterAttributeSet->GetAttack(); }
 
-	float GetAttackCooldown() const { return attackCooldown; }
+	float GetAttackCooldown() const { return MonsterAttributeSet->GetNormalCooldown(); }
 
-	float GetAttackRange() const { return attackRange; }
+	float GetAttackRange() const { return MonsterAttributeSet->GetAttackRange(); }
 
 	UC_AttackManagerComponent* GetAttackManager() const { return attackManager; }
 
@@ -79,5 +77,6 @@ public: // public functions
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
 
 };
