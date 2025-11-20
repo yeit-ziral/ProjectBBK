@@ -21,4 +21,6 @@ public:
 	FReceivedDamageDelegate receivedDamage;
 
 	virtual void ReceiveDamage(UC_ChaAbilitySystemComponent* SourceASC, float UnmitigatedDamage, float MitigatedDamage);
+
+
 };

@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -28,4 +28,23 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ability")
 	bool activateOnGranted = false; // if true, ability will activate as soon as it's granted to ability system component
+
+#pragma region skill
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Skill|Info")
+	FText SkillName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Skill|Info")
+	FText SkillDescription;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Skill|Info")
+	UTexture2D* SkillIcon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Skill|Info")
+	int32 SkillLevel = 1;
+
+protected:
+	virtual void ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const override;
+	virtual void ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const override;
+#pragma endregion
+
 };

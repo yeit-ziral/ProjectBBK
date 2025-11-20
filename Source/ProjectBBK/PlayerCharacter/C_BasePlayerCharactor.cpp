@@ -183,6 +183,26 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 	SetHealth(GetMaxHealth());
 	SetShield(GetMaxShield());
 
+	if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
+	{
+		// Health 변경 감지
+		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			attributeSetBase->GethealthAttribute()
+		).AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
+
+		// Mana 변경 감지 (핵심!)
+		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			attributeSetBase->GetmanaAttribute()
+		).AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
+
+		// Shield 변경 감지
+		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			attributeSetBase->GetshieldAttribute()
+		).AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
+
+		UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
+	}
+
 	// Input binding (client)
 	BindASCInput();
 }
@@ -310,6 +330,25 @@ float AC_BasePlayerCharactor::GetMaxShield() const
 	if (attributeSetBase.IsValid())
 	{
 		return attributeSetBase->GetmaxShield();
+	}
+
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetMana() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->Getmana();
+	}
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetMaxMana() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->GetmaxMana();
 	}
 
 	return 0.0f;
@@ -481,4 +520,46 @@ void AC_BasePlayerCharactor::SetShield(float NewShield)
 	{
 		attributeSetBase->Setshield(NewShield);
 	}
+}
+
+void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	float Health = Data.NewValue;
+	float MaxHealth = GetMaxHealth();
+
+	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
+
+	// 죽음 처리
+	if (Health <= 0.0f && IsAlive())
+	{
+		Die();
+	}
+}
+
+void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData& Data)
+{
+	float Mana = Data.NewValue;
+	float MaxMana = GetMaxMana();
+	float Percent = (MaxMana > 0.0f) ? (Mana / MaxMana) : 0.0f;
+
+	// UI 델리게이트 브로드캐스트!
+	OnManaChanged.Broadcast(Percent);
+
+	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"),
+		Mana, MaxMana, Percent * 100.0f);
+
+	// 100% 도달 시 추가 로직
+	if (Percent >= 1.0f)
+	{
+		UE_LOG(LogBasePlayerCharacter, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
+		// TODO: 준비 완료 이벤트
+	}
+}
+
+void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData& Data)
+{
+	float Shield = Data.NewValue;
+	float MaxShield = GetMaxShield();
+
+	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
 }
