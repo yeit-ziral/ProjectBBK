@@ -11,8 +11,8 @@
 #include "Engine/LocalPlayer.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Controller.h"
-#include "../GAS/Abilities/C_ChaAbilitySystemComponent.h"
-#include "../GAS/Abilities/C_CharacterGameplayAbility.h"
+#include "../GAS/Abilities/C_CharacterASC.h"
+#include "../GAS/Abilities/C_CharacterGA.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "C_PlayerState.h"
 #include "PlayerAI/C_PlayerAIController.h"
@@ -136,8 +136,6 @@ void AC_BasePlayerCharactor::OnRep_PlayerState()
 		InitializeStartingValues(PS);
 
 		BindASCInput();
-
-		InitializeAttributes();
 	}
 }
 
@@ -172,13 +170,17 @@ void AC_BasePlayerCharactor::BindASCInput()
 
 void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 {
-	abilitySystemComponent = Cast<UC_ChaAbilitySystemComponent>(PS->GetAbilitySystemComponent());
+	check(PS); // this is for debugging
+
+	abilitySystemComponent = Cast<UC_CharacterASC>(PS->GetAbilitySystemComponent());
 
 	PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 
 	attributeSetBase = PS->GetAttributeSetBase();
 
 	abilitySystemComponent->SetTagMapCount(deadTag, 0);
+
+	InitializeAttributes();
 
 	SetHealth(GetMaxHealth());
 	SetShield(GetMaxShield());
@@ -204,7 +206,7 @@ int32 AC_BasePlayerCharactor::GetAbilityLevel(ProjectBBKAbilityID AbilityID) con
 
 void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 {
-	//UC_ChaAbilitySystemComponent* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
+	//UC_CharacterASC* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
 
 	if(GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->characterAbilitiesGiven)
 	{
@@ -406,7 +408,7 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 		return;
 	}
 
-	for(TSubclassOf<UC_CharacterGameplayAbility>& StartupAbility : characterAbilities)
+	for(TSubclassOf<UC_CharacterGA>& StartupAbility : characterAbilities)
 	{
 		abilitySystemComponent->GiveAbility(
 			FGameplayAbilitySpec(
@@ -416,9 +418,14 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 				this
 			)
 		);
+
 	}
 
-	abilitySystemComponent->characterAbilitiesGiven = true;
+	//for checking test gameplay ability
+
+	//abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
+
+	//abilitySystemComponent->characterAbilitiesGiven = true;
 }
 
 void AC_BasePlayerCharactor::InitializeAttributes()
@@ -447,7 +454,7 @@ void AC_BasePlayerCharactor::InitializeAttributes()
 
 void AC_BasePlayerCharactor::AddStartupEffects()
 {
-	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->startupEffectsApplied)
+	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || abilitySystemComponent->startupEffectsApplied)
 	{
 		return;
 	}

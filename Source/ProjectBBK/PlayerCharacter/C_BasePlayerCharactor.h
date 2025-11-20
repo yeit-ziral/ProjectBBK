@@ -114,9 +114,9 @@ protected:
 	// Protecting from duplication
 	bool bASCInputBound = false;
 
-	UPROPERTY(EditAnywhere, Category = "Movement")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float curStamina = 100.0f;
-	UPROPERTY(EditAnywhere, Category = "Movement")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float max_Stamina = 100.0f;
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float staminaDrainTime;
@@ -164,7 +164,7 @@ protected:
 	// 스위칭용 (Week 1에는 구조만)
 	int32 ActiveCharacterIndex = 0;
 
-	TWeakObjectPtr<class UC_ChaAbilitySystemComponent> abilitySystemComponent;
+	TWeakObjectPtr<class UC_CharacterASC> abilitySystemComponent;
 
 	TWeakObjectPtr<class UC_ChracterAttributeSetBase> attributeSetBase;
 
@@ -178,7 +178,7 @@ protected:
 	UAnimMontage* deathMontage;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Abilities")
-	TArray<TSubclassOf<class UC_CharacterGameplayAbility>> characterAbilities; //Abilities to give to character when possessed
+	TArray<TSubclassOf<class UC_CharacterGA>> characterAbilities; //Abilities to give to character when possessed
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Abilities")
 	TSubclassOf<class UGameplayEffect> defaultAttributes; //Initialize default values of character's attributes
