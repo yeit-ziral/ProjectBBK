@@ -5,7 +5,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
-#include "../Abilities/C_ChaAbilitySystemComponent.h"
+#include "../Abilities/C_CharacterASC.h"
 
 
 void UC_ChracterAttributeSetBase::OnRep_level(const FGameplayAttributeData& OldLevel)
@@ -145,9 +145,9 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 			}
 
 			// 데미지 델리게이트 호출
-			if (UC_ChaAbilitySystemComponent* TargetASC = Cast<UC_ChaAbilitySystemComponent>(Data.Target.AbilityActorInfo->AbilitySystemComponent.Get()))
+			if (UC_CharacterASC* TargetASC = Cast<UC_CharacterASC>(Data.Target.AbilityActorInfo->AbilitySystemComponent.Get()))
 			{
-				UC_ChaAbilitySystemComponent* SourceASCCasted = Cast<UC_ChaAbilitySystemComponent>(SourceASC);
+				UC_CharacterASC* SourceASCCasted = Cast<UC_CharacterASC>(SourceASC);
 				TargetASC->ReceiveDamage(SourceASCCasted, LocalDamageDone, LocalDamageDone);
 			}
 		}

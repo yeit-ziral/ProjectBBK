@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "C_CharacterGameplayAbility.h"
-#include "C_ChaAbilitySystemComponent.h"
+#include "C_CharacterGA.h"
+#include "C_CharacterASC.h"
 #include "AbilitySystemComponent.h"
 
 
@@ -24,7 +24,7 @@ void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, con
 	}
 }
 
-void UC_CharacterGameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+void UC_CharacterGA::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	if (CooldownGameplayEffectClass)
 	{
@@ -40,7 +40,7 @@ void UC_CharacterGameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle
 	}
 }
 
-void UC_CharacterGameplayAbility::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+void UC_CharacterGA::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	if (CostGameplayEffectClass)
 	{
