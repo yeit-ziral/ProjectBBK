@@ -62,13 +62,13 @@ public: // public functions
 
 	int32 GetMonsterID() const { return monsterId; }
 
-	int32 GetHP() const { return MonsterAttributeSet->GetMaxHP(); }
+	int32 GetHP() const { return MonsterAttributeSet->GetmaxHP(); }
 
-	int32 GetAttack() const { return MonsterAttributeSet->GetAttack(); }
+	int32 GetAttack() const { return MonsterAttributeSet->Getattack(); }
 
-	float GetAttackCooldown() const { return MonsterAttributeSet->GetNormalCooldown(); }
+	float GetAttackCooldown() const { return MonsterAttributeSet->GetnormalCooldown(); }
 
-	float GetAttackRange() const { return MonsterAttributeSet->GetAttackRange(); }
+	float GetAttackRange() const { return MonsterAttributeSet->GetattackRange(); }
 
 	UC_AttackManagerComponent* GetAttackManager() const { return attackManager; }
 

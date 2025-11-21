@@ -12,52 +12,52 @@ UC_MonsterAttributeSet::UC_MonsterAttributeSet()
 #pragma region onRep functions
 void UC_MonsterAttributeSet::OnRep_CurHP(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, CurHP, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, curHP, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_MaxHP(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, MaxHP, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, maxHP, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_Groggy(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, CurGroggy, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, curGroggy, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_MaxGroggy(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, MaxGroggy, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, maxGroggy, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_Attack(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, Attack, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, attack, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_Defense(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, Defense, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, defense, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, MoveSpeed, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, moveSpeed, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_AttackRange(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, AttackRange, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, attackRange, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_NormalCooldown(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, NormalCooldown, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, normalCooldown, OldValue);
 }
 
 void UC_MonsterAttributeSet::OnRep_SpecialCooldown(const FGameplayAttributeData& OldValue)
 {
-    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, SpecialCooldown, OldValue);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, specialCooldown, OldValue);
 }
 
 #pragma endregion
@@ -66,75 +66,75 @@ void UC_MonsterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, CurHP,           COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, MaxHP,           COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, CurGroggy,       COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, MaxGroggy,       COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, Attack,          COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, Defense,         COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, MoveSpeed,       COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, AttackRange,     COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, NormalCooldown,  COND_None, REPNOTIFY_Always);
-    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, SpecialCooldown, COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, curHP,           COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, maxHP,           COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, curGroggy,       COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, maxGroggy,       COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, attack,          COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, defense,         COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, moveSpeed,       COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, attackRange,     COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, normalCooldown,  COND_None, REPNOTIFY_Always);
+    DOREPLIFETIME_CONDITION_NOTIFY(UC_MonsterAttributeSet, specialCooldown, COND_None, REPNOTIFY_Always);
 }
 
 void UC_MonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
     auto NonNegative = [](float& V) { V = FMath::Max(V, 0.f); };
 
-    if (Attribute == GetMaxHPAttribute())
+    if (Attribute == GetmaxHPAttribute())
         NewValue = FMath::Max(NewValue, 1.f);
-    else if (Attribute == GetCurHPAttribute())       
+    else if (Attribute == GetcurHPAttribute())       
         NonNegative(NewValue);
-    else if (Attribute == GetMaxGroggyAttribute())    
+    else if (Attribute == GetmaxGroggyAttribute())    
         NewValue = FMath::Max(NewValue, 1.f);
-    else if (Attribute == GetCurGroggyAttribute())       
+    else if (Attribute == GetcurGroggyAttribute())       
         NonNegative(NewValue);
-    else if (Attribute == GetAttackAttribute())      
+    else if (Attribute == GetattackAttribute())      
         NonNegative(NewValue);
-    else if (Attribute == GetDefenseAttribute())     
+    else if (Attribute == GetdefenseAttribute())     
         NonNegative(NewValue);
-    else if (Attribute == GetMoveSpeedAttribute())    
+    else if (Attribute == GetmoveSpeedAttribute())    
         NonNegative(NewValue);
-    else if (Attribute == GetAttackRangeAttribute())  
+    else if (Attribute == GetattackRangeAttribute())  
         NonNegative(NewValue);
-    else if (Attribute == GetNormalCooldownAttribute() || Attribute == GetSpecialCooldownAttribute()) 
+    else if (Attribute == GetnormalCooldownAttribute() || Attribute == GetspecialCooldownAttribute()) 
         NonNegative(NewValue);
 }
 
 void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);
-
+ //////////////데미지 처리////////////////////////////////////////////////////////////////////
     if (Data.EvaluatedData.Attribute == GetReceivedDamageAttribute())
     {
         const float RawDamage = GetReceivedDamage();
 
-        const float Mitigated = FMath::Max(0.0f, RawDamage - GetDefense()); // 방어력 반영
+        const float Mitigated = FMath::Max(0.0f, RawDamage - Getdefense()); // 방어력 반영
 
-        const float NewHP = FMath::Clamp(GetCurHP() - Mitigated, 0.f, GetMaxHP());
-        SetCurHP(NewHP);
+        const float NewHP = FMath::Clamp(GetcurHP() - Mitigated, 0.f, GetmaxHP());
+        SetcurHP(NewHP);
 
 
         SetReceivedDamage(0.0f);
         return;
     }
-
-    if (Data.EvaluatedData.Attribute == GetMaxHPAttribute())
+///////////////////////////////////////////////////////////////////////////////////////////////
+    if (Data.EvaluatedData.Attribute == GetmaxHPAttribute())
     {
-        SetCurHP(FMath::Clamp(GetCurHP(), 0.0f, GetMaxHP()));
+        SetcurHP(FMath::Clamp(GetcurHP(), 0.0f, GetmaxHP()));
     }
-    else if (Data.EvaluatedData.Attribute == GetCurHPAttribute())
+    else if (Data.EvaluatedData.Attribute == GetcurHPAttribute())
     {
-        SetCurHP(FMath::Clamp(GetCurHP(), 0.0f, GetMaxHP()));
+        SetcurHP(FMath::Clamp(GetcurHP(), 0.0f, GetmaxHP()));
     }
-    else if (Data.EvaluatedData.Attribute == GetMaxGroggyAttribute())
+    else if (Data.EvaluatedData.Attribute == GetmaxGroggyAttribute())
     {
-        SetCurGroggy(FMath::Clamp(GetCurGroggy(), 0.0f, GetMaxGroggy()));
+        SetcurGroggy(FMath::Clamp(GetcurGroggy(), 0.0f, GetmaxGroggy()));
     }
-    else if (Data.EvaluatedData.Attribute == GetCurGroggyAttribute())
+    else if (Data.EvaluatedData.Attribute == GetcurGroggyAttribute())
     {
-        SetCurGroggy(FMath::Clamp(GetCurGroggy(), 0.0f, GetMaxGroggy()));
+        SetcurGroggy(FMath::Clamp(GetcurGroggy(), 0.0f, GetmaxGroggy()));
 
     }
 }

@@ -4,6 +4,7 @@
 #include "C_BaseMonster.h"
 #include "Manager/C_AttackManagerComponent.h"
 #include "Data/MonsterData.h"                 
+#include "AI/C_MonsterAIController.h"  
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -23,6 +24,9 @@ AC_BaseMonster::AC_BaseMonster()
 
 	attackManager = CreateDefaultSubobject<UC_AttackManagerComponent>(TEXT("AttackManager"));
 
+
+	AIControllerClass = AC_MonsterAIController::StaticClass();
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 // Called when the game starts or when spawned
@@ -48,8 +52,8 @@ void AC_BaseMonster::BeginPlay()
 	{
 		FString Msg = FString::Printf(TEXT("BeginPlay: MonsterId=%d, MaxHP=%.1f, ATK=%.1f"),
 			monsterId,
-			MonsterAttributeSet ? MonsterAttributeSet->GetMaxHP() : -1.0f,
-			MonsterAttributeSet ? MonsterAttributeSet->GetAttack() : -1.0f);
+			MonsterAttributeSet ? MonsterAttributeSet->GetmaxHP() : -1.0f,
+			MonsterAttributeSet ? MonsterAttributeSet->Getattack() : -1.0f);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Msg);
 	}
 	/////////////////////////
@@ -84,21 +88,21 @@ void AC_BaseMonster::InitializeAttributesFromDataTable()
 	
 	monsterId = Data->MonsterId;
 
-	MonsterAttributeSet->InitMaxHP          (Data->MaxHP);
-	MonsterAttributeSet->InitMaxGroggy      (Data->MaxGroggy);
-	MonsterAttributeSet->InitAttack         (Data->Attack);
-	MonsterAttributeSet->InitDefense        (Data->Defense);
-	MonsterAttributeSet->InitAttackRange    (Data->AttackRange);
-	MonsterAttributeSet->InitMoveSpeed      (Data->MoveSpeed);
-	MonsterAttributeSet->InitNormalCooldown (Data->NormalCooldown);
-	MonsterAttributeSet->InitSpecialCooldown(Data->SpecialCooldown);
+	MonsterAttributeSet->InitmaxHP          (Data->MaxHP);
+	MonsterAttributeSet->InitmaxGroggy      (Data->MaxGroggy);
+	MonsterAttributeSet->Initattack         (Data->Attack);
+	MonsterAttributeSet->Initdefense        (Data->Defense);
+	MonsterAttributeSet->InitattackRange    (Data->AttackRange);
+	MonsterAttributeSet->InitmoveSpeed      (Data->MoveSpeed);
+	MonsterAttributeSet->InitnormalCooldown (Data->NormalCooldown);
+	MonsterAttributeSet->InitspecialCooldown(Data->SpecialCooldown);
 
-	MonsterAttributeSet->SetCurHP(Data->MaxHP);    
-	MonsterAttributeSet->SetCurGroggy(Data->MaxGroggy);
+	MonsterAttributeSet->SetcurHP(Data->MaxHP);    
+	MonsterAttributeSet->SetcurGroggy(Data->MaxGroggy);
 
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
-		Move->MaxWalkSpeed = MonsterAttributeSet->GetMoveSpeed();
+		Move->MaxWalkSpeed = MonsterAttributeSet->GetmoveSpeed();
 	}
 
 }

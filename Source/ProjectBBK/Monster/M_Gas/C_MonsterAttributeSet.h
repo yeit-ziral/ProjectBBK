@@ -32,43 +32,43 @@ public:
 
 #pragma region onRep functions
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_CurHP)
-    FGameplayAttributeData CurHP;
+    FGameplayAttributeData curHP;
     UFUNCTION() void OnRep_CurHP(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_MaxHP)
-    FGameplayAttributeData MaxHP;
+    FGameplayAttributeData maxHP;
     UFUNCTION() void OnRep_MaxHP(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_Groggy)
-    FGameplayAttributeData CurGroggy;
+    FGameplayAttributeData curGroggy;
     UFUNCTION() void OnRep_Groggy(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_MaxGroggy)
-    FGameplayAttributeData MaxGroggy;
+    FGameplayAttributeData maxGroggy;
     UFUNCTION() void OnRep_MaxGroggy(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_Attack)
-    FGameplayAttributeData Attack;
+    FGameplayAttributeData attack;
     UFUNCTION() void OnRep_Attack(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_Defense)
-    FGameplayAttributeData Defense;
+    FGameplayAttributeData defense;
     UFUNCTION() void OnRep_Defense(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_MoveSpeed)
-    FGameplayAttributeData MoveSpeed;
+    FGameplayAttributeData moveSpeed;
     UFUNCTION() void OnRep_MoveSpeed(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_AttackRange)
-    FGameplayAttributeData AttackRange;
+    FGameplayAttributeData attackRange;
     UFUNCTION() void OnRep_AttackRange(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_NormalCooldown)
-    FGameplayAttributeData NormalCooldown;
+    FGameplayAttributeData normalCooldown;
     UFUNCTION() void OnRep_NormalCooldown(const FGameplayAttributeData& OldValue);
 
     UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_SpecialCooldown)
-    FGameplayAttributeData SpecialCooldown;
+    FGameplayAttributeData specialCooldown;
     UFUNCTION() void OnRep_SpecialCooldown(const FGameplayAttributeData& OldValue);
 
 #pragma endregion
@@ -76,16 +76,16 @@ public:
 
 public:
 #pragma region StatAttributes
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,           CurHP)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,           MaxHP)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,       CurGroggy)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,       MaxGroggy)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,          Attack)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,         Defense)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,       MoveSpeed)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,     AttackRange)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,  NormalCooldown)
-    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet, SpecialCooldown)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,           curHP)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,           maxHP)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,       curGroggy)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,       maxGroggy)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,          attack)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,         defense)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,       moveSpeed)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,     attackRange)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet,  normalCooldown)
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet, specialCooldown)
 #pragma endregion
 
 #pragma region Meta Attributes
