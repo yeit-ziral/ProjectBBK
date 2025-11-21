@@ -3,17 +3,17 @@
 
 #include "C_PlayerState.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
-#include "../GAS/Abilities/C_ChaAbilitySystemComponent.h"
+#include "../GAS/Abilities/C_CharacterASC.h"
 
 AC_PlayerState::AC_PlayerState()
 {
-	abilitySystemComponent = CreateDefaultSubobject<UC_ChaAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	abilitySystemComponent = CreateDefaultSubobject<UC_CharacterASC>(TEXT("AbilitySystemComponent"));
 	abilitySystemComponent->SetIsReplicated(true);
 	abilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	attributeSetBase = CreateDefaultSubobject<UC_ChracterAttributeSetBase>(TEXT("AttributeSetBase"));
 
-	NetUpdateFrequency = 100.0f;
+	NetUpdateFrequency = 100.0f; // too low update speed can cause perceived lag
 
 	deadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
 }

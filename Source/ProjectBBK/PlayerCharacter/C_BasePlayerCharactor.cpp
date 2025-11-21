@@ -11,8 +11,8 @@
 #include "Engine/LocalPlayer.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Controller.h"
-#include "../GAS/Abilities/C_ChaAbilitySystemComponent.h"
-#include "../GAS/Abilities/C_CharacterGameplayAbility.h"
+#include "../GAS/Abilities/C_CharacterASC.h"
+#include "../GAS/Abilities/C_CharacterGA.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "C_PlayerState.h"
 #include "PlayerAI/C_PlayerAIController.h"
@@ -136,8 +136,6 @@ void AC_BasePlayerCharactor::OnRep_PlayerState()
 		InitializeStartingValues(PS);
 
 		BindASCInput();
-
-		InitializeAttributes();
 	}
 }
 
@@ -155,7 +153,7 @@ void AC_BasePlayerCharactor::BindASCInput()
 	{
 		if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PC->InputComponent))
 		{
-			// Ability Input Mapping (¿¹: GA_Sprint, GA_Attack µî)
+			// Ability Input Mapping (ï¿½ï¿½: GA_Sprint, GA_Attack ï¿½ï¿½)
 			const FGameplayAbilityInputBinds Binds(
 				TEXT("Confirm"), 
 				TEXT("Cancel"), 
@@ -172,7 +170,9 @@ void AC_BasePlayerCharactor::BindASCInput()
 
 void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 {
-	abilitySystemComponent = Cast<UC_ChaAbilitySystemComponent>(PS->GetAbilitySystemComponent());
+	check(PS); // this is for debugging
+
+	abilitySystemComponent = Cast<UC_CharacterASC>(PS->GetAbilitySystemComponent());
 
 	PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 
@@ -180,22 +180,24 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 
 	abilitySystemComponent->SetTagMapCount(deadTag, 0);
 
+	InitializeAttributes();
+
 	SetHealth(GetMaxHealth());
 	SetShield(GetMaxShield());
 
 	if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
 	{
-		// Health º¯°æ °¨Áö
+		// Health ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			attributeSetBase->GethealthAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
 
-		// Mana º¯°æ °¨Áö (ÇÙ½É!)
+		// Mana ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½Ù½ï¿½!)
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			attributeSetBase->GetmanaAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
 
-		// Shield º¯°æ °¨Áö
+		// Shield ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			attributeSetBase->GetshieldAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
@@ -224,7 +226,7 @@ int32 AC_BasePlayerCharactor::GetAbilityLevel(ProjectBBKAbilityID AbilityID) con
 
 void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 {
-	//UC_ChaAbilitySystemComponent* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
+	//UC_CharacterASC* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
 
 	if(GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->characterAbilitiesGiven)
 	{
@@ -445,7 +447,7 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 		return;
 	}
 
-	for(TSubclassOf<UC_CharacterGameplayAbility>& StartupAbility : characterAbilities)
+	for(TSubclassOf<UC_CharacterGA>& StartupAbility : characterAbilities)
 	{
 		abilitySystemComponent->GiveAbility(
 			FGameplayAbilitySpec(
@@ -455,9 +457,14 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 				this
 			)
 		);
+
 	}
 
-	abilitySystemComponent->characterAbilitiesGiven = true;
+	//for checking test gameplay ability
+
+	//abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
+
+	//abilitySystemComponent->characterAbilitiesGiven = true;
 }
 
 void AC_BasePlayerCharactor::InitializeAttributes()
@@ -486,7 +493,7 @@ void AC_BasePlayerCharactor::InitializeAttributes()
 
 void AC_BasePlayerCharactor::AddStartupEffects()
 {
-	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->startupEffectsApplied)
+	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || abilitySystemComponent->startupEffectsApplied)
 	{
 		return;
 	}
@@ -529,7 +536,7 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
 
 	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
 
-	// Á×À½ Ã³¸®
+	// ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½
 	if (Health <= 0.0f && IsAlive())
 	{
 		Die();
@@ -542,17 +549,17 @@ void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData&
 	float MaxMana = GetMaxMana();
 	float Percent = (MaxMana > 0.0f) ? (Mana / MaxMana) : 0.0f;
 
-	// UI µ¨¸®°ÔÀÌÆ® ºê·ÎµåÄ³½ºÆ®!
+	// UI ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½Îµï¿½Ä³ï¿½ï¿½Æ®!
 	OnManaChanged.Broadcast(Percent);
 
 	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"),
 		Mana, MaxMana, Percent * 100.0f);
 
-	// 100% µµ´Þ ½Ã Ãß°¡ ·ÎÁ÷
+	// 100% ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ß°ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (Percent >= 1.0f)
 	{
 		UE_LOG(LogBasePlayerCharacter, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
-		// TODO: ÁØºñ ¿Ï·á ÀÌº¥Æ®
+		// TODO: ï¿½Øºï¿½ ï¿½Ï·ï¿½ ï¿½Ìºï¿½Æ®
 	}
 }
 
