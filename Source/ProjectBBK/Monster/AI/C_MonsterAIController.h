@@ -17,8 +17,5 @@ public:
     AC_MonsterAIController();
 
 protected:
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
-    UBehaviorTree* BehaviorTreeAsset;
-
     virtual void OnPossess(APawn* InPawn) override;
 };

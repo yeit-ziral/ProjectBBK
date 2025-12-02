@@ -3,6 +3,8 @@
 
 #include "C_MonsterAttributeSet.h"
 #include "GameplayEffectExtension.h"
+#include "C_MonsterASC.h"
+#include "AbilitySystemGlobals.h"
 #include "Net/UnrealNetwork.h"
 
 UC_MonsterAttributeSet::UC_MonsterAttributeSet()
@@ -126,7 +128,23 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
     }
     else if (Data.EvaluatedData.Attribute == GetcurHPAttribute())
     {
-        SetcurHP(FMath::Clamp(GetcurHP(), 0.0f, GetmaxHP()));
+        const float NewHP = GetcurHP();
+        SetcurHP(FMath::Clamp(NewHP, 0.f, GetmaxHP()));
+
+        if (NewHP <= 0.f)
+        {
+            // ASC 찾아서 HandleDeath 호출
+            if (AActor* Owner = GetOwningActor())
+            {
+                if (UAbilitySystemComponent* ASCBase = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Owner))
+                {
+                    if (UC_MonsterASC* monsterASC = Cast<UC_MonsterASC>(ASCBase))
+                    {
+                        monsterASC->HandleDeath();
+                    }
+                }
+            }
+        }
     }
     else if (Data.EvaluatedData.Attribute == GetmaxGroggyAttribute())
     {

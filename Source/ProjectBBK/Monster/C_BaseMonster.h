@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemComponent.h"
 #include "M_Gas/C_MonsterAttributeSet.h"
+#include "M_Gas/C_MonsterASC.h"
+#include "BehaviorTree/BehaviorTree.h"
 #include "C_BaseMonster.generated.h"
 
 class UDataTable;
@@ -46,10 +48,10 @@ protected:	 //protected variables
 
 #pragma region Gas(MonsterASC, MonsterAttributeSet, InitializeAttributesFromDataTable)
 	UPROPERTY(VisibleAnywhere)
-	UAbilitySystemComponent* MonsterASC;
+	UC_MonsterASC* monsterASC;
 
 	UPROPERTY()
-	UC_MonsterAttributeSet* MonsterAttributeSet;
+	UC_MonsterAttributeSet* monsterAttributeSet;
 
 	void InitializeAttributesFromDataTable();
 
@@ -58,19 +60,24 @@ protected:	 //protected variables
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Manager")
 	UC_AttackManagerComponent* attackManager = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
+	UBehaviorTree* behaviorTree;
+
 public: // public functions
 
 	int32 GetMonsterID() const { return monsterId; }
 
-	int32 GetHP() const { return MonsterAttributeSet->GetmaxHP(); }
+	int32 GetHP() const { return monsterAttributeSet->GetmaxHP(); }
 
-	int32 GetAttack() const { return MonsterAttributeSet->Getattack(); }
+	int32 GetAttack() const { return monsterAttributeSet->Getattack(); }
 
-	float GetAttackCooldown() const { return MonsterAttributeSet->GetnormalCooldown(); }
+	float GetAttackCooldown() const { return monsterAttributeSet->GetnormalCooldown(); }
 
-	float GetAttackRange() const { return MonsterAttributeSet->GetattackRange(); }
+	float GetAttackRange() const { return monsterAttributeSet->GetattackRange(); }
 
 	UC_AttackManagerComponent* GetAttackManager() const { return attackManager; }
+
+	UBehaviorTree* GetBehaviorTree() const { return behaviorTree; }
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

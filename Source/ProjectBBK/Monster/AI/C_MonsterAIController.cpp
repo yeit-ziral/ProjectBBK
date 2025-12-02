@@ -4,6 +4,7 @@
 #include "C_MonsterAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
+#include "../C_BaseMonster.h"
 
 
 AC_MonsterAIController::AC_MonsterAIController()
@@ -15,8 +16,11 @@ void AC_MonsterAIController::OnPossess(APawn* InPawn)
 {
     Super::OnPossess(InPawn);
 
-    if (BehaviorTreeAsset)
+    if (AC_BaseMonster* Monster = Cast<AC_BaseMonster>(InPawn))
     {
-        RunBehaviorTree(BehaviorTreeAsset);
+        if (UBehaviorTree* BT = Monster->GetBehaviorTree())
+        {
+            RunBehaviorTree(BT);
+        }
     }
 }

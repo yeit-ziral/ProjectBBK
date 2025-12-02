@@ -13,12 +13,12 @@ AC_BaseMonster::AC_BaseMonster()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	MonsterASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("MonsterASC"));
-	MonsterASC->SetIsReplicated(true);
-	MonsterASC->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+	monsterASC = CreateDefaultSubobject<UC_MonsterASC>(TEXT("MonsterASC"));
+	monsterASC->SetIsReplicated(true);
+	monsterASC->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
-	MonsterAttributeSet = CreateDefaultSubobject<UC_MonsterAttributeSet>(TEXT("MonsterAttributes"));
-	MonsterASC->AddAttributeSetSubobject(MonsterAttributeSet);
+	monsterAttributeSet = CreateDefaultSubobject<UC_MonsterAttributeSet>(TEXT("MonsterAttributes"));
+	monsterASC->AddAttributeSetSubobject(monsterAttributeSet);
 
 
 
@@ -38,7 +38,17 @@ void AC_BaseMonster::BeginPlay()
 	if (GEngine)
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Bear C++ BeginPlay!"));
 
-	MonsterASC->InitAbilityActorInfo(this, this);
+	if (monsterASC)
+	{
+		monsterASC->InitAbilityActorInfo(this, this);
+
+		// 죽음 이벤트 바인딩 (AI, 이펙트, 사운드 등)
+		monsterASC->OnMonsterDeath.AddLambda([this](UC_MonsterASC* ASC)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s died (OnMonsterDeath)"), *GetName());
+				// 여기서 애니메이션, Destroy 타이머, AI 비활성화 등 처리
+			});
+	}
 
 	if (HasAuthority())
 	{
@@ -52,8 +62,8 @@ void AC_BaseMonster::BeginPlay()
 	{
 		FString Msg = FString::Printf(TEXT("BeginPlay: MonsterId=%d, MaxHP=%.1f, ATK=%.1f"),
 			monsterId,
-			MonsterAttributeSet ? MonsterAttributeSet->GetmaxHP() : -1.0f,
-			MonsterAttributeSet ? MonsterAttributeSet->Getattack() : -1.0f);
+			monsterAttributeSet ? monsterAttributeSet->GetmaxHP() : -1.0f,
+			monsterAttributeSet ? monsterAttributeSet->Getattack() : -1.0f);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Msg);
 	}
 	/////////////////////////
@@ -64,7 +74,7 @@ void AC_BaseMonster::BeginPlay()
 
 void AC_BaseMonster::InitializeAttributesFromDataTable()
 {
-	if (!MonsterAttributeSet)
+	if (!monsterAttributeSet)
 		return;
 
 
@@ -88,21 +98,21 @@ void AC_BaseMonster::InitializeAttributesFromDataTable()
 	
 	monsterId = Data->MonsterId;
 
-	MonsterAttributeSet->InitmaxHP          (Data->MaxHP);
-	MonsterAttributeSet->InitmaxGroggy      (Data->MaxGroggy);
-	MonsterAttributeSet->Initattack         (Data->Attack);
-	MonsterAttributeSet->Initdefense        (Data->Defense);
-	MonsterAttributeSet->InitattackRange    (Data->AttackRange);
-	MonsterAttributeSet->InitmoveSpeed      (Data->MoveSpeed);
-	MonsterAttributeSet->InitnormalCooldown (Data->NormalCooldown);
-	MonsterAttributeSet->InitspecialCooldown(Data->SpecialCooldown);
+	monsterAttributeSet->InitmaxHP          (Data->MaxHP);
+	monsterAttributeSet->InitmaxGroggy      (Data->MaxGroggy);
+	monsterAttributeSet->Initattack         (Data->Attack);
+	monsterAttributeSet->Initdefense        (Data->Defense);
+	monsterAttributeSet->InitattackRange    (Data->AttackRange);
+	monsterAttributeSet->InitmoveSpeed      (Data->MoveSpeed);
+	monsterAttributeSet->InitnormalCooldown (Data->NormalCooldown);
+	monsterAttributeSet->InitspecialCooldown(Data->SpecialCooldown);
 
-	MonsterAttributeSet->SetcurHP(Data->MaxHP);    
-	MonsterAttributeSet->SetcurGroggy(Data->MaxGroggy);
+	monsterAttributeSet->SetcurHP(Data->MaxHP);    
+	monsterAttributeSet->SetcurGroggy(Data->MaxGroggy);
 
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
-		Move->MaxWalkSpeed = MonsterAttributeSet->GetmoveSpeed();
+		Move->MaxWalkSpeed = monsterAttributeSet->GetmoveSpeed();
 	}
 
 }
