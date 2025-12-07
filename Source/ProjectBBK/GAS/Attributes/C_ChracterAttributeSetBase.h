@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffectTypes.h"
 #include "AttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "C_ChracterAttributeSetBase.generated.h"
@@ -61,4 +62,8 @@ public:
 	virtual void OnRep_maxShield(const FGameplayAttributeData& OldMaxShield);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+
+	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 };
