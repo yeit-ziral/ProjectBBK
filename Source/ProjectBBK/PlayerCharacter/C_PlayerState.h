@@ -6,7 +6,7 @@
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
-#include "../GAS/Abilities/C_ChaAbilitySystemComponent.h"
+#include "../GAS/Abilities/C_CharacterASC.h"
 #include "GameplayEffectTypes.h"
 #include "C_PlayerState.generated.h"
 
@@ -61,7 +61,7 @@ protected:
 
 protected:
 	UPROPERTY()
-	class UC_ChaAbilitySystemComponent* abilitySystemComponent;
+	class UC_CharacterASC* abilitySystemComponent;
 
 	UPROPERTY()
 	class UC_ChracterAttributeSetBase* attributeSetBase;

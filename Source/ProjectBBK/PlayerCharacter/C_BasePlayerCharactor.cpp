@@ -11,8 +11,8 @@
 #include "Engine/LocalPlayer.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Controller.h"
-#include "../GAS/Abilities/C_ChaAbilitySystemComponent.h"
-#include "../GAS/Abilities/C_CharacterGameplayAbility.h"
+#include "../GAS/Abilities/C_CharacterASC.h"
+#include "../GAS/Abilities/C_CharacterGA.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "C_PlayerState.h"
 #include "PlayerAI/C_PlayerAIController.h"
@@ -102,6 +102,9 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		// Sprinting
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
+
+		//Attacking
+		EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
 	}
 	else
 	{
@@ -136,8 +139,6 @@ void AC_BasePlayerCharactor::OnRep_PlayerState()
 		InitializeStartingValues(PS);
 
 		BindASCInput();
-
-		InitializeAttributes();
 	}
 }
 
@@ -172,13 +173,17 @@ void AC_BasePlayerCharactor::BindASCInput()
 
 void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 {
-	abilitySystemComponent = Cast<UC_ChaAbilitySystemComponent>(PS->GetAbilitySystemComponent());
+	check(PS); // this is for debugging
+
+	abilitySystemComponent = Cast<UC_CharacterASC>(PS->GetAbilitySystemComponent());
 
 	PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 
 	attributeSetBase = PS->GetAttributeSetBase();
 
 	abilitySystemComponent->SetTagMapCount(deadTag, 0);
+
+	InitializeAttributes();
 
 	SetHealth(GetMaxHealth());
 	SetShield(GetMaxShield());
@@ -204,7 +209,7 @@ int32 AC_BasePlayerCharactor::GetAbilityLevel(ProjectBBKAbilityID AbilityID) con
 
 void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 {
-	//UC_ChaAbilitySystemComponent* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
+	//UC_CharacterASC* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
 
 	if(GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->characterAbilitiesGiven)
 	{
@@ -370,6 +375,20 @@ void AC_BasePlayerCharactor::EndSprint()
 	bIsSprinting = false;
 }
 
+void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
+{
+	if (!abilitySystemComponent.IsValid()) return;
+
+	const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
+
+	FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
+
+	FGameplayTagContainer AbilityTags;
+	AbilityTags.AddTag(Tag);
+
+	abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
+}
+
 void AC_BasePlayerCharactor::UpdateStamina()
 {
 	if (bIsSprinting)
@@ -406,7 +425,7 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 		return;
 	}
 
-	for(TSubclassOf<UC_CharacterGameplayAbility>& StartupAbility : characterAbilities)
+	for(TSubclassOf<UC_CharacterGA>& StartupAbility : characterAbilities)
 	{
 		abilitySystemComponent->GiveAbility(
 			FGameplayAbilitySpec(
@@ -416,7 +435,12 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 				this
 			)
 		);
+
 	}
+
+	//for checking test gameplay ability
+
+	//abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
 
 	abilitySystemComponent->characterAbilitiesGiven = true;
 }
@@ -447,7 +471,7 @@ void AC_BasePlayerCharactor::InitializeAttributes()
 
 void AC_BasePlayerCharactor::AddStartupEffects()
 {
-	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->startupEffectsApplied)
+	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || abilitySystemComponent->startupEffectsApplied)
 	{
 		return;
 	}
@@ -471,7 +495,9 @@ void AC_BasePlayerCharactor::SetHealth(float NewHealth)
 {
 	if(attributeSetBase.IsValid())
 	{
-		attributeSetBase->Sethealth(NewHealth);
+		attributeSetBase->Sethealth(NewHealth); // this code is dangerous cuz it directly sets the health value, bypassing any gameplay effects or modifiers
+
+		//ApplyModToAttribute(C_CharacterAttributeSetBase::GetHealthAttribute(), EGameplayModOp::Additive, NewHealth); 
 	}
 }
 
