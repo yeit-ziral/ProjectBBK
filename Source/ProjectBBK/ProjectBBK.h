@@ -7,7 +7,10 @@
 UENUM(BlueprintType)
 enum class ProjectBBKAbilityID : uint8
 {
-	None UMETA(DisplayName = "None"),
-	Confirm UMETA(DisplayName = "Confirm"),
-	Cancel UMETA(DisplayName = "Cancel"),
+	None			UMETA(DisplayName = "None"),
+	Confirm			UMETA(DisplayName = "Confirm"),
+	Cancel			UMETA(DisplayName = "Cancel"),
+	CommonAbility	UMETA(DisplayName = "CommonAbility"),
+	UniqueAbility	UMETA(DisplayName = "UniqueAbility"),
+	Ultimate		UMETA(DisplayName = "Ultimate"),
 };
