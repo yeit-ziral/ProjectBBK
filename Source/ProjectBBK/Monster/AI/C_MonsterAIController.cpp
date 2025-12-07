@@ -4,6 +4,7 @@
 #include "C_MonsterAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
+#include "Kismet/GameplayStatics.h"
 #include "../C_BaseMonster.h"
 
 
@@ -21,6 +22,12 @@ void AC_MonsterAIController::OnPossess(APawn* InPawn)
         if (UBehaviorTree* BT = Monster->GetBehaviorTree())
         {
             RunBehaviorTree(BT);
+
+            if (UBlackboardComponent* BB = GetBlackboardComponent())
+            {
+                AActor* Player0 = UGameplayStatics::GetPlayerPawn(this, 0);
+                BB->SetValueAsObject(TEXT("TargetActor"), Player0);
+            }
         }
     }
 }
