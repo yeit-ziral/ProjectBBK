@@ -10,6 +10,7 @@ UC_CharacterGA::UC_CharacterGA()
 
 	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")));
 	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Debuff.Stun")));
+	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag("Input.Attack"));
 }
 
 void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)

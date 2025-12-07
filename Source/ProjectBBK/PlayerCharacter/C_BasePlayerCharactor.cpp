@@ -102,6 +102,9 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		// Sprinting
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
+
+		//Attacking
+		EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
 	}
 	else
 	{
@@ -372,6 +375,20 @@ void AC_BasePlayerCharactor::EndSprint()
 	bIsSprinting = false;
 }
 
+void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
+{
+	if (!abilitySystemComponent.IsValid()) return;
+
+	const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
+
+	FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
+
+	FGameplayTagContainer AbilityTags;
+	AbilityTags.AddTag(Tag);
+
+	abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
+}
+
 void AC_BasePlayerCharactor::UpdateStamina()
 {
 	if (bIsSprinting)
@@ -425,7 +442,7 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 
 	//abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
 
-	//abilitySystemComponent->characterAbilitiesGiven = true;
+	abilitySystemComponent->characterAbilitiesGiven = true;
 }
 
 void AC_BasePlayerCharactor::InitializeAttributes()
@@ -478,7 +495,9 @@ void AC_BasePlayerCharactor::SetHealth(float NewHealth)
 {
 	if(attributeSetBase.IsValid())
 	{
-		attributeSetBase->Sethealth(NewHealth);
+		attributeSetBase->Sethealth(NewHealth); // this code is dangerous cuz it directly sets the health value, bypassing any gameplay effects or modifiers
+
+		//ApplyModToAttribute(C_CharacterAttributeSetBase::GetHealthAttribute(), EGameplayModOp::Additive, NewHealth); 
 	}
 }
 

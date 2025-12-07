@@ -93,6 +93,9 @@ protected:
 	void StartSprint();
 	void EndSprint();
 
+	// Attack
+	void OnAttack(const FInputActionValue& Value);
+
 	//Stamina
 	void UpdateStamina();
 
@@ -105,6 +108,8 @@ protected:
 	virtual void SetHealth(float NewHealth);
 
 	virtual void SetShield(float NewShield);
+
+	virtual UC_ChracterAttributeSetBase* GetAttributeSetBase() const { return attributeSetBase.Get(); }
 
 protected:
 
@@ -160,6 +165,10 @@ protected:
 	/** Sprint Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* sprintAction;
+
+	/** Attack Input Action */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* attackAction;
 
 	// 스위칭용 (Week 1에는 구조만)
 	int32 ActiveCharacterIndex = 0;
