@@ -8,21 +8,13 @@ struct FMonsterData : public FTableRowBase
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 Id = 1001;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 HP = 100;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 Attack = 10;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float MoveSpeed = 300.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float AttackRange = 100.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float AttackCoolDown = 1.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 MonsterId = 0;
+    UPROPERTY(EditAnywhere) float MaxHP                         = 100.0f;
+    UPROPERTY(EditAnywhere) float MaxGroggy                     = 100.0f;
+    UPROPERTY(EditAnywhere) float Attack                        = 20.0f;
+    UPROPERTY(EditAnywhere) float Defense                       = 5.0f;
+    UPROPERTY(EditAnywhere) float AttackRange                   = 300.0f;
+    UPROPERTY(EditAnywhere) float MoveSpeed                     = 600.0f;
+    UPROPERTY(EditAnywhere) float NormalCooldown                = 1.5f;
+    UPROPERTY(EditAnywhere) float SpecialCooldown               = 6.0f;
 };

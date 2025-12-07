@@ -62,8 +62,7 @@ void AC_BearMonster::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogTemp, Warning, TEXT("BearMonster BeginPlay 실행됨 - HP=%d, ATK=%d, Speed=%.1f, AttackRange=%.1f"),
-		                           hp, attack, moveSpeed, attackRange);
+
 
 	//BearSpecialAttack();
 	//BearNormalAttack();

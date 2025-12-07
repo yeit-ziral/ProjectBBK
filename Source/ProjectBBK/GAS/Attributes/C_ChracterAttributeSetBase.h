@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffectTypes.h"
 #include "AttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "C_ChracterAttributeSetBase.generated.h"

@@ -4,6 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemComponent.h"
+#include "M_Gas/C_MonsterAttributeSet.h"
+#include "M_Gas/C_MonsterASC.h"
+#include "BehaviorTree/BehaviorTree.h"
 #include "C_BaseMonster.generated.h"
 
 class UDataTable;
@@ -35,49 +39,51 @@ protected:	 //protected variables
 	TSoftObjectPtr<UDataTable> monsterTable;
 #pragma endregion
 
-#pragma region stats(monsterId, hp, attack, movespeed, attackRange, attackCooldown)
+#pragma region stats(monsterId)
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
 	int32 monsterId;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	int32 hp;
+#pragma endregion
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	int32 attack;
+#pragma region Gas(MonsterASC, MonsterAttributeSet, InitializeAttributesFromDataTable)
+	UPROPERTY(VisibleAnywhere)
+	UC_MonsterASC* monsterASC;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float moveSpeed;
+	UPROPERTY()
+	UC_MonsterAttributeSet* monsterAttributeSet;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float attackRange;
+	void InitializeAttributesFromDataTable();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float attackCooldown;
 #pragma endregion
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Manager")
 	UC_AttackManagerComponent* attackManager = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
+	UBehaviorTree* behaviorTree;
+
 public: // public functions
-	void ApplyData(const struct FMonsterData& Data);
 
 	int32 GetMonsterID() const { return monsterId; }
 
-	int32 GetHP() const { return hp; }
+	int32 GetHP() const { return monsterAttributeSet->GetmaxHP(); }
 
-	int32 GetAttack() const { return attack; }
+	int32 GetAttack() const { return monsterAttributeSet->Getattack(); }
 
-	float GetAttackCooldown() const { return attackCooldown; }
+	float GetAttackCooldown() const { return monsterAttributeSet->GetnormalCooldown(); }
 
-	float GetAttackRange() const { return attackRange; }
+	float GetAttackRange() const { return monsterAttributeSet->GetattackRange(); }
 
 	UC_AttackManagerComponent* GetAttackManager() const { return attackManager; }
+
+	UBehaviorTree* GetBehaviorTree() const { return behaviorTree; }
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
 
 };

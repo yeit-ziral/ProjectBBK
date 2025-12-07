@@ -122,35 +122,90 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 	}
 
 	// ===== ⭐ Damage 처리 (기존 코드와 통합) =====
+	// 
+	//else if (Data.EvaluatedData.Attribute == GetdamageAttribute())
+	//{
+	//	const float LocalDamageDone = Getdamage();
+	//	Setdamage(0.0f);  // Reset
+
+	//	if (LocalDamageDone > 0.0f)
+	//	{
+	//		// Shield 먼저 감소
+	//		const float OldShield = Getshield();
+	//		const float NewShield = FMath::Max(0.0f, OldShield - LocalDamageDone);
+	//		Setshield(NewShield);
+
+	//		const float ShieldDamage = OldShield - NewShield;
+	//		const float RemainingDamage = LocalDamageDone - ShieldDamage;
+
+	//		// Health 감소
+	//		if (RemainingDamage > 0.0f)
+	//		{
+	//			const float NewHealth = Gethealth() - RemainingDamage;
+	//			Sethealth(FMath::Clamp(NewHealth, 0.0f, GetmaxHealth()));
+	//		}
+
+	//		// 데미지 델리게이트 호출
+	//		if (UC_CharacterASC* TargetASC = Cast<UC_CharacterASC>(Data.Target.AbilityActorInfo->AbilitySystemComponent.Get()))
+	//		{
+	//			UC_CharacterASC* SourceASCCasted = Cast<UC_CharacterASC>(SourceASC);
+	//			TargetASC->ReceiveDamage(SourceASCCasted, LocalDamageDone, LocalDamageDone);
+	//		}
+	//	}
+	//}
+
 	else if (Data.EvaluatedData.Attribute == GetdamageAttribute())
 	{
-		const float LocalDamageDone = Getdamage();
-		Setdamage(0.0f);  // Reset
-
-		if (LocalDamageDone > 0.0f)
+		//Apply damage to shield first
+		float RemainingDamage = Getdamage();
+		if (RemainingDamage > 0.0f)
 		{
-			// Shield 먼저 감소
-			const float OldShield = Getshield();
-			const float NewShield = FMath::Max(0.0f, OldShield - LocalDamageDone);
-			Setshield(NewShield);
+			float CurrentShield = Getshield();
 
-			const float ShieldDamage = OldShield - NewShield;
-			const float RemainingDamage = LocalDamageDone - ShieldDamage;
-
-			// Health 감소
-			if (RemainingDamage > 0.0f)
+			UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+			if (ASC && ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active")))
 			{
-				const float NewHealth = Gethealth() - RemainingDamage;
-				Sethealth(FMath::Clamp(NewHealth, 0.0f, GetmaxHealth()));
+				// ���� ���� ���� ������ 0 ó��
+				Setdamage(0.0f);
+
+				// ������ �� �� ������ �ٷ� ����
+				ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Broken"));
+				ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active"));
+
+				return;
 			}
 
-			// 데미지 델리게이트 호출
-			if (UC_CharacterASC* TargetASC = Cast<UC_CharacterASC>(Data.Target.AbilityActorInfo->AbilitySystemComponent.Get()))
+			//this is for shield, need to change with upper codes
+			if (CurrentShield > 0.0f)
 			{
-				UC_CharacterASC* SourceASCCasted = Cast<UC_CharacterASC>(SourceASC);
-				TargetASC->ReceiveDamage(SourceASCCasted, LocalDamageDone, LocalDamageDone);
+				if (RemainingDamage >= CurrentShield)
+				{
+					RemainingDamage -= CurrentShield;
+					Setshield(0.0f);
+				}
+				else
+				{
+					Setshield(CurrentShield - RemainingDamage);
+					RemainingDamage = 0.0f;
+				}
+			}
+			//End shield application
+		}
+		//Apply remaining damage to health
+		if (RemainingDamage > 0.0f)
+		{
+			float CurrentHealth = Gethealth();
+			if (RemainingDamage >= CurrentHealth)
+			{
+				Sethealth(0.0f);
+			}
+			else
+			{
+				Sethealth(CurrentHealth - RemainingDamage); // Sethealth(FMath::Clamp(Gethealth(), 0.0f, GetmaxHealth()));
 			}
 		}
+		//Reset damage to zero after applying
+		Setdamage(0.0f);
 	}
 }
 

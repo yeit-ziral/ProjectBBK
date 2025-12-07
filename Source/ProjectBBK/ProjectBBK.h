@@ -10,7 +10,10 @@ enum class ProjectBBKAbilityID : uint8
 	None			UMETA(DisplayName = "None"),
 	Confirm			UMETA(DisplayName = "Confirm"),
 	Cancel			UMETA(DisplayName = "Cancel"),
-	CommonAbility	UMETA(DisplayName = "CommonAbility"),
-	UniqueAbility	UMETA(DisplayName = "UniqueAbility"),
+	Attack			UMETA(DisplayName = "Attack"), 
+	Sprint			UMETA(DisplayName = "Sprint"), 
+	Dodge			UMETA(DisplayName = "Dodge"),  
+	CommonSkill		UMETA(DisplayName = "CommonSkill"),
+	UniqueSkill		UMETA(DisplayName = "UniqueSkill"),
 	Ultimate		UMETA(DisplayName = "Ultimate"),
 };

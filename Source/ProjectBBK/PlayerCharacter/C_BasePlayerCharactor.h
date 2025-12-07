@@ -104,6 +104,9 @@ protected:
 	void StartSprint();
 	void EndSprint();
 
+	// Attack
+	void OnAttack(const FInputActionValue& Value);
+
 	//Stamina
 	void UpdateStamina();
 
@@ -173,7 +176,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* sprintAction;
 
-	// ½ºÀ§Äª¿ë (Week 1¿¡´Â ±¸Á¶¸¸)
+	/** Attack Input Action */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* attackAction;
+
+	// ï¿½ï¿½ï¿½ï¿½Äªï¿½ï¿½ (Week 1ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 	int32 ActiveCharacterIndex = 0;
 
 	TWeakObjectPtr<class UC_CharacterASC> abilitySystemComponent;
