@@ -23,6 +23,8 @@ DECLARE_LOG_CATEGORY_EXTERN(LogBasePlayerCharacter, Log, All);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCharacterDiedDelegate, AC_BasePlayerCharactor*, Character);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedDelegate, float, Percent);
+
 
 UCLASS(Blueprintable, config = Game)
 class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter, public IAbilitySystemInterface
@@ -44,6 +46,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "ProjectBBK|Character")
 	FCharacterDiedDelegate onCharacterDied;
+
+	UPROPERTY(BlueprintAssignable, Category = "ProjectBBK|Character|UI")
+	FOnManaChangedDelegate OnManaChanged;
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character")
 	virtual bool IsAlive() const;
@@ -71,6 +76,12 @@ public:
 	float GetShield() const;
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetMaxShield() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetMana() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetMaxMana() const;
 
 protected:
 	// Called when the game starts or when spawned
@@ -109,12 +120,11 @@ protected:
 
 	virtual void SetShield(float NewShield);
 
-	virtual UC_ChracterAttributeSetBase* GetAttributeSetBase() const { return attributeSetBase.Get(); }
+	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
+	virtual void OnManaChangedInternal(const FOnAttributeChangeData& Data);
+	virtual void OnShieldChanged(const FOnAttributeChangeData& Data);
 
 protected:
-
-	float Health = 100.0f;
-	const float MAX_HEALTH = 100.0f;
 
 	// Protecting from duplication
 	bool bASCInputBound = false;
@@ -170,7 +180,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* attackAction;
 
-	// ½ºÀ§Äª¿ë (Week 1¿¡´Â ±¸Á¶¸¸)
+	// ï¿½ï¿½ï¿½ï¿½Äªï¿½ï¿½ (Week 1ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 	int32 ActiveCharacterIndex = 0;
 
 	TWeakObjectPtr<class UC_CharacterASC> abilitySystemComponent;

@@ -48,6 +48,14 @@ public:
 	FGameplayAttributeData damage;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, damage)
 
+	UPROPERTY(BlueprintReadOnly, Category = "mana", ReplicatedUsing = OnRep_mana)
+	FGameplayAttributeData mana;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, mana)
+
+	UPROPERTY(BlueprintReadOnly, Category = "mana", ReplicatedUsing = OnRep_maxMana)
+	FGameplayAttributeData maxMana;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxMana)
+
 	UFUNCTION()
 	virtual void OnRep_level(const FGameplayAttributeData& OldLevel);
 
@@ -61,9 +69,22 @@ public:
 	UFUNCTION()
 	virtual void OnRep_maxShield(const FGameplayAttributeData& OldMaxShield);
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	UFUNCTION()
+	virtual void OnRep_mana(const FGameplayAttributeData& OldMana);
+
+	UFUNCTION()
+	virtual void OnRep_maxMana(const FGameplayAttributeData& OldMaxMana);
 
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
-	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	void AdjustAttributeForMaxChange(
+		FGameplayAttributeData& AffectedAttribute,
+		const FGameplayAttributeData& MaxAttribute,
+		float NewMaxValue,
+		const FGameplayAttribute& AffectedAttributeProperty
+	);
 };

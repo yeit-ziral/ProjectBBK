@@ -3,6 +3,8 @@
 
 #include "C_CharacterGA.h"
 #include "C_CharacterASC.h"
+#include "AbilitySystemComponent.h"
+
 
 UC_CharacterGA::UC_CharacterGA()
 {
@@ -22,3 +24,36 @@ void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, con
 		ActorInfo->AbilitySystemComponent->TryActivateAbility(Spec.Handle, false);
 	}
 }
+
+void UC_CharacterGA::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	if (CooldownGameplayEffectClass)
+	{
+		UGameplayEffect* CooldownGE = CooldownGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
+		if (CooldownGE)
+		{
+			FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
+			if (SpecHandle.IsValid())
+			{
+				ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+			}
+		}
+	}
+}
+
+void UC_CharacterGA::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	if (CostGameplayEffectClass)
+	{
+		UGameplayEffect* CostGE = CostGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
+		if (CostGE)
+		{
+			FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CostGameplayEffectClass, GetAbilityLevel());
+			if (SpecHandle.IsValid())
+			{
+				ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+			}
+		}
+	}
+}
+
