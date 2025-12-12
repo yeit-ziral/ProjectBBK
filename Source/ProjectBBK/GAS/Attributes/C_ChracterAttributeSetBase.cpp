@@ -43,6 +43,11 @@ void UC_ChracterAttributeSetBase::OnRep_maxMana(const FGameplayAttributeData& Ol
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, maxMana, OldMaxMana);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, moveSpeed, OldMoveSpeed);
+}
+
 void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
 	Super::PreAttributeChange(Attribute, NewValue);
@@ -221,6 +226,9 @@ void UC_ChracterAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimePro
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, mana, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxMana, COND_None, REPNOTIFY_Always);
+
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, moveSpeed, COND_None, REPNOTIFY_Always);
+
 
 	//DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, stamina, COND_None, REPNOTIFY_Always);
 	//DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxStamina, COND_None, REPNOTIFY_Always);
