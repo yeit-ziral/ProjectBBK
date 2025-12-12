@@ -103,8 +103,8 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
 		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
 
-		//Attacking
-		EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
+		////Attacking
+		//EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
 	}
 	else
 	{
@@ -418,14 +418,14 @@ void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
 {
 	if (!abilitySystemComponent.IsValid()) return;
 
-	const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
+	//const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
 
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
+	//FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
 
-	FGameplayTagContainer AbilityTags;
-	AbilityTags.AddTag(Tag);
+	//FGameplayTagContainer AbilityTags;
+	//AbilityTags.AddTag(Tag);
 
-	abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
+	//abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
 }
 
 void AC_BasePlayerCharactor::UpdateStamina()
