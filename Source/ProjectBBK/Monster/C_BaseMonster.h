@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemComponent.h"
+#include "Abilities/GameplayAbility.h"
 #include "M_Gas/C_MonsterAttributeSet.h"
 #include "M_Gas/C_MonsterASC.h"
 #include "BehaviorTree/BehaviorTree.h"
@@ -50,6 +51,9 @@ protected:	 //protected variables
 	UPROPERTY(VisibleAnywhere)
 	UC_MonsterASC* monsterASC;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TArray<TSubclassOf<UGameplayAbility>> gamePlayAbilities;
+
 	UPROPERTY()
 	UC_MonsterAttributeSet* monsterAttributeSet;
 
@@ -78,6 +82,8 @@ public: // public functions
 	UC_AttackManagerComponent* GetAttackManager() const { return attackManager; }
 
 	UBehaviorTree* GetBehaviorTree() const { return behaviorTree; }
+
+	UC_MonsterASC* GetMonsterASC() const { return monsterASC; }
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

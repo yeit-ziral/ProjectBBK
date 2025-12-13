@@ -8,6 +8,7 @@
 
 class UAbilitySystemComponent;
 class UGameplayAbility;
+class UC_MeleeMonsterNormalAttackGA;
 /**
  * 
  */
@@ -23,5 +24,8 @@ public:
 protected:
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	bool bUseBlackboardTarget = true;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	TSubclassOf<UGameplayAbility> normalAttackAbilityClass;
 	
 };

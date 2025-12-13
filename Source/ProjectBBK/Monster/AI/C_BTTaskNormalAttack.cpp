@@ -9,6 +9,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
 #include "../C_BaseMonster.h"   
+#include "../M_Gas/GA/C_MeleeMonsterNormalAttackGA.h"
 
 UC_BTTaskNormalAttack::UC_BTTaskNormalAttack()
 {
@@ -17,5 +18,51 @@ UC_BTTaskNormalAttack::UC_BTTaskNormalAttack()
 
 EBTNodeResult::Type UC_BTTaskNormalAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-	return EBTNodeResult::Type();
+
+	AAIController* aiController = OwnerComp.GetAIOwner();
+	aiController->StopMovement();
+	if (!aiController)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	APawn* controlledPawn = aiController->GetPawn();
+	if (!controlledPawn)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+
+	AC_BaseMonster* monster = Cast<AC_BaseMonster>(controlledPawn);
+	if (!monster)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	UAbilitySystemComponent* abilitySystem = monster->GetMonsterASC();
+	if (!abilitySystem)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	AActor* targetActor = nullptr;
+	if (bUseBlackboardTarget)
+	{
+		if (UBlackboardComponent* bb = OwnerComp.GetBlackboardComponent())
+		{
+			UObject* targetObj = bb->GetValueAsObject(BlackboardKey.SelectedKeyName);
+			targetActor = Cast<AActor>(targetObj);
+		}
+	}
+
+	TSubclassOf<UGameplayAbility> abilityClassToUse = normalAttackAbilityClass;
+	if (!abilityClassToUse)
+	{
+		abilityClassToUse = UC_MeleeMonsterNormalAttackGA::StaticClass(); 
+	}
+
+	const bool activated = abilitySystem->TryActivateAbilityByClass(abilityClassToUse);
+
+	return EBTNodeResult::Succeeded;
+
 }

@@ -47,6 +47,12 @@ void AC_BaseMonster::BeginPlay()
 	if (monsterASC)
 	{
 		monsterASC->InitAbilityActorInfo(this, this);
+		for (const TSubclassOf<UGameplayAbility>& abilityClass : gamePlayAbilities)
+		{
+			if (!abilityClass) continue;
+
+			monsterASC->GiveAbility(FGameplayAbilitySpec(abilityClass, 1, 0));
+		}
 
 		// 죽음 이벤트 바인딩 (AI, 이펙트, 사운드 등)
 		monsterASC->OnMonsterDeath.AddLambda([this](UC_MonsterASC* ASC)
