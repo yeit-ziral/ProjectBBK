@@ -205,7 +205,22 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 			attributeSetBase->GetshieldAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
 
-		UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
+		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			attributeSetBase->GetmoveSpeedAttribute()
+		).AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
+
+		if (attributeSetBase.IsValid())
+		{
+			float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
+			if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+			{
+				MovementComp->MaxWalkSpeed = InitialMoveSpeed;
+
+				UE_LOG(LogBasePlayerCharacter, Log, TEXT("Initial MoveSpeed Set: %.2f"), InitialMoveSpeed);
+			}
+
+			UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
+		}
 	}
 
 	// Input binding (client)
@@ -231,7 +246,7 @@ void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 {
 	//UC_CharacterASC* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
 
-	if(GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->characterAbilitiesGiven)
+	if(GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || abilitySystemComponent->characterAbilitiesGiven)
 	{
 		return;
 	}
@@ -588,4 +603,20 @@ void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData& Data)
 	float MaxShield = GetMaxShield();
 
 	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
+}
+
+void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	float NewMoveSpeed = Data.NewValue;
+	float OldMoveSpeed = Data.OldValue;
+
+	UE_LOG(LogBasePlayerCharacter, Log, TEXT("MoveSpeed Changed: %.2f -> %.2f"),
+		OldMoveSpeed, NewMoveSpeed);
+
+	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+	{
+		MovementComp->MaxWalkSpeed = NewMoveSpeed;
+
+		UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
+	}
 }

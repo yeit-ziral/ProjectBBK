@@ -56,6 +56,10 @@ public:
 	FGameplayAttributeData maxMana;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxMana)
 
+	UPROPERTY(BlueprintReadOnly, Category = "moveSpeed", ReplicatedUsing = OnRep_moveSpeed)
+	FGameplayAttributeData moveSpeed;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, moveSpeed)
+
 	UFUNCTION()
 	virtual void OnRep_level(const FGameplayAttributeData& OldLevel);
 
@@ -74,6 +78,9 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_maxMana(const FGameplayAttributeData& OldMaxMana);
+
+	UFUNCTION()
+	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
 
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;

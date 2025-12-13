@@ -123,6 +123,7 @@ protected:
 	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
 	virtual void OnManaChangedInternal(const FOnAttributeChangeData& Data);
 	virtual void OnShieldChanged(const FOnAttributeChangeData& Data);
+	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
 
 protected:
 
