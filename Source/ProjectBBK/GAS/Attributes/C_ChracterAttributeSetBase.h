@@ -60,6 +60,14 @@ public:
 	FGameplayAttributeData moveSpeed;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, moveSpeed)
 
+	UPROPERTY(BlueprintReadOnly, Category = "stamina", ReplicatedUsing = OnRep_stamina)
+	FGameplayAttributeData stamina;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, stamina)
+
+	UPROPERTY(BlueprintReadOnly, Category = "stamina", ReplicatedUsing = OnRep_maxStamina)
+	FGameplayAttributeData maxStamina;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxStamina)
+
 	UFUNCTION()
 	virtual void OnRep_level(const FGameplayAttributeData& OldLevel);
 
@@ -81,6 +89,12 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
+
+	UFUNCTION()
+	virtual void OnRep_stamina(const FGameplayAttributeData& OldStamina);
+
+	UFUNCTION()
+	virtual void OnRep_maxStamina(const FGameplayAttributeData& OldMaxStamina);
 
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;

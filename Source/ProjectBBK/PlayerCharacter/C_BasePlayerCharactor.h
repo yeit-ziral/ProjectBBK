@@ -83,6 +83,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetMaxMana() const;
 
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetStamina() const;
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetMaxStamina() const;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -120,10 +125,13 @@ protected:
 
 	virtual void SetShield(float NewShield);
 
+	virtual void SetStamina(float NewStamina);
+
 	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
 	virtual void OnManaChangedInternal(const FOnAttributeChangeData& Data);
 	virtual void OnShieldChanged(const FOnAttributeChangeData& Data);
 	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+	virtual void OnStaminaChanged(const FOnAttributeChangeData& Data);
 
 protected:
 

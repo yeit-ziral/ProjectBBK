@@ -209,6 +209,10 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 			attributeSetBase->GetmoveSpeedAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
 
+		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			attributeSetBase->GetstaminaAttribute()
+		).AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
+
 		if (attributeSetBase.IsValid())
 		{
 			float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
@@ -369,6 +373,26 @@ float AC_BasePlayerCharactor::GetMaxMana() const
 	if (attributeSetBase.IsValid())
 	{
 		return attributeSetBase->GetmaxMana();
+	}
+
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetStamina() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->Getstamina();
+	}
+
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetMaxStamina() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->GetmaxStamina();
 	}
 
 	return 0.0f;
@@ -563,6 +587,14 @@ void AC_BasePlayerCharactor::SetShield(float NewShield)
 	}
 }
 
+void AC_BasePlayerCharactor::SetStamina(float NewStamina)
+{
+	if (attributeSetBase.IsValid())
+	{
+		attributeSetBase->Setstamina(NewStamina);
+	}
+}
+
 void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
 {
 	float Health = Data.NewValue;
@@ -619,4 +651,12 @@ void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData& Da
 
 		UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
 	}
+}
+
+void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData& Data)
+{
+	float Stamina = Data.NewValue;
+	float MaxStamina = GetMaxStamina();
+
+	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
 }

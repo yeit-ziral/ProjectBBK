@@ -46,6 +46,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|PlayerCharacterState|Attributes")
 	int32 GetCharacterLevel() const;
 
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|PlayerCharacterState|Attributes")
+	float GetStamina() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|PlayerCharacterState|Attributes")
+	float GetMaxStamina() const;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -54,6 +60,9 @@ protected:
 	
 	virtual void ShieldChanged(const FOnAttributeChangeData& Data);
 	virtual void MaxShieldChanged(const FOnAttributeChangeData& Data);
+
+	virtual void StaminaChanged(const FOnAttributeChangeData& Data);
+	virtual void MaxStaminaChanged(const FOnAttributeChangeData& Data);
 	
 	virtual void CharacterLevelChanged(const FOnAttributeChangeData& Data);
 
@@ -75,4 +84,7 @@ protected:
 	FDelegateHandle maxShieldChangedDelegateHandle;
 
 	FDelegateHandle characterLevelChangedDelegateHandle;
+
+	FDelegateHandle staminaChangedDelegateHandle;
+	FDelegateHandle maxStaminaChangedDelegateHandle;
 };
