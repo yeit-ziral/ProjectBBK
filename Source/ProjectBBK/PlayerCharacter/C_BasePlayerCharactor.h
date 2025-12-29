@@ -83,6 +83,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetMaxMana() const;
 
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetStamina() const;
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetMaxStamina() const;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -100,15 +105,15 @@ protected:
 	void MyMove(const FInputActionValue& Value);
 	void MyLook(const FInputActionValue& Value);
 
-	// Sprint
-	void StartSprint();
-	void EndSprint();
+	//// Sprint
+	//void StartSprint();
+	//void EndSprint();
+
+	////Stamina
+	//void UpdateStamina();
 
 	// Attack
 	void OnAttack(const FInputActionValue& Value);
-
-	//Stamina
-	void UpdateStamina();
 
 	virtual void AddCharacterAbilities();
 
@@ -120,20 +125,18 @@ protected:
 
 	virtual void SetShield(float NewShield);
 
+	virtual void SetStamina(float NewStamina);
+
 	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
 	virtual void OnManaChangedInternal(const FOnAttributeChangeData& Data);
 	virtual void OnShieldChanged(const FOnAttributeChangeData& Data);
 	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+	virtual void OnStaminaChanged(const FOnAttributeChangeData& Data);
 
 protected:
 
 	// Protecting from duplication
 	bool bASCInputBound = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	float curStamina = 100.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	float max_Stamina = 100.0f;
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float staminaDrainTime;
 	UPROPERTY(EditAnywhere, Category = "Movement")
@@ -142,7 +145,6 @@ protected:
 	float delayBeforeRefill;
 
 	float curRefillDelayTime;
-	bool bHasStamina = true;
 
 	FVector movementInput;
 
@@ -151,7 +153,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float sprintSpeed = 900.0f;
 
-	bool bIsSprinting = false;
+	//// Moved to Sprinting GAS
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	//float curStamina = 100.0f;
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	//float max_Stamina = 100.0f;
+	//bool bHasStamina = true;
+	//bool bIsSprinting = false;
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))

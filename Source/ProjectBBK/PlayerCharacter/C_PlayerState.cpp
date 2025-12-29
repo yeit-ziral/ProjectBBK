@@ -63,6 +63,16 @@ int32 AC_PlayerState::GetCharacterLevel() const
 	return attributeSetBase->Getlevel();
 }
 
+float AC_PlayerState::GetStamina() const
+{
+	return attributeSetBase->Getstamina();
+}
+
+float AC_PlayerState::GetMaxStamina() const
+{
+	return attributeSetBase->GetmaxStamina();
+}
+
 void AC_PlayerState::BeginPlay()
 {
 	Super::BeginPlay();
@@ -75,6 +85,8 @@ void AC_PlayerState::BeginPlay()
 		shieldChangedDelegateHandle			= abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(attributeSetBase->GetshieldAttribute()).AddUObject(this, &AC_PlayerState::ShieldChanged);
 		maxShieldChangedDelegateHandle		= abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(attributeSetBase->GetmaxShieldAttribute()).AddUObject(this, &AC_PlayerState::MaxShieldChanged);
 		characterLevelChangedDelegateHandle	= abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(attributeSetBase->GetlevelAttribute()).AddUObject(this, &AC_PlayerState::CharacterLevelChanged);
+		maxStaminaChangedDelegateHandle		= abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(attributeSetBase->GetmaxStaminaAttribute()).AddUObject(this, &AC_PlayerState::MaxStaminaChanged);
+		staminaChangedDelegateHandle		= abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(attributeSetBase->GetstaminaAttribute()).AddUObject(this, &AC_PlayerState::StaminaChanged);
 
 		abilitySystemComponent->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag(FName("State.Debuff.Stun")), EGameplayTagEventType::NewOrRemoved).AddUObject(this, &AC_PlayerState::StunTagChanged); // give stun debuff or remove
 	}
@@ -98,6 +110,16 @@ void AC_PlayerState::ShieldChanged(const FOnAttributeChangeData& Data)
 void AC_PlayerState::MaxShieldChanged(const FOnAttributeChangeData& Data)
 {
 	UE_LOG(LogTemp, Warning, TEXT("MaxShield Changed!"));
+}
+
+void AC_PlayerState::StaminaChanged(const FOnAttributeChangeData& Data)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Stamina Changed!"));
+}
+
+void AC_PlayerState::MaxStaminaChanged(const FOnAttributeChangeData& Data)
+{
+	UE_LOG(LogTemp, Warning, TEXT("MaxStamina Changed!"));
 }
 
 void AC_PlayerState::CharacterLevelChanged(const FOnAttributeChangeData& Data)

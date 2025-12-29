@@ -48,6 +48,16 @@ void UC_ChracterAttributeSetBase::OnRep_MoveSpeed(const FGameplayAttributeData& 
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, moveSpeed, OldMoveSpeed);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_stamina(const FGameplayAttributeData& OldStamina)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, stamina, OldStamina);
+}
+
+void UC_ChracterAttributeSetBase::OnRep_maxStamina(const FGameplayAttributeData& OldMaxStamina)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, maxStamina, OldMaxStamina);
+}
+
 void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
 	Super::PreAttributeChange(Attribute, NewValue);
@@ -60,10 +70,19 @@ void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& A
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxMana());
 	}
-	//else if (Attribute == GetStaminaAttribute())
-	//{
-	//	NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxStamina());
-	//}
+	else if (Attribute == GetmaxStaminaAttribute())
+	{
+		AdjustAttributeForMaxChange(
+			stamina,
+			maxStamina,
+			NewValue,
+			GetstaminaAttribute()
+		);
+	}
+	else if (Attribute == GetstaminaAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxStamina());
+	}
 	else if (Attribute == GetshieldAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxShield());
@@ -115,7 +134,7 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 	}
 
 	//// ===== Stamina 처리 =====
-	//else if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
+	//else if (Data.EvaluatedData.Attribute == GetstaminaAttribute())
 	//{
 	//	Setstamina(FMath::Clamp(Getstamina(), 0.0f, GetmaxStamina()));
 	//}
@@ -229,9 +248,8 @@ void UC_ChracterAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimePro
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, moveSpeed, COND_None, REPNOTIFY_Always);
 
-
-	//DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, stamina, COND_None, REPNOTIFY_Always);
-	//DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxStamina, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, stamina, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxStamina, COND_None, REPNOTIFY_Always);
 }
 
 void UC_ChracterAttributeSetBase::AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty)

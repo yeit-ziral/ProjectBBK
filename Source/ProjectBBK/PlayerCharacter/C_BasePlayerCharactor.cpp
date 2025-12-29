@@ -83,7 +83,7 @@ void AC_BasePlayerCharactor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateStamina();
+	//UpdateStamina();
 }
 
 // Called to bind functionality to input
@@ -99,9 +99,9 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		// Looking
 		EnhancedInputComponent->BindAction(lookAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::MyLook);
 
-		// Sprinting
-		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
-		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
+		//// Sprinting
+		//EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
+		//EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
 
 		////Attacking
 		//EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
@@ -208,6 +208,10 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			attributeSetBase->GetmoveSpeedAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
+
+		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			attributeSetBase->GetstaminaAttribute()
+		).AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
 
 		if (attributeSetBase.IsValid())
 		{
@@ -374,6 +378,26 @@ float AC_BasePlayerCharactor::GetMaxMana() const
 	return 0.0f;
 }
 
+float AC_BasePlayerCharactor::GetStamina() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->Getstamina();
+	}
+
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetMaxStamina() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->GetmaxStamina();
+	}
+
+	return 0.0f;
+}
+
 void AC_BasePlayerCharactor::MyMove(const FInputActionValue& Value)
 {
 	if (Controller != nullptr)
@@ -406,28 +430,29 @@ void AC_BasePlayerCharactor::MyLook(const FInputActionValue& Value)
 	}
 }
 
-void AC_BasePlayerCharactor::StartSprint()
-{
-	if (bHasStamina)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = sprintSpeed;
-
-		if (GetVelocity().Size() >= 0.5)
-		{
-			bIsSprinting = true;
-		}
-		else
-		{
-			bIsSprinting = false;
-		}
-	}
-}
-
-void AC_BasePlayerCharactor::EndSprint()
-{
-	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
-	bIsSprinting = false;
-}
+//// move to GAS
+//void AC_BasePlayerCharactor::StartSprint()
+//{
+//	if (bHasStamina)
+//	{
+//		GetCharacterMovement()->MaxWalkSpeed = sprintSpeed;
+//
+//		if (GetVelocity().Size() >= 0.5)
+//		{
+//			bIsSprinting = true;
+//		}
+//		else
+//		{
+//			bIsSprinting = false;
+//		}
+//	}
+//}
+//
+//void AC_BasePlayerCharactor::EndSprint()
+//{
+//	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
+//	bIsSprinting = false;
+//}
 
 void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
 {
@@ -443,34 +468,35 @@ void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
 	//abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
 }
 
-void AC_BasePlayerCharactor::UpdateStamina()
-{
-	if (bIsSprinting)
-	{
-		curStamina -= staminaDrainTime;
-		curRefillDelayTime = delayBeforeRefill;
-	}
-
-	if (!bIsSprinting && curStamina < max_Stamina)
-	{
-		curRefillDelayTime--;
-
-		if(curRefillDelayTime <= 0)
-		{
-			curStamina += staminaRefillTime;
-		}
-	}
-
-	if (curStamina <= 0)
-	{
-		bHasStamina = false;
-		EndSprint();
-	}
-	else
-	{
-		bHasStamina = true;
-	}
-}
+//// moved to GAS
+//void AC_BasePlayerCharactor::UpdateStamina()
+//{
+//	if (bIsSprinting)
+//	{
+//		curStamina -= staminaDrainTime;
+//		curRefillDelayTime = delayBeforeRefill;
+//	}
+//
+//	if (!bIsSprinting && curStamina < max_Stamina)
+//	{
+//		curRefillDelayTime--;
+//
+//		if(curRefillDelayTime <= 0)
+//		{
+//			curStamina += staminaRefillTime;
+//		}
+//	}
+//
+//	if (curStamina <= 0)
+//	{
+//		bHasStamina = false;
+//		EndSprint();
+//	}
+//	else
+//	{
+//		bHasStamina = true;
+//	}
+//}
 
 void AC_BasePlayerCharactor::AddCharacterAbilities()
 {
@@ -563,6 +589,14 @@ void AC_BasePlayerCharactor::SetShield(float NewShield)
 	}
 }
 
+void AC_BasePlayerCharactor::SetStamina(float NewStamina)
+{
+	if (attributeSetBase.IsValid())
+	{
+		attributeSetBase->Setstamina(NewStamina);
+	}
+}
+
 void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
 {
 	float Health = Data.NewValue;
@@ -619,4 +653,12 @@ void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData& Da
 
 		UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
 	}
+}
+
+void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData& Data)
+{
+	float Stamina = Data.NewValue;
+	float MaxStamina = GetMaxStamina();
+
+	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
 }
