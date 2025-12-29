@@ -20,11 +20,13 @@ EBTNodeResult::Type UC_BTTaskNormalAttack::ExecuteTask(UBehaviorTreeComponent& O
 {
 
 	AAIController* aiController = OwnerComp.GetAIOwner();
-	aiController->StopMovement();
 	if (!aiController)
 	{
 		return EBTNodeResult::Failed;
 	}
+
+	aiController->StopMovement();
+
 
 	APawn* controlledPawn = aiController->GetPawn();
 	if (!controlledPawn)
@@ -45,24 +47,34 @@ EBTNodeResult::Type UC_BTTaskNormalAttack::ExecuteTask(UBehaviorTreeComponent& O
 		return EBTNodeResult::Failed;
 	}
 
-	AActor* targetActor = nullptr;
-	if (bUseBlackboardTarget)
-	{
-		if (UBlackboardComponent* bb = OwnerComp.GetBlackboardComponent())
-		{
-			UObject* targetObj = bb->GetValueAsObject(BlackboardKey.SelectedKeyName);
-			targetActor = Cast<AActor>(targetObj);
-		}
-	}
-
 	TSubclassOf<UGameplayAbility> abilityClassToUse = normalAttackAbilityClass;
 	if (!abilityClassToUse)
 	{
-		abilityClassToUse = UC_MeleeMonsterNormalAttackGA::StaticClass(); 
+		UE_LOG(LogTemp, Warning, TEXT("NormalAttackTask: normalAttackAbilityClass is NULL"));
+		return EBTNodeResult::Failed;
 	}
 
 	const bool activated = abilitySystem->TryActivateAbilityByClass(abilityClassToUse);
+	return activated ? EBTNodeResult::Succeeded : EBTNodeResult::Failed;
 
-	return EBTNodeResult::Succeeded;
+	//AActor* targetActor = nullptr;
+	//if (bUseBlackboardTarget)
+	//{
+	//	if (UBlackboardComponent* bb = OwnerComp.GetBlackboardComponent())
+	//	{
+	//		UObject* targetObj = bb->GetValueAsObject(BlackboardKey.SelectedKeyName);
+	//		targetActor = Cast<AActor>(targetObj);
+	//	}
+	//}
+
+	//TSubclassOf<UGameplayAbility> abilityClassToUse = normalAttackAbilityClass;
+	//if (!abilityClassToUse)
+	//{
+	//	abilityClassToUse = UC_MeleeMonsterNormalAttackGA::StaticClass(); 
+	//}
+
+	//const bool activated = abilitySystem->TryActivateAbilityByClass(abilityClassToUse);
+
+	//return EBTNodeResult::Succeeded;
 
 }
