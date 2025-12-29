@@ -83,7 +83,7 @@ void AC_BasePlayerCharactor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateStamina();
+	//UpdateStamina();
 }
 
 // Called to bind functionality to input
@@ -99,9 +99,9 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		// Looking
 		EnhancedInputComponent->BindAction(lookAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::MyLook);
 
-		// Sprinting
-		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
-		EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
+		//// Sprinting
+		//EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
+		//EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
 
 		////Attacking
 		//EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
@@ -430,28 +430,29 @@ void AC_BasePlayerCharactor::MyLook(const FInputActionValue& Value)
 	}
 }
 
-void AC_BasePlayerCharactor::StartSprint()
-{
-	if (bHasStamina)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = sprintSpeed;
-
-		if (GetVelocity().Size() >= 0.5)
-		{
-			bIsSprinting = true;
-		}
-		else
-		{
-			bIsSprinting = false;
-		}
-	}
-}
-
-void AC_BasePlayerCharactor::EndSprint()
-{
-	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
-	bIsSprinting = false;
-}
+//// move to GAS
+//void AC_BasePlayerCharactor::StartSprint()
+//{
+//	if (bHasStamina)
+//	{
+//		GetCharacterMovement()->MaxWalkSpeed = sprintSpeed;
+//
+//		if (GetVelocity().Size() >= 0.5)
+//		{
+//			bIsSprinting = true;
+//		}
+//		else
+//		{
+//			bIsSprinting = false;
+//		}
+//	}
+//}
+//
+//void AC_BasePlayerCharactor::EndSprint()
+//{
+//	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
+//	bIsSprinting = false;
+//}
 
 void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
 {
@@ -467,34 +468,35 @@ void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
 	//abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
 }
 
-void AC_BasePlayerCharactor::UpdateStamina()
-{
-	if (bIsSprinting)
-	{
-		curStamina -= staminaDrainTime;
-		curRefillDelayTime = delayBeforeRefill;
-	}
-
-	if (!bIsSprinting && curStamina < max_Stamina)
-	{
-		curRefillDelayTime--;
-
-		if(curRefillDelayTime <= 0)
-		{
-			curStamina += staminaRefillTime;
-		}
-	}
-
-	if (curStamina <= 0)
-	{
-		bHasStamina = false;
-		EndSprint();
-	}
-	else
-	{
-		bHasStamina = true;
-	}
-}
+//// moved to GAS
+//void AC_BasePlayerCharactor::UpdateStamina()
+//{
+//	if (bIsSprinting)
+//	{
+//		curStamina -= staminaDrainTime;
+//		curRefillDelayTime = delayBeforeRefill;
+//	}
+//
+//	if (!bIsSprinting && curStamina < max_Stamina)
+//	{
+//		curRefillDelayTime--;
+//
+//		if(curRefillDelayTime <= 0)
+//		{
+//			curStamina += staminaRefillTime;
+//		}
+//	}
+//
+//	if (curStamina <= 0)
+//	{
+//		bHasStamina = false;
+//		EndSprint();
+//	}
+//	else
+//	{
+//		bHasStamina = true;
+//	}
+//}
 
 void AC_BasePlayerCharactor::AddCharacterAbilities()
 {

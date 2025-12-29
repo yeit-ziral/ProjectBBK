@@ -56,7 +56,7 @@ public:
 	FGameplayAttributeData maxMana;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxMana)
 
-	UPROPERTY(BlueprintReadOnly, Category = "moveSpeed", ReplicatedUsing = OnRep_moveSpeed)
+	UPROPERTY(BlueprintReadOnly, Category = "moveSpeed", ReplicatedUsing = OnRep_MoveSpeed)
 	FGameplayAttributeData moveSpeed;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, moveSpeed)
 
