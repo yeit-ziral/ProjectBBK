@@ -181,13 +181,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* lookAction;
 
-	/** Sprint Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* sprintAction;
+	///** Sprint Input Action */
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	//class UInputAction* sprintAction;
 
-	/** Attack Input Action */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* attackAction;
+	///** Attack Input Action */
+	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	//class UInputAction* attackAction;
 
 	// ����Ī�� (Week 1���� ������)
 	int32 ActiveCharacterIndex = 0;

@@ -661,4 +661,13 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData& Data
 	float MaxStamina = GetMaxStamina();
 
 	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
+
+	//if (Data.NewValue <= 0.f)
+	//{
+	//	abilitySystemComponent->CancelAbilities(
+	//		nullptr,   // WithTags
+	//		nullptr,   // WithoutTags
+	//		SprintAbilityClass
+	//	);
+	//}
 }
