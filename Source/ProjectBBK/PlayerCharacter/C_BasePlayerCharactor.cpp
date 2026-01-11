@@ -179,6 +179,12 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 
 	PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 
+	// 초기화가 끝났음을 블루프린트에 알림
+	if (HasAuthority())
+	{
+		OnASCInitialized();
+	}
+
 	attributeSetBase = PS->GetAttributeSetBase();
 
 	abilitySystemComponent->SetTagMapCount(deadTag, 0);

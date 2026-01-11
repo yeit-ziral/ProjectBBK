@@ -64,6 +64,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character")
 	virtual void FinishDying();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
+	void OnASCInitialized();
+
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetCharacterLevel() const;
