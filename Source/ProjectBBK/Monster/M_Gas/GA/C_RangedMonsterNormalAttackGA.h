@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "GameplayTagContainer.h"
+#include "../../Object/C_RangedProjectile.h"
+
 #include "C_RangedMonsterNormalAttackGA.generated.h"
 
 /**
@@ -23,4 +26,10 @@ protected:
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
        const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+
+	UFUNCTION()
+	void OnFireProjectileEvent(FGameplayEventData Payload);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+	TSubclassOf<class AC_RangedProjectile> ProjectileClass;
 };

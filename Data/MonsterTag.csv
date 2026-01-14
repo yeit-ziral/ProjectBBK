@@ -12,6 +12,4 @@ State.Invincible,State.Invincible,무적 상태
 Cue.Hit.Normal,Cue.Hit.Normal,일반 피격 시 비주얼/사운드
 Cue.State.GroggyEnter,Cue.State.GroggyEnter,그로기 진입 이펙트
 Cue.State.GroggyRecover,Cue.State.GroggyRecover,그로기 회복 이펙트
-,,
-,,
-,,
+Event.Montage.FireProjectile,Event.Montage.FireProjectile,프로젝타일 소환 이벤트
