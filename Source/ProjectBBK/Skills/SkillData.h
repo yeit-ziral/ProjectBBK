@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "NiagaraSystem.h"
+#include "GameplayTagContainer.h"
+#include "GameplayEffect.h"
 #include "SkillData.generated.h"
 
 //Skill type
@@ -42,6 +44,18 @@ struct FSkillData : public FTableRowBase
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Skill Info")
 	ESkillType skillType;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Tags")
+	FGameplayTag SkillTag;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Ability")
+	TSubclassOf<class UGameplayAbility> AbilityClass;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Effects")
+	TArray<TSubclassOf<UGameplayEffect>> EffectsToSelf;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Effects")
+	TArray<TSubclassOf<UGameplayEffect>> EffectsToTarget;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "UI")
 	UTexture2D* skillIcon;
 
@@ -76,21 +90,23 @@ struct FSkillData : public FTableRowBase
 	USoundBase* impactSound;
 
 	FSkillData()
-		: skillID(NAME_None),
-		skillName(FText::FromString("Default Skill")),
-		description(FText::FromString("Default skill description")),
-		skillType(ESkillType::None),
-		skillIcon(nullptr),
-		cooldown(10.0f),
-		baseDamage(50.0f),
-		damageMultiplier(1.0f),
-		range(500.0f),
-		radius(100.0f),
-		castAnimation(nullptr),
-		castEffect(nullptr),
-		impactEffect(nullptr),
-		castSound(nullptr),
-		impactSound(nullptr)
+		: skillID(NAME_None)
+		, skillName(FText::FromString("Default Skill"))
+		, description(FText::FromString("Default skill description"))
+		, skillType(ESkillType::None)
+		, SkillTag(FGameplayTag())
+		, AbilityClass(nullptr)
+		, skillIcon(nullptr)
+		, cooldown(10.0f)
+		, baseDamage(50.0f)
+		, damageMultiplier(1.0f)
+		, range(500.0f)
+		, radius(100.0f)
+		, castAnimation(nullptr)
+		, castEffect(nullptr)
+		, impactEffect(nullptr)
+		, castSound(nullptr)
+		, impactSound(nullptr)
 	{
 	}
 };
