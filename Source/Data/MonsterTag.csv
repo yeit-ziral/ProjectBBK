@@ -1,0 +1,15 @@
+﻿RawName,Tag,DevComment
+Data.Damage,Data.Damage,데미지 계산
+Data.Heal,Data.Heal,회복
+Data.GroggyDamage,Data.GroggyDamage,그로기 깎이는 수치
+Effect.Buff.AttackUp,Effect.Buff.AttackUp,공격력 증가 버프
+Effect.Buff.DefenseUp,Effect.Buff.DefenseUp,방어력 증가 버프
+Effect.Debuff.Slow,Effect.Debuff.Slow,이동속도 감소 디버프
+Effect.Debuff.AttackDown,Effect.Debuff.AttackDown,공격력 감소 디버프
+State.Groggy,State.Groggy,그로기 상태
+State.Dead,State.Dead,사망 상태
+State.Invincible,State.Invincible,무적 상태
+Cue.Hit.Normal,Cue.Hit.Normal,일반 피격 시 비주얼/사운드
+Cue.State.GroggyEnter,Cue.State.GroggyEnter,그로기 진입 이펙트
+Cue.State.GroggyRecover,Cue.State.GroggyRecover,그로기 회복 이펙트
+Event.Montage.FireProjectile,Event.Montage.FireProjectile,프로젝타일 소환 이벤트

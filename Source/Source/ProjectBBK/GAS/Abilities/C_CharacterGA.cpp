@@ -1,0 +1,59 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "C_CharacterGA.h"
+#include "C_CharacterASC.h"
+#include "AbilitySystemComponent.h"
+
+
+UC_CharacterGA::UC_CharacterGA()
+{
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+
+	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")));
+	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Debuff.Stun")));
+	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag("Input.Attack"));
+}
+
+void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnAvatarSet(ActorInfo, Spec);
+
+	if (activateOnGranted)
+	{
+		ActorInfo->AbilitySystemComponent->TryActivateAbility(Spec.Handle, false);
+	}
+}
+
+void UC_CharacterGA::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	if (CooldownGameplayEffectClass)
+	{
+		UGameplayEffect* CooldownGE = CooldownGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
+		if (CooldownGE)
+		{
+			FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
+			if (SpecHandle.IsValid())
+			{
+				ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+			}
+		}
+	}
+}
+
+void UC_CharacterGA::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	if (CostGameplayEffectClass)
+	{
+		UGameplayEffect* CostGE = CostGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
+		if (CostGE)
+		{
+			FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CostGameplayEffectClass, GetAbilityLevel());
+			if (SpecHandle.IsValid())
+			{
+				ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+			}
+		}
+	}
+}
+
