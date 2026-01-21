@@ -133,11 +133,11 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 		}
 	}
 
-	//// ===== Stamina 처리 =====
-	//else if (Data.EvaluatedData.Attribute == GetstaminaAttribute())
-	//{
-	//	Setstamina(FMath::Clamp(Getstamina(), 0.0f, GetmaxStamina()));
-	//}
+	// ===== Stamina 처리 =====
+	else if (Data.EvaluatedData.Attribute == GetstaminaAttribute())
+	{
+		Setstamina(FMath::Clamp(Getstamina(), 0.0f, GetmaxStamina()));
+	}
 
 	// ===== Shield 처리 =====
 	else if (Data.EvaluatedData.Attribute == GetshieldAttribute())

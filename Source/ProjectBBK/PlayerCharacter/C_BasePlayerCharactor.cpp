@@ -179,6 +179,12 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 
 	PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 
+	// 초기화가 끝났음을 블루프린트에 알림
+	if (HasAuthority())
+	{
+		OnASCInitialized();
+	}
+
 	attributeSetBase = PS->GetAttributeSetBase();
 
 	abilitySystemComponent->SetTagMapCount(deadTag, 0);
@@ -661,4 +667,13 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData& Data
 	float MaxStamina = GetMaxStamina();
 
 	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
+
+	//if (Data.NewValue <= 0.f)
+	//{
+	//	abilitySystemComponent->CancelAbilities(
+	//		nullptr,   // WithTags
+	//		nullptr,   // WithoutTags
+	//		SprintAbilityClass
+	//	);
+	//}
 }
