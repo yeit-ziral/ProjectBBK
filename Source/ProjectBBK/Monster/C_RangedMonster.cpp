@@ -12,7 +12,7 @@
 
 AC_RangedMonster::AC_RangedMonster()
 {
-	rowName = "Ranged";
+	rowName = "Rocket";
 }
 
 void AC_RangedMonster::RangedNormalAttack()
