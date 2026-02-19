@@ -31,7 +31,7 @@ void UC_SkillBase::OnGiveAbility(
 {
 	Super::OnGiveAbility(ActorInfo, Spec);
 
-	// Ability가 부여될 때 Skill Data 로드
+	// Ability가 부여될 때 Skill Data 로드Fge
 	LoadSkillData();
 }
 
@@ -219,26 +219,31 @@ void UC_SkillBase::ApplySkillEffects()
 	}
 
 	// Apply Effects to Self ⭐
-	for (TSubclassOf<UGameplayEffect> EffectClass : CachedSkillData.EffectsToSelf)
+	for (const TSoftClassPtr<UGameplayEffect>& SoftEffectClass : CachedSkillData.EffectsToSelf)
 	{
-		if (EffectClass)
+		// 소프트 레퍼런스 동기 로드
+		TSubclassOf<UGameplayEffect> EffectClass = SoftEffectClass.LoadSynchronous();
+
+		if (!EffectClass)
 		{
-			FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-			EffectContext.AddSourceObject(this);
+			UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] EffectClass is null after load!"));
+			continue;
+		}
 
-			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
-				EffectClass,
-				GetAbilityLevel(),
-				EffectContext
-			);
+		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
 
-			if (SpecHandle.IsValid())
-			{
-				ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
-				UE_LOG(LogTemp, Log, TEXT("[C_SkillBase] Applied effect to self: %s"),
-					*EffectClass->GetName()
-				);
-			}
+		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+			EffectClass,
+			GetAbilityLevel(),
+			EffectContext
+		);
+
+		if (SpecHandle.IsValid())
+		{
+			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+			UE_LOG(LogTemp, Log, TEXT("[C_SkillBase] Applied effect: %s"),
+				*EffectClass->GetName());
 		}
 	}
 
