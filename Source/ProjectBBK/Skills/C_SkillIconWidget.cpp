@@ -42,13 +42,18 @@ void UC_SkillIconWidget::NativeConstruct()
 
 	if (img_CooldownOverlay)
 	{
-		UMaterialInterface* Material = img_CooldownOverlay->GetDynamicMaterial();
-		if (Material)
+		UMaterialInterface* BaseMaterial = Cast<UMaterialInterface>(img_CooldownOverlay->GetBrush().GetResourceObject());
+
+		if (BaseMaterial)
 		{
-			cooldownMaterial = UMaterialInstanceDynamic::Create(Material, this);
+			cooldownMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
 			img_CooldownOverlay->SetBrushFromMaterial(cooldownMaterial);
 
 			UE_LOG(LogTemp, Log, TEXT("Cooldown material created"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[C_SkillIconWidget] Failed to get material from img_CooldownOverlay!"));
 		}
 	}
 
@@ -174,7 +179,6 @@ UC_SkillBase* UC_SkillIconWidget::FindAbilityByTag(UAbilitySystemComponent* ASC,
 		return nullptr;
 	}
 
-	// ⭐ Get Activatable Abilities (C++에서만 가능!)
 	TArray<FGameplayAbilitySpec>& ActivatableAbilities = ASC->GetActivatableAbilities();
 
 	UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] Searching for ability with tag: %s"), *SearchTag.ToString());
@@ -210,6 +214,20 @@ UC_SkillBase* UC_SkillIconWidget::FindAbilityByTag(UAbilitySystemComponent* ASC,
 			{
 				UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] ✅ Found matching ability: %s"),
 					*SkillData.skillName.ToString());
+				
+				UGameplayAbility* InstancedAbility = Spec.GetPrimaryInstance();
+				if (InstancedAbility)
+				{
+					UC_SkillBase* InstancedSkillBase = Cast<UC_SkillBase>(InstancedAbility);
+					if (InstancedSkillBase)
+					{
+						UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] Using INSTANCED ability: %p"), InstancedSkillBase);
+						return InstancedSkillBase;
+					}
+				}
+
+				// 인스턴스가 없으면 CDO 반환 (fallback)
+				UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] No instance found, using CDO: %p"), SkillBase);
 				return SkillBase;
 			}
 		}
@@ -227,6 +245,8 @@ UC_SkillBase* UC_SkillIconWidget::FindAbilityByTag(UAbilitySystemComponent* ASC,
 
 void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] 🔧 InitializeSkillIcon START"));
+
 	if (!ASC)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[C_SkillIconWidget] ASC is null!"));
@@ -259,18 +279,22 @@ void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 
 	// 쿨다운 델리게이트 바인딩 ⭐
 	SkillAbility->OnCooldownStarted.AddDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
-
-	UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] Cooldown delegate bound!"));
+	UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] ✅ Cooldown delegate BOUND to: %p"), SkillAbility);
 }
 
 void UC_SkillIconWidget::OnCooldownStarted(float CooldownDuration, FGameplayTag InSkillTag, FGameplayTag CooldownTag)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] 📢 OnCooldownStarted RECEIVED! Duration: %.1f, SkillTag: %s, MyTag: %s"),
+		CooldownDuration, *InSkillTag.ToString(), *SkillTag.ToString());
+
+	// 내 스킬의 쿨다운인지 확인
 	if (!InSkillTag.MatchesTagExact(SkillTag))
 	{
+		UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] Tag mismatch - ignoring"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] Cooldown started! Duration: %.1f"), CooldownDuration);
+	UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] 🎯 Starting cooldown UI!"));
 
 	// 쿨다운 시작
 	currentCooldownTime = CooldownDuration;

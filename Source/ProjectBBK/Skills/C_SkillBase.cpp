@@ -93,7 +93,7 @@ void UC_SkillBase::ApplySkillCooldown()
 
 void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 {
-	// 유효성 검사
+	// 1. 유효성 검사
 	if (!GenericCooldownGE)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[C_SkillBase] GenericCooldownGE not set!"));
@@ -119,7 +119,7 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 		return;
 	}
 
-	// Make Outgoing Gameplay Effect Spec ⭐
+	// 2. Make Outgoing Gameplay Effect Spec
 	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 
@@ -135,14 +135,14 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 		return;
 	}
 
-	// Set Duration by Caller
+	// 3. Set Duration by Caller
 	FGameplayTag DurationTag = FGameplayTag::RequestGameplayTag(FName("Data.Cooldown.Duration"));
 	SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, CooldownDuration);
 
-	// Add Cooldown Tag dynamically
+	// 4. Add Cooldown Tag dynamically
 	SpecHandle.Data->DynamicGrantedTags.AddTag(CooldownTag);
 
-	// Apply!
+	// 5. Apply!
 	FActiveGameplayEffectHandle ActiveGEHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 
 	if (ActiveGEHandle.IsValid())
@@ -152,10 +152,16 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 			*CooldownTag.ToString()
 		);
 
-		// Notify UI
+		// 6. Notify UI
 		if (bSkillDataLoaded)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] 🔔 Broadcasting OnCooldownStarted! SkillTag: %s"),
+				*CachedSkillData.SkillTag.ToString());
 			OnCooldownStarted.Broadcast(CooldownDuration, CachedSkillData.SkillTag, CooldownTag);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[C_SkillBase] ❌ SkillData not loaded! Cannot broadcast!"));
 		}
 	}
 	else
