@@ -48,7 +48,7 @@ protected:	 //protected variables
 #pragma endregion
 
 #pragma region Gas(MonsterASC, MonsterAttributeSet, InitializeAttributesFromDataTable)
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UC_MonsterASC* monsterASC;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
