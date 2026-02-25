@@ -31,7 +31,7 @@ void UC_SkillBase::OnGiveAbility(
 {
 	Super::OnGiveAbility(ActorInfo, Spec);
 
-	// Ability가 부여될 때 Skill Data 로드
+	// Ability가 부여될 때 Skill Data 로드Fge
 	LoadSkillData();
 }
 
@@ -93,7 +93,7 @@ void UC_SkillBase::ApplySkillCooldown()
 
 void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 {
-	// 유효성 검사
+	// 1. 유효성 검사
 	if (!GenericCooldownGE)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[C_SkillBase] GenericCooldownGE not set!"));
@@ -119,7 +119,7 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 		return;
 	}
 
-	// Make Outgoing Gameplay Effect Spec ⭐
+	// 2. Make Outgoing Gameplay Effect Spec
 	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 
@@ -135,14 +135,14 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 		return;
 	}
 
-	// Set Duration by Caller
+	// 3. Set Duration by Caller
 	FGameplayTag DurationTag = FGameplayTag::RequestGameplayTag(FName("Data.Cooldown.Duration"));
 	SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, CooldownDuration);
 
-	// Add Cooldown Tag dynamically
+	// 4. Add Cooldown Tag dynamically
 	SpecHandle.Data->DynamicGrantedTags.AddTag(CooldownTag);
 
-	// Apply!
+	// 5. Apply!
 	FActiveGameplayEffectHandle ActiveGEHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 
 	if (ActiveGEHandle.IsValid())
@@ -152,10 +152,16 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 			*CooldownTag.ToString()
 		);
 
-		// Notify UI
+		// 6. Notify UI
 		if (bSkillDataLoaded)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] 🔔 Broadcasting OnCooldownStarted! SkillTag: %s"),
+				*CachedSkillData.SkillTag.ToString());
 			OnCooldownStarted.Broadcast(CooldownDuration, CachedSkillData.SkillTag, CooldownTag);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[C_SkillBase] ❌ SkillData not loaded! Cannot broadcast!"));
 		}
 	}
 	else
@@ -219,26 +225,31 @@ void UC_SkillBase::ApplySkillEffects()
 	}
 
 	// Apply Effects to Self ⭐
-	for (TSubclassOf<UGameplayEffect> EffectClass : CachedSkillData.EffectsToSelf)
+	for (const TSoftClassPtr<UGameplayEffect>& SoftEffectClass : CachedSkillData.EffectsToSelf)
 	{
-		if (EffectClass)
+		// 소프트 레퍼런스 동기 로드
+		TSubclassOf<UGameplayEffect> EffectClass = SoftEffectClass.LoadSynchronous();
+
+		if (!EffectClass)
 		{
-			FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-			EffectContext.AddSourceObject(this);
+			UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] EffectClass is null after load!"));
+			continue;
+		}
 
-			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
-				EffectClass,
-				GetAbilityLevel(),
-				EffectContext
-			);
+		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
 
-			if (SpecHandle.IsValid())
-			{
-				ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
-				UE_LOG(LogTemp, Log, TEXT("[C_SkillBase] Applied effect to self: %s"),
-					*EffectClass->GetName()
-				);
-			}
+		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+			EffectClass,
+			GetAbilityLevel(),
+			EffectContext
+		);
+
+		if (SpecHandle.IsValid())
+		{
+			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+			UE_LOG(LogTemp, Log, TEXT("[C_SkillBase] Applied effect: %s"),
+				*EffectClass->GetName());
 		}
 	}
 

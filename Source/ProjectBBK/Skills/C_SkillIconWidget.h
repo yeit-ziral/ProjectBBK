@@ -4,11 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameplayTagContainer.h"
 #include "C_SkillIconWidget.generated.h"
 
 class UImage;
 class UTextBlock;
 class UMaterialInstanceDynamic;
+class UAbilitySystemComponent;
+class UC_SkillBase;
 
 UCLASS()
 class PROJECTBBK_API UC_SkillIconWidget : public UUserWidget
@@ -37,6 +40,9 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* txt_Cooldown;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill Config")
+	FGameplayTag SkillTag;
+
 	UFUNCTION(BlueprintCallable, Category = "Skill Icon")
 	void SetSkillIcon(UTexture2D* IconTexture);
 
@@ -46,6 +52,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Skill Icon")
 	void SetCooldownVisible(bool bShow);
 
+	UFUNCTION(BlueprintCallable, Category = "Skill Icon")
+	UC_SkillBase* FindAbilityByTag(UAbilitySystemComponent* ASC, FGameplayTag SearchTag);
+
+	UFUNCTION(BlueprintCallable, Category = "Skill Icon")
+	void InitializeSkillIcon(UAbilitySystemComponent* ASC);
+
 protected:
 	UPROPERTY()
 	UMaterialInstanceDynamic* cooldownMaterial;
@@ -53,4 +65,14 @@ protected:
 	float currentCooldownTime;
 
 	float maxCooldownTime;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Skill")
+	UC_SkillBase* SkillAbility;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Skill")
+	UAbilitySystemComponent* CachedASC;
+
+private:
+	UFUNCTION()
+	void OnCooldownStarted(float CooldownDuration, FGameplayTag InSkillTag, FGameplayTag CooldownTag);
 };
