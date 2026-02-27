@@ -9,10 +9,19 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "UI/C_NormalMonsterHPWidget.h"
 
 AC_RangedMonster::AC_RangedMonster()
 {
-	rowName = "Ranged";
+	rowName = "Rocket";
+
+}
+
+void AC_RangedMonster::BeginPlay()
+{
+	Super::BeginPlay();
+	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
+    //HpWidgetComponent->SetWidgetClass(UC_NormalMonsterHPWidget::StaticClass());
 }
 
 void AC_RangedMonster::RangedNormalAttack()
@@ -57,10 +66,6 @@ void AC_RangedMonster::RangedSpecialAttack()
 	}
 }
 
-void AC_RangedMonster::BeginPlay()
-{
-	Super::BeginPlay();
-}
 
 void AC_RangedMonster::SpawnProjectile()
 {

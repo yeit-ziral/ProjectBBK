@@ -14,4 +14,21 @@ class PROJECTBBK_API AC_BossMonster : public AC_BaseMonster
 {
 	GENERATED_BODY()
 	
+
+public:
+
+    AC_BossMonster();
+
+protected:
+
+    virtual void BeginPlay() override;
+
+    TSubclassOf<UUserWidget> GetHpWidgetClass(); const
+
+    // 테스트용 패턴 GA
+    UPROPERTY(EditDefaultsOnly, Category = "Boss")
+    TSubclassOf<UGameplayAbility> bossStormPatternGA;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss")
+    TSubclassOf<UGameplayAbility> bossBeamPatternGA;
 };

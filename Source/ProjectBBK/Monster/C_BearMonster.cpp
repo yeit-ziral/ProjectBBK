@@ -11,6 +11,16 @@ AC_BearMonster::AC_BearMonster()
 
 }
 
+void AC_BearMonster::BeginPlay()
+{
+	Super::BeginPlay();
+
+	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
+
+	//BearSpecialAttack();
+	//BearNormalAttack();
+}
+
 void AC_BearMonster::BearNormalAttack()
 {
 	if (!attackManager)
@@ -58,12 +68,3 @@ void AC_BearMonster::BearSpecialAttack()
 
 }
 
-void AC_BearMonster::BeginPlay()
-{
-	Super::BeginPlay();
-
-
-
-	//BearSpecialAttack();
-	//BearNormalAttack();
-}
