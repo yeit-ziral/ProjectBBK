@@ -9,10 +9,6 @@
 #include "M_Gas/C_MonsterAttributeSet.h"
 #include "M_Gas/C_MonsterASC.h"
 #include "BehaviorTree/BehaviorTree.h"
-#include "Components/WidgetComponent.h"
-#include "GameplayTagContainer.h"
-#include "UI/C_MonsterHPWidgetBase.h"
-
 #include "C_BaseMonster.generated.h"
 
 class UDataTable;
@@ -33,7 +29,6 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	virtual void PostInitializeComponents() override;
 
 protected:	 //protected variables
 
@@ -52,8 +47,8 @@ protected:	 //protected variables
 
 #pragma endregion
 
-#pragma region Gas(MonsterASC, MonsterAttributeSet, InitializeAttributesFromDataTable, Tag)
-	UPROPERTY(VisibleAnywhere)
+#pragma region Gas(MonsterASC, MonsterAttributeSet, InitializeAttributesFromDataTable)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UC_MonsterASC* monsterASC;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
@@ -62,24 +57,8 @@ protected:	 //protected variables
 	UPROPERTY()
 	UC_MonsterAttributeSet* monsterAttributeSet;
 
-	FGameplayTag monsterTypeTag;
-
-	void ApplyMonsterTypeTag();
-
 	void InitializeAttributesFromDataTable();
 
-#pragma endregion
-
-#pragma region UI(HpWidgetComponent, MonsterHpWidget)
-	UPROPERTY(VisibleAnywhere, Category = "UI")
-	UWidgetComponent* HpWidgetComponent;
-
-	UPROPERTY()
-	UC_MonsterHPWidgetBase* MonsterHpWidget;
-
-	void InitializeMonsterHpWidget();
-	void InitializeHpWidgetClass();
-	virtual TSubclassOf<UUserWidget> GetHpWidgetClass() const;
 #pragma endregion
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Manager")
@@ -92,9 +71,7 @@ public: // public functions
 
 	int32 GetMonsterID() const { return monsterId; }
 
-	int32 GetmaxHP() const { return monsterAttributeSet->GetmaxHP(); }
-
-	int32 GetcurHP() const { return monsterAttributeSet->GetcurHP(); }
+	int32 GetHP() const { return monsterAttributeSet->GetmaxHP(); }
 
 	int32 GetAttack() const { return monsterAttributeSet->Getattack(); }
 

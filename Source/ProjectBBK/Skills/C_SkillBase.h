@@ -1,7 +1,4 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -23,6 +20,10 @@ class PROJECTBBK_API UC_SkillBase : public UC_CharacterGA
 
 public:
 	UC_SkillBase();
+
+	/** Get Skill Data (loads if not cached) */
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	bool GetSkillData(FSkillData& OutSkillData);
 
 protected:
 	// ========================================
@@ -64,10 +65,6 @@ protected:
 	/** Load Skill Data from DataTable */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	bool LoadSkillData();
-
-	/** Get Skill Data (loads if not cached) */
-	UFUNCTION(BlueprintCallable, Category = "Skill")
-	bool GetSkillData(FSkillData& OutSkillData);
 
 	/** Apply Generic Cooldown using DataTable cooldown value */
 	UFUNCTION(BlueprintCallable, Category = "Skill")

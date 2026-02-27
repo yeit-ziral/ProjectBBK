@@ -137,6 +137,45 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 	else if (Data.EvaluatedData.Attribute == GetstaminaAttribute())
 	{
 		Setstamina(FMath::Clamp(Getstamina(), 0.0f, GetmaxStamina()));
+
+		UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+
+		// 태그 정의
+		FGameplayTag EmptyTag = FGameplayTag::RequestGameplayTag(FName("State.Stamina.Empty"));
+		FGameplayTag CanSprintTag = FGameplayTag::RequestGameplayTag(FName("State.CanSprint"));
+
+		// 2. 스태미나가 0이 되었을 때 처리
+		if (Getstamina() <= 0.0f)
+		{
+			if (!ASC->HasMatchingGameplayTag(EmptyTag))
+			{
+				// 스태미나 고갈 태그 추가
+				ASC->AddLooseGameplayTag(EmptyTag);
+				// 달리기 가능 태그 제거
+				ASC->RemoveLooseGameplayTag(CanSprintTag);
+
+				// 현재 실행 중인 모든 달리기 관련 어빌리티를 강제로 종료시킵니다.
+				// GA_Sprint의 'Ability Tags' 섹션에 'State.Sprint'가 등록되어 있어야 합니다.
+				FGameplayTagContainer CancelContainer;
+				CancelContainer.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Sprint")));
+
+				// 이 함수가 실행되면 GA_Sprint의 OnEndAbility가 즉시 호출됩니다.
+				ASC->CancelAbilities(&CancelContainer);
+			}
+		}
+
+		// 3. 일정 이상(예: 20%) 회복되었을 때 태그 복구
+		float RebuildThreshold = GetmaxStamina() * 0.2f; // 20% 지점
+		if (Getstamina() >= RebuildThreshold)
+		{
+			if (ASC->HasMatchingGameplayTag(EmptyTag))
+			{
+				// 스태미나 고갈 태그 제거
+				ASC->RemoveLooseGameplayTag(EmptyTag);
+				// 다시 달리기 가능 태그 추가
+				ASC->AddLooseGameplayTag(CanSprintTag);
+			}
+		}
 	}
 
 	// ===== Shield 처리 =====

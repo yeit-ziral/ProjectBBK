@@ -117,6 +117,8 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
         const float NewHP = FMath::Clamp(GetcurHP() - Mitigated, 0.f, GetmaxHP());
         SetcurHP(NewHP);
 
+		UE_LOG(LogTemp, Warning, TEXT("[Monster] HP: %.1f (Damage: %.1f)"),
+			NewHP, Mitigated);
 
         SetReceivedDamage(0.0f);
         return;

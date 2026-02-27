@@ -231,6 +231,9 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 
 			UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
 		}
+
+		FGameplayTag CanSprintTag = FGameplayTag::RequestGameplayTag(FName("State.CanSprint"));
+		abilitySystemComponent->AddLooseGameplayTag(CanSprintTag);
 	}
 
 	// Input binding (client)

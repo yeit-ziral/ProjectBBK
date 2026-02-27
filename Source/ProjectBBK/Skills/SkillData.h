@@ -29,7 +29,7 @@ enum class ESkillState : uint8
 
 //Skill Data Struct
 USTRUCT(BlueprintType)
-struct FSkillData : public FTableRowBase
+struct PROJECTBBK_API FSkillData : public FTableRowBase
 {
 	GENERATED_BODY()
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Skill Info")
@@ -51,7 +51,7 @@ struct FSkillData : public FTableRowBase
 	TSubclassOf<class UGameplayAbility> AbilityClass;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Effects")
-	TArray<TSubclassOf<UGameplayEffect>> EffectsToSelf;
+	TArray<TSoftClassPtr<UGameplayEffect>> EffectsToSelf;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Effects")
 	TArray<TSubclassOf<UGameplayEffect>> EffectsToTarget;
