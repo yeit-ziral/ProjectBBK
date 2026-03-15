@@ -611,7 +611,7 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
 	float Health = Data.NewValue;
 	float MaxHealth = GetMaxHealth();
 
-	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
+	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
 
 	// ���� ó��
 	if (Health <= 0.0f && IsAlive())
@@ -645,7 +645,7 @@ void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData& Data)
 	float Shield = Data.NewValue;
 	float MaxShield = GetMaxShield();
 
-	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
+	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
 }
 
 void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
@@ -653,14 +653,14 @@ void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData& Da
 	float NewMoveSpeed = Data.NewValue;
 	float OldMoveSpeed = Data.OldValue;
 
-	UE_LOG(LogBasePlayerCharacter, Log, TEXT("MoveSpeed Changed: %.2f -> %.2f"),
-		OldMoveSpeed, NewMoveSpeed);
+	/*UE_LOG(LogBasePlayerCharacter, Log, TEXT("MoveSpeed Changed: %.2f -> %.2f"),
+		OldMoveSpeed, NewMoveSpeed);*/
 
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 	{
 		MovementComp->MaxWalkSpeed = NewMoveSpeed;
 
-		UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
+		//UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
 	}
 }
 
@@ -669,7 +669,7 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData& Data
 	float Stamina = Data.NewValue;
 	float MaxStamina = GetMaxStamina();
 
-	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
+	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
 
 	//if (Data.NewValue <= 0.f)
 	//{
