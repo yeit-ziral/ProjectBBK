@@ -13,3 +13,5 @@ Cue.Hit.Normal,Cue.Hit.Normal,일반 피격 시 비주얼/사운드
 Cue.State.GroggyEnter,Cue.State.GroggyEnter,그로기 진입 이펙트
 Cue.State.GroggyRecover,Cue.State.GroggyRecover,그로기 회복 이펙트
 Event.Montage.FireProjectile,Event.Montage.FireProjectile,프로젝타일 소환 이벤트
+Type.Normal,Type.Normal,일반몬스터
+Type.Boss,Type.Boss,보스몬스터

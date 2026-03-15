@@ -6,6 +6,10 @@
 #include "Data/MonsterData.h"                 
 #include "AI/C_MonsterAIController.h"  
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "UI/C_BossMonsterHPWidget.h"
+#include "UI/C_NormalMonsterHPWidget.h"
 
 // Sets default values
 AC_BaseMonster::AC_BaseMonster()
@@ -33,6 +37,14 @@ AC_BaseMonster::AC_BaseMonster()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 720.f, 0.f);
+
+	HpWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HpWidget"));
+	HpWidgetComponent->SetupAttachment(GetRootComponent());
+	HpWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
+	HpWidgetComponent->SetDrawSize(FVector2D(220.0f, 60.0f));
+	HpWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
+	HpWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HpWidgetComponent->SetTwoSided(true);
 }
 
 // Called when the game starts or when spawned
@@ -52,6 +64,7 @@ void AC_BaseMonster::BeginPlay()
 			if (!abilityClass) continue;
 
 			monsterASC->GiveAbility(FGameplayAbilitySpec(abilityClass, 1, 0));
+			UE_LOG(LogTemp, Error, TEXT("GiveAbility: %s"), *abilityClass->GetName());
 		}
 
 		// 죽음 이벤트 바인딩 (AI, 이펙트, 사운드 등)
@@ -69,6 +82,9 @@ void AC_BaseMonster::BeginPlay()
 
 		InitializeAttributesFromDataTable();
 	}
+
+	ApplyMonsterTypeTag();
+	InitializeMonsterHpWidget();
 	//////////////////////
 	if (GEngine)
 	{
@@ -82,6 +98,25 @@ void AC_BaseMonster::BeginPlay()
 	if (attackManager)
 		attackManager->Initialize(this);
 	
+	PrintMonsterTags();
+}
+
+void AC_BaseMonster::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	InitializeHpWidgetClass();
+}
+
+void AC_BaseMonster::ApplyMonsterTypeTag()
+{
+	if (!monsterASC)
+		return;
+
+	if (monsterTypeTag.IsValid())
+	{
+		monsterASC->AddLooseGameplayTag(monsterTypeTag);
+	}
 }
 
 void AC_BaseMonster::InitializeAttributesFromDataTable()
@@ -126,7 +161,76 @@ void AC_BaseMonster::InitializeAttributesFromDataTable()
 	{
 		Move->MaxWalkSpeed = monsterAttributeSet->GetmoveSpeed();
 	}
+	UE_LOG(LogTemp, Error, TEXT("Monster MaxHP = %d"), GetmaxHP());
+}
 
+void AC_BaseMonster::PrintMonsterTags()
+{
+	if (!monsterASC)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("monsterASC is NULL"));
+		return;
+	}
+
+	FGameplayTagContainer OwnedTags;
+	monsterASC->GetOwnedGameplayTags(OwnedTags);
+
+	UE_LOG(LogTemp, Warning, TEXT("===== Monster Owned Tags Start ====="));
+
+	if (OwnedTags.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No Owned Tags"));
+	}
+
+	for (const FGameplayTag& Tag : OwnedTags)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Owned Tag : %s"), *Tag.ToString());
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("===== Monster Owned Tags End ====="));
+}
+
+void AC_BaseMonster::InitializeMonsterHpWidget()
+{
+	if (!HpWidgetComponent)
+		return;
+
+	UUserWidget* Widget = HpWidgetComponent->GetUserWidgetObject();
+	if (!Widget)
+		return;
+
+	MonsterHpWidget = Cast<UC_MonsterHPWidgetBase>(Widget);
+	if (!MonsterHpWidget)
+		return;
+
+	MonsterHpWidget->SetMaxHp(GetmaxHP());
+	MonsterHpWidget->SetCurrentHp(GetcurHP());
+
+	MonsterHpWidget->SetMaxGroggy(GetmaxGroggy());
+	MonsterHpWidget->SetCurrentGroggy(GetcurGroggy());
+
+	MonsterHpWidget->SetMonsterLevel(1);
+	MonsterHpWidget->SetMonsterName(FText::FromName(rowName));
+
+}
+
+
+void AC_BaseMonster::InitializeHpWidgetClass()
+{
+	if (!HpWidgetComponent)
+		return;
+
+	TSubclassOf<UUserWidget> WidgetClass = GetHpWidgetClass();
+	if (!WidgetClass)
+		return;
+
+	HpWidgetComponent->SetWidget(nullptr);
+	HpWidgetComponent->SetWidgetClass(WidgetClass);
+}
+
+TSubclassOf<UUserWidget> AC_BaseMonster::GetHpWidgetClass() const
+{
+	return UC_NormalMonsterHPWidget::StaticClass();
 }
 
 

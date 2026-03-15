@@ -7,7 +7,7 @@
 #include "C_RangedMonster.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class PROJECTBBK_API AC_RangedMonster : public AC_BaseMonster
