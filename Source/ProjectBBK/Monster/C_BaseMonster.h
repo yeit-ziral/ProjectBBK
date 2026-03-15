@@ -68,6 +68,8 @@ protected:	 //protected variables
 
 	void InitializeAttributesFromDataTable();
 
+	void PrintMonsterTags();
+
 #pragma endregion
 
 #pragma region UI(HpWidgetComponent, MonsterHpWidget)
@@ -95,6 +97,10 @@ public: // public functions
 	int32 GetmaxHP() const { return monsterAttributeSet->GetmaxHP(); }
 
 	int32 GetcurHP() const { return monsterAttributeSet->GetcurHP(); }
+
+	int32 GetmaxGroggy() const { return monsterAttributeSet->GetmaxGroggy(); }
+
+	int32 GetcurGroggy() const { return monsterAttributeSet->GetcurGroggy(); }
 
 	int32 GetAttack() const { return monsterAttributeSet->Getattack(); }
 

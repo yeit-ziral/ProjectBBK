@@ -39,6 +39,12 @@ AC_BaseMonster::AC_BaseMonster()
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 720.f, 0.f);
 
 	HpWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HpWidget"));
+	HpWidgetComponent->SetupAttachment(GetRootComponent());
+	HpWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
+	HpWidgetComponent->SetDrawSize(FVector2D(220.0f, 60.0f));
+	HpWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
+	HpWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HpWidgetComponent->SetTwoSided(true);
 }
 
 // Called when the game starts or when spawned
@@ -92,6 +98,7 @@ void AC_BaseMonster::BeginPlay()
 	if (attackManager)
 		attackManager->Initialize(this);
 	
+	PrintMonsterTags();
 }
 
 void AC_BaseMonster::PostInitializeComponents()
@@ -157,6 +164,32 @@ void AC_BaseMonster::InitializeAttributesFromDataTable()
 	UE_LOG(LogTemp, Error, TEXT("Monster MaxHP = %d"), GetmaxHP());
 }
 
+void AC_BaseMonster::PrintMonsterTags()
+{
+	if (!monsterASC)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("monsterASC is NULL"));
+		return;
+	}
+
+	FGameplayTagContainer OwnedTags;
+	monsterASC->GetOwnedGameplayTags(OwnedTags);
+
+	UE_LOG(LogTemp, Warning, TEXT("===== Monster Owned Tags Start ====="));
+
+	if (OwnedTags.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No Owned Tags"));
+	}
+
+	for (const FGameplayTag& Tag : OwnedTags)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Owned Tag : %s"), *Tag.ToString());
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("===== Monster Owned Tags End ====="));
+}
+
 void AC_BaseMonster::InitializeMonsterHpWidget()
 {
 	if (!HpWidgetComponent)
@@ -167,12 +200,16 @@ void AC_BaseMonster::InitializeMonsterHpWidget()
 		return;
 
 	MonsterHpWidget = Cast<UC_MonsterHPWidgetBase>(Widget);
-
 	if (!MonsterHpWidget)
 		return;
 
 	MonsterHpWidget->SetMaxHp(GetmaxHP());
 	MonsterHpWidget->SetCurrentHp(GetcurHP());
+
+	MonsterHpWidget->SetMaxGroggy(GetmaxGroggy());
+	MonsterHpWidget->SetCurrentGroggy(GetcurGroggy());
+
+	MonsterHpWidget->SetMonsterLevel(1);
 	MonsterHpWidget->SetMonsterName(FText::FromName(rowName));
 
 }

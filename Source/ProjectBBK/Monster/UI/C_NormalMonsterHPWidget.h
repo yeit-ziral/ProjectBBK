@@ -18,19 +18,23 @@ class PROJECTBBK_API UC_NormalMonsterHPWidget : public UC_MonsterHPWidgetBase
 	GENERATED_BODY()
 	
 public:
-    virtual void SetMaxHp(float NewMaxHp) override;
-    virtual void SetCurrentHp(float NewCurrentHp) override;
-    virtual void SetMonsterName(const FText& NewName) override;
 
-protected:
-    virtual void NativeConstruct() override;
 
 private:
+    virtual void NativeConstruct() override;
+
+    virtual void UpdateWidget() override;
+
     UPROPERTY(meta = (BindWidget))
-    UProgressBar* HpBar;
+    UTextBlock* LevelText;
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* MonsterNameText;
 
-    void UpdateHpBar();
+    UPROPERTY(meta = (BindWidget))
+    UProgressBar* HpBar;
+
+    UPROPERTY(meta = (BindWidget))
+    UProgressBar* GroggyBar;
+
 };
