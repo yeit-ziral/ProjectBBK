@@ -94,37 +94,37 @@ void AC_PlayerState::BeginPlay()
 
 void AC_PlayerState::HealthChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Health Changed!"));
+	//UE_LOG(LogTemp, Warning, TEXT("Health Changed!"));
 }
 
 void AC_PlayerState::MaxHealthChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("MaxHealth Changed!"));
+	//UE_LOG(LogTemp, Warning, TEXT("MaxHealth Changed!"));
 }
 
 void AC_PlayerState::ShieldChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Shield Changed!"));
+	//UE_LOG(LogTemp, Warning, TEXT("Shield Changed!"));
 }
 
 void AC_PlayerState::MaxShieldChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("MaxShield Changed!"));
+	//UE_LOG(LogTemp, Warning, TEXT("MaxShield Changed!"));
 }
 
 void AC_PlayerState::StaminaChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Stamina Changed!"));
+	//UE_LOG(LogTemp, Warning, TEXT("Stamina Changed!"));
 }
 
 void AC_PlayerState::MaxStaminaChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("MaxStamina Changed!"));
+	//UE_LOG(LogTemp, Warning, TEXT("MaxStamina Changed!"));
 }
 
 void AC_PlayerState::CharacterLevelChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Character Level Changed!"));
+	//UE_LOG(LogTemp, Warning, TEXT("Character Level Changed!"));
 }
 
 void AC_PlayerState::StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
