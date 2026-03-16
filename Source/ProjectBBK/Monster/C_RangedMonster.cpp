@@ -13,7 +13,6 @@
 
 AC_RangedMonster::AC_RangedMonster()
 {
-	rowName = "Rocket";
 
 }
 

@@ -10,7 +10,6 @@
 
 AC_BossMonster::AC_BossMonster()
 {
-    rowName = "BossMonster";
 
 }
 
