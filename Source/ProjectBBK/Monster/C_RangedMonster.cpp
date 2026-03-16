@@ -20,10 +20,10 @@ void AC_RangedMonster::BeginPlay()
 {
 	Super::BeginPlay();
 	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
-	if (MonsterHpWidget)
-	{
-		MonsterHpWidget->SetCurrentHp(GetmaxHP() * 0.5f);
-	}
+	//if (MonsterHpWidget)
+	//{
+	//	MonsterHpWidget->SetCurrentHp(GetmaxHP() * 0.5f);
+	//}
 
 }
 
