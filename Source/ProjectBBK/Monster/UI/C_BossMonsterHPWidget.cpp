@@ -2,19 +2,44 @@
 
 
 #include "C_BossMonsterHPWidget.h"
-
-void UC_BossMonsterHPWidget::SetMaxHp(float NewMaxHp)
-{
-}
-
-void UC_BossMonsterHPWidget::SetCurrentHp(float NewCurrentHp)
-{
-}
-
-void UC_BossMonsterHPWidget::SetMonsterName(const FText& NewName)
-{
-}
+#include "Components/TextBlock.h"
+#include "Components/ProgressBar.h"
 
 void UC_BossMonsterHPWidget::NativeConstruct()
 {
+	Super::NativeConstruct();
+
+	UpdateWidget();
+}
+
+void UC_BossMonsterHPWidget::UpdateWidget()
+{
+    if (BossLevelText)
+    {
+        BossLevelText->SetText(FText::FromString(FString::Printf(TEXT("Lv.%d"), monsterLevel)));
+    }
+
+    if (BossNameText)
+    {
+        if (bUseStatusText)
+        {
+            BossNameText->SetText(statusText);
+        }
+        else
+        {
+            BossNameText->SetText(monsterName);
+        }
+    }
+
+    if (BossHpBar)
+    {
+        const float HpPercent = (maxHp > 0.0f) ? (currentHp / maxHp) : 0.0f;
+        BossHpBar->SetPercent(HpPercent);
+    }
+
+    if (BossGroggyBar)
+    {
+        const float GroggyPercent = (maxGroggy > 0.0f) ? (currentGroggy / maxGroggy) : 0.0f;
+        BossGroggyBar->SetPercent(GroggyPercent);
+    }
 }

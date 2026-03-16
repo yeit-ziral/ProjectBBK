@@ -79,6 +79,9 @@ protected:	 //protected variables
 	UPROPERTY()
 	UC_MonsterHPWidgetBase* MonsterHpWidget;
 
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> hpWidgetClass;
+
 	void InitializeMonsterHpWidget();
 	void InitializeHpWidgetClass();
 	virtual TSubclassOf<UUserWidget> GetHpWidgetClass() const;

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "C_BaseMonster.h"
+#include "UI/C_BossMonsterHPWidget.h"
 #include "C_BossMonster.generated.h"
 
 /**
@@ -23,7 +24,14 @@ protected:
 
     virtual void BeginPlay() override;
 
-    TSubclassOf<UUserWidget> GetHpWidgetClass(); const
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UC_BossMonsterHPWidget> bossHpWidgetClass;
+
+    UPROPERTY()
+    UC_BossMonsterHPWidget* bossHpWidget;
+
+    void InitializeBossHpWidget();
+    void RemoveBossHpWidget();
 
     // 테스트용 패턴 GA
     UPROPERTY(EditDefaultsOnly, Category = "Boss")
