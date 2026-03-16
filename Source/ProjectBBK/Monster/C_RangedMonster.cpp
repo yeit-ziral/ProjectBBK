@@ -13,7 +13,6 @@
 
 AC_RangedMonster::AC_RangedMonster()
 {
-	rowName = "Rocket";
 
 }
 
@@ -21,7 +20,11 @@ void AC_RangedMonster::BeginPlay()
 {
 	Super::BeginPlay();
 	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
-	//HpWidgetComponent->SetWidgetClass(UC_NormalMonsterHPWidget::StaticClass());
+	if (MonsterHpWidget)
+	{
+		MonsterHpWidget->SetCurrentHp(GetmaxHP() * 0.5f);
+	}
+
 }
 
 void AC_RangedMonster::RangedNormalAttack()

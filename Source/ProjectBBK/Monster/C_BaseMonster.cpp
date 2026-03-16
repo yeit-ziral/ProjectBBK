@@ -230,7 +230,7 @@ void AC_BaseMonster::InitializeHpWidgetClass()
 
 TSubclassOf<UUserWidget> AC_BaseMonster::GetHpWidgetClass() const
 {
-	return UC_NormalMonsterHPWidget::StaticClass();
+	return hpWidgetClass;
 }
 
 
