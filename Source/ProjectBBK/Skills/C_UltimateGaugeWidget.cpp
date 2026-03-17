@@ -7,6 +7,8 @@
 #include "Components/Image.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
+#include "AbilitySystemGlobals.h"
+#include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
 
 UC_UltimateGaugeWidget::UC_UltimateGaugeWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -44,6 +46,7 @@ void UC_UltimateGaugeWidget::NativeConstruct()
 	// Initial state
 	UpdateGauge(0.0f);
 	SetGaugeReady(false);
+	InitializeGauge();
 
 	UE_LOG(LogTemp, Log, TEXT("UltimateGaugeWidget constructed"));
 }
@@ -65,6 +68,24 @@ void UC_UltimateGaugeWidget::NativeTick(const FGeometry& MyGeometry, float InDel
 
 		img_Glow->SetColorAndOpacity(glowColor);
 	}
+}
+
+void UC_UltimateGaugeWidget::NativeDestruct()
+{
+	if (CachedASC.IsValid() && ManaChangedHandle.IsValid())
+	{
+		const UC_ChracterAttributeSetBase* AttributeSet = CachedASC->GetSet<UC_ChracterAttributeSetBase>();
+		if (AttributeSet)
+		{
+			CachedASC->GetGameplayAttributeValueChangeDelegate(
+				AttributeSet->GetmanaAttribute()
+			).Remove(ManaChangedHandle);
+
+			UE_LOG(LogTemp, Log, TEXT("[UltimateGauge] Delegate unbound"));
+		}
+	}
+
+	Super::NativeDestruct();
 }
 
 void UC_UltimateGaugeWidget::UpdateGauge(float percent)
@@ -155,4 +176,90 @@ void UC_UltimateGaugeWidget::PlayReadyAnimation()
 	// {
 	//     PlayAnimation(ReadyAnimation);
 	// }
+}
+
+void UC_UltimateGaugeWidget::InitializeGauge()
+{
+	// Owner Pawn 가져오기
+	APawn* OwnerPawn = GetOwningPlayerPawn();
+	if (!OwnerPawn)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UltimateGauge] No Owning Player Pawn"));
+		return;
+	}
+
+	// ASC 가져오기
+	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwnerPawn);
+	if (!ASC)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UltimateGauge] No ASC found on %s"), *OwnerPawn->GetName());
+		return;
+	}
+
+	CachedASC = ASC;
+
+	// AttributeSet 가져오기
+	const  UC_ChracterAttributeSetBase* AttributeSet = ASC->GetSet< UC_ChracterAttributeSetBase>();
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UltimateGauge] No PlayerAttributeSet found"));
+		return;
+	}
+
+	// Mana 변경 델리게이트 바인딩
+	ManaChangedHandle = ASC->GetGameplayAttributeValueChangeDelegate(
+		AttributeSet->GetmanaAttribute()
+	).AddUObject(this, &UC_UltimateGaugeWidget::OnManaChanged);
+
+	// 초기값 설정
+	float CurrentMana = ASC->GetNumericAttribute(AttributeSet->GetmanaAttribute());
+	float MaxMana = ASC->GetNumericAttribute(AttributeSet->GetmaxManaAttribute());
+
+	if (MaxMana > 0.0f)
+	{
+		float Percent = CurrentMana / MaxMana;
+		UpdateGauge(Percent);
+		UE_LOG(LogTemp, Log, TEXT("[UltimateGauge] Initialized - Mana: %.1f/%.1f (%.0f%%)"),
+			CurrentMana, MaxMana, Percent * 100.0f);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UltimateGauge] MaxMana is 0!"));
+		UpdateGauge(0.0f);
+	}
+}
+
+void UC_UltimateGaugeWidget::OnManaChanged(const FOnAttributeChangeData& Data)
+{
+	if (!CachedASC.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UltimateGauge] CachedASC is invalid"));
+		return;
+	}
+
+	// MaxMana 가져오기
+	const UC_ChracterAttributeSetBase* AttributeSet = CachedASC->GetSet<UC_ChracterAttributeSetBase>();
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UltimateGauge] AttributeSet not found in OnManaChanged"));
+		return;
+	}
+
+	float MaxMana = CachedASC->GetNumericAttribute(AttributeSet->GetmaxManaAttribute());
+
+	if (MaxMana <= 0.0f)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UltimateGauge] MaxMana is 0 in OnManaChanged"));
+		UpdateGauge(0.0f);
+		return;
+	}
+
+	// Percent 계산
+	float Percent = Data.NewValue / MaxMana;
+
+	// 기존 UpdateGauge 호출
+	UpdateGauge(Percent);
+
+	UE_LOG(LogTemp, Log, TEXT("[UltimateGauge] Mana Changed: %.1f → %.1f / %.1f (%.0f%%)"),
+		Data.OldValue, Data.NewValue, MaxMana, Percent * 100.0f);
 }

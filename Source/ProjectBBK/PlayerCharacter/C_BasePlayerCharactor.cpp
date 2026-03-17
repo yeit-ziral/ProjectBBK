@@ -76,6 +76,43 @@ void AC_BasePlayerCharactor::BeginPlay()
 			Subsystem->AddMappingContext(playerMappingContext, 0);
 		}
 	}
+
+	if (abilitySystemComponent.IsValid())
+	{
+		// 초기 Mana 설정
+		if (const UC_ChracterAttributeSetBase* Attributes =
+			abilitySystemComponent->GetSet<UC_ChracterAttributeSetBase>())
+		{
+			abilitySystemComponent->SetNumericAttributeBase(
+				Attributes->GetmanaAttribute(), 0.0f);
+			abilitySystemComponent->SetNumericAttributeBase(
+				Attributes->GetmaxManaAttribute(), 100.0f);
+		}
+
+		// Mana Regen GE 적용
+		if (GE_ManaRegen)
+		{
+			FGameplayEffectContextHandle EffectContext =
+				abilitySystemComponent->MakeEffectContext();
+
+			FGameplayEffectSpecHandle SpecHandle =
+				abilitySystemComponent->MakeOutgoingSpec(
+					GE_ManaRegen,
+					1.0f,
+					EffectContext
+				);
+
+			abilitySystemComponent->ApplyGameplayEffectSpecToSelf(
+				*SpecHandle.Data
+			);
+
+			UE_LOG(LogTemp, Log, TEXT("[Player] Mana Regen started"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Player] GE_ManaRegen not set!"));
+		}
+	}
 }
 
 // Called every frame
