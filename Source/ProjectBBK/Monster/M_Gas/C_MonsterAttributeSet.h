@@ -75,20 +75,9 @@ public:
 protected:
 
 	void ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage);
-
-	// Mana 충전 GE
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Mana")
 	TSubclassOf<UGameplayEffect> GE_ChargeMana;
-
-	// 충전량 설정
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Mana",
-		meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float ManaChargeRate = 0.05f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Mana")
 	float MinManaCharge = 0.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Mana")
 	float MaxManaCharge = 20.0f;
 #pragma endregion
 
