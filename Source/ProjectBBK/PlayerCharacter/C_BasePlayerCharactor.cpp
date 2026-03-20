@@ -666,15 +666,12 @@ void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData&
 	// UI ��������Ʈ ��ε�ĳ��Ʈ!
 	OnManaChanged.Broadcast(Percent);
 
-	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"),
-		Mana, MaxMana, Percent * 100.0f);
+	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"), Mana, MaxMana, Percent * 100.0f);
 
-	// 100% ���� �� �߰� ����
-	if (Percent >= 1.0f)
-	{
-		UE_LOG(LogBasePlayerCharacter, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
-		// TODO: �غ� �Ϸ� �̺�Ʈ
-	}
+	//if (Percent >= 1.0f)
+	//{
+	//	UE_LOG(LogBasePlayerCharacter, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
+	//}
 }
 
 void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData& Data)

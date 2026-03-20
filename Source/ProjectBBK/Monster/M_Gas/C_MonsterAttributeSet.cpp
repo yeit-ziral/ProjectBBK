@@ -9,6 +9,23 @@
 
 UC_MonsterAttributeSet::UC_MonsterAttributeSet()
 {
+	ManaChargeRate = 0.2f;
+	MinManaCharge = 1.0f;
+	MaxManaCharge = 20.0f;
+
+	static ConstructorHelpers::FClassFinder<UGameplayEffect> ChargeManaFinder(
+		TEXT("/Game/PlayerCharacter/Blueprint/GAS/Effects/GE_ChargeMana.GE_ChargeMana_C"));
+
+	if (ChargeManaFinder.Succeeded())
+	{
+		GE_ChargeMana = ChargeManaFinder.Class;
+		UE_LOG(LogTemp, Log, TEXT("[MonsterAttributeSet] GE_ChargeMana loaded successfully"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[MonsterAttributeSet] Failed to load GE_ChargeMana"));
+		UE_LOG(LogTemp, Error, TEXT("Check path: /Game/Skills/GE_ChargeMana.GE_ChargeMana_C"));
+	}
 }
 
 #pragma region onRep functions
@@ -60,6 +77,68 @@ void UC_MonsterAttributeSet::OnRep_NormalCooldown(const FGameplayAttributeData& 
 void UC_MonsterAttributeSet::OnRep_SpecialCooldown(const FGameplayAttributeData& OldValue)
 {
     GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, specialCooldown, OldValue);
+}
+
+void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage)
+{
+	// 1. Instigator (공격자) 가져오기
+	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
+	AActor* Instigator = EffectContext.GetInstigator();
+
+	if (!Instigator)
+		return;
+
+	// 2. 공격자 ASC 가져오기
+	UAbilitySystemComponent* InstigatorASC =
+		UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Instigator);
+
+	if (!InstigatorASC)
+		return;
+
+	// 3. 궁극기 사용 중인지 체크
+	FGameplayTag UsingUltimateTag =
+		FGameplayTag::RequestGameplayTag(FName("State.UsingUltimate"), false);
+
+	if (UsingUltimateTag.IsValid() &&
+		InstigatorASC->HasMatchingGameplayTag(UsingUltimateTag))
+	{
+		return; // 궁극기 사용 중엔 충전 안 함
+	}
+
+	// 4. Mana 충전량 계산
+	float ManaCharge = ActualDamage * ManaChargeRate;
+	ManaCharge = FMath::Clamp(ManaCharge, MinManaCharge, MaxManaCharge);
+
+	// 5. GE 확인
+	if (!GE_ChargeMana)
+		return;
+
+	// 6. GE Spec 생성
+	FGameplayEffectContextHandle ManaEffectContext =
+		InstigatorASC->MakeEffectContext();
+	ManaEffectContext.AddInstigator(Instigator, Instigator);
+
+	FGameplayEffectSpecHandle SpecHandle =
+		InstigatorASC->MakeOutgoingSpec(
+			GE_ChargeMana,
+			1.0f,
+			ManaEffectContext
+		);
+
+	if (!SpecHandle.IsValid())
+		return;
+
+	// 7. SetByCaller로 충전량 전달
+	FGameplayTag ManaChargeTag =
+		FGameplayTag::RequestGameplayTag(FName("Data.ManaCharge"), false);
+
+	if (!ManaChargeTag.IsValid())
+		return;
+
+	SpecHandle.Data->SetSetByCallerMagnitude(ManaChargeTag, ManaCharge);
+
+	// 8. GE 적용
+	InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
 #pragma endregion
@@ -121,6 +200,12 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 			NewHP, Mitigated);
 
         SetReceivedDamage(0.0f);
+
+		if (Mitigated > 0.0f)
+		{
+			ChargeAttackerMana(Data, Mitigated);
+		}
+
         return;
     }
 ///////////////////////////////////////////////////////////////////////////////////////////////

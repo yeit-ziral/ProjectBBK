@@ -260,6 +260,5 @@ void UC_UltimateGaugeWidget::OnManaChanged(const FOnAttributeChangeData& Data)
 	// 기존 UpdateGauge 호출
 	UpdateGauge(Percent);
 
-	UE_LOG(LogTemp, Log, TEXT("[UltimateGauge] Mana Changed: %.1f → %.1f / %.1f (%.0f%%)"),
-		Data.OldValue, Data.NewValue, MaxMana, Percent * 100.0f);
+	//UE_LOG(LogTemp, Log, TEXT("[UltimateGauge] Mana Changed: %.1f → %.1f / %.1f (%.0f%%)"), Data.OldValue, Data.NewValue, MaxMana, Percent * 100.0f);
 }
