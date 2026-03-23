@@ -71,6 +71,14 @@ public:
     FGameplayAttributeData specialCooldown;
     UFUNCTION() void OnRep_SpecialCooldown(const FGameplayAttributeData& OldValue);
 
+
+protected:
+
+	void ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage);
+	TSubclassOf<UGameplayEffect> GE_ChargeMana;
+	float ManaChargeRate = 0.05f;
+	float MinManaCharge = 0.0f;
+	float MaxManaCharge = 20.0f;
 #pragma endregion
 
 
@@ -99,5 +107,6 @@ public:
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
     virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
+
 
 };
