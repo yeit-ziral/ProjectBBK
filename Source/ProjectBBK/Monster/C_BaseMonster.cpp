@@ -10,6 +10,7 @@
 #include "Blueprint/UserWidget.h"
 #include "UI/C_BossMonsterHPWidget.h"
 #include "UI/C_NormalMonsterHPWidget.h"
+#include "TimerManager.h"
 
 // Sets default values
 AC_BaseMonster::AC_BaseMonster()
@@ -41,7 +42,7 @@ AC_BaseMonster::AC_BaseMonster()
 	HpWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HpWidget"));
 	HpWidgetComponent->SetupAttachment(GetRootComponent());
 	HpWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
-	HpWidgetComponent->SetDrawSize(FVector2D(220.0f, 60.0f));
+	HpWidgetComponent->SetDrawSize(FVector2D(500.0f, 110.0f));
 	HpWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
 	HpWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HpWidgetComponent->SetTwoSided(true);
@@ -83,8 +84,14 @@ void AC_BaseMonster::BeginPlay()
 		InitializeAttributesFromDataTable();
 	}
 
+	if (monsterAttributeSet)
+	{
+		monsterAttributeSet->SetcurGroggy(0.0f);
+	}
+
 	ApplyMonsterTypeTag();
 	InitializeMonsterHpWidget();
+	BindAttributeDelegates();
 	//////////////////////
 	if (GEngine)
 	{
@@ -99,6 +106,40 @@ void AC_BaseMonster::BeginPlay()
 		attackManager->Initialize(this);
 	
 	PrintMonsterTags();
+}
+
+// Called every frame
+void AC_BaseMonster::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	UpdateHpWidgetRotation();
+
+	/////////////////////
+	const float CurrentHp = GetcurHP();
+	const float MaxHp = GetmaxHP();
+
+	const float CurrentGroggy = GetcurGroggy();
+	const float MaxGroggy = GetmaxGroggy();
+
+	const FString DebugString = FString::Printf(
+		TEXT("[%s] HP : %.1f / %.1f | Groggy : %.1f / %.1f"),
+		*GetName(),
+		CurrentHp,
+		MaxHp,
+		CurrentGroggy,
+		MaxGroggy
+	);
+
+	GEngine->AddOnScreenDebugMessage(
+		reinterpret_cast<uint64>(this),
+		0.0f,
+		FColor::Red,
+		DebugString
+	);
+
+	AddGroggy(1.0f);
+	/////////////////////
 }
 
 void AC_BaseMonster::PostInitializeComponents()
@@ -228,18 +269,146 @@ void AC_BaseMonster::InitializeHpWidgetClass()
 	HpWidgetComponent->SetWidgetClass(WidgetClass);
 }
 
+void AC_BaseMonster::UpdateHpWidgetRotation()
+{
+	if (!HpWidgetComponent)
+		return;
+
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	if (!PlayerController)
+		return;
+
+	FRotator CameraRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
+
+	FRotator WidgetRotation = FRotator(0.0f, CameraRotation.Yaw + 180.0f, 0.0f);
+	HpWidgetComponent->SetWorldRotation(WidgetRotation);
+}
+
 TSubclassOf<UUserWidget> AC_BaseMonster::GetHpWidgetClass() const
 {
 	return hpWidgetClass;
 }
 
-
-// Called every frame
-void AC_BaseMonster::Tick(float DeltaTime)
+void AC_BaseMonster::BindAttributeDelegates()
 {
-	Super::Tick(DeltaTime);
+	if (!monsterASC)
+		return;
+
+	monsterASC->GetGameplayAttributeValueChangeDelegate
+    (UC_MonsterAttributeSet::GetcurHPAttribute()).AddUObject(this, &AC_BaseMonster::OnHpChanged);
+
+	monsterASC->GetGameplayAttributeValueChangeDelegate
+	(UC_MonsterAttributeSet::GetmaxHPAttribute()).AddUObject(this, &AC_BaseMonster::OnMaxHpChanged);
+
+	monsterASC->GetGameplayAttributeValueChangeDelegate
+	(UC_MonsterAttributeSet::GetcurGroggyAttribute()).AddUObject(this, &AC_BaseMonster::OnGroggyChanged);
+
+	monsterASC->GetGameplayAttributeValueChangeDelegate
+	(UC_MonsterAttributeSet::GetmaxGroggyAttribute()).AddUObject(this, &AC_BaseMonster::OnMaxGroggyChanged);
+}
+
+void AC_BaseMonster::OnHpChanged(const FOnAttributeChangeData& ChangeData)
+{
+	if (!MonsterHpWidget)
+		return;
+
+	MonsterHpWidget->SetCurrentHp(ChangeData.NewValue);
+
+	UE_LOG(LogTemp, Warning, TEXT("[%s] curHP Changed: %f"), *GetName(), ChangeData.NewValue);
+}
+
+void AC_BaseMonster::OnMaxHpChanged(const FOnAttributeChangeData& ChangeData)
+{
+	if (!MonsterHpWidget)
+		return;
+
+	MonsterHpWidget->SetMaxHp(ChangeData.NewValue);
+	MonsterHpWidget->SetCurrentHp(GetcurHP());
+
+	UE_LOG(LogTemp, Warning, TEXT("[%s] maxHP Changed: %f"), *GetName(), ChangeData.NewValue);
+}
+
+void AC_BaseMonster::OnGroggyChanged(const FOnAttributeChangeData& ChangeData)
+{
+	if (!MonsterHpWidget)
+		return;
+
+	MonsterHpWidget->SetCurrentGroggy(ChangeData.NewValue);
+
+	UE_LOG(LogTemp, Warning, TEXT("[%s] curGroggy Changed: %f"), *GetName(), ChangeData.NewValue);
+}
+
+void AC_BaseMonster::OnMaxGroggyChanged(const FOnAttributeChangeData& ChangeData)
+{
+	if (!MonsterHpWidget)
+		return;
+
+	MonsterHpWidget->SetMaxGroggy(ChangeData.NewValue);
+	MonsterHpWidget->SetCurrentGroggy(GetcurGroggy());
+
+	UE_LOG(LogTemp, Warning, TEXT("[%s] maxGroggy Changed: %f"), *GetName(), ChangeData.NewValue);
+}
+
+void AC_BaseMonster::AddGroggy(float GroggyAmount)
+{
+	if (!monsterAttributeSet)
+		return;
+
+	const float CurrentGroggyValue = GetcurGroggy();
+	const float MaxGroggyValue = GetmaxGroggy();
+
+	const float NewGroggyValue = FMath::Clamp(
+		CurrentGroggyValue + GroggyAmount,
+		0.0f,
+		MaxGroggyValue
+	);
+
+	monsterAttributeSet->SetcurGroggy(NewGroggyValue);
+
+	if (MonsterHpWidget)
+	{
+		MonsterHpWidget->SetCurrentGroggy(NewGroggyValue);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[%s] Groggy : %.1f / %.1f"),
+		*GetName(),
+		NewGroggyValue,
+		MaxGroggyValue
+	);
+
+	if (NewGroggyValue >= MaxGroggyValue)
+	{
+		if (!GetWorldTimerManager().IsTimerActive(groggyResetTimerHandle))
+		{
+			GetWorldTimerManager().SetTimer(
+				groggyResetTimerHandle,
+				this,
+				&AC_BaseMonster::ResetGroggy,
+				5.0f,
+				false
+			);
+
+			UE_LOG(LogTemp, Warning, TEXT("[%s] Groggy max reached. Reset in 5 seconds."), *GetName());
+		}
+	}
+}
+
+void AC_BaseMonster::ResetGroggy()
+{
+	if (!monsterAttributeSet)
+		return;
+
+	monsterAttributeSet->SetcurGroggy(0.0f);
+
+	if (MonsterHpWidget)
+	{
+		MonsterHpWidget->SetCurrentGroggy(monsterAttributeSet->GetcurGroggy());
+	}
 
 }
+
+
+
 
 // Called to bind functionality to input
 void AC_BaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

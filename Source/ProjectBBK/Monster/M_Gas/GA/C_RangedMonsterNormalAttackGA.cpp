@@ -109,7 +109,6 @@ void UC_RangedMonsterNormalAttackGA::OnFireProjectileEvent(FGameplayEventData Pa
 		proj->InitVelocity(dir); 
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("GA: Projectile Fired"));
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
 }

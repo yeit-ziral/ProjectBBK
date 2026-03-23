@@ -33,13 +33,13 @@ void UC_BossMonsterHPWidget::UpdateWidget()
 
     if (BossHpBar)
     {
-        const float HpPercent = (maxHp > 0.0f) ? (currentHp / maxHp) : 0.0f;
+        const float HpPercent = (maxHp > 0.0f) ? (curHp / maxHp) : 0.0f;
         BossHpBar->SetPercent(HpPercent);
     }
 
     if (BossGroggyBar)
     {
-        const float GroggyPercent = (maxGroggy > 0.0f) ? (currentGroggy / maxGroggy) : 0.0f;
+        const float GroggyPercent = (maxGroggy > 0.0f) ? (curGroggy / maxGroggy) : 0.0f;
         BossGroggyBar->SetPercent(GroggyPercent);
     }
 }

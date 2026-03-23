@@ -32,6 +32,9 @@ private:
     UTextBlock* MonsterNameText;
 
     UPROPERTY(meta = (BindWidget))
+    UTextBlock* HpText;
+
+    UPROPERTY(meta = (BindWidget))
     UProgressBar* HpBar;
 
     UPROPERTY(meta = (BindWidget))
