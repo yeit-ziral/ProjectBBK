@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "AbilitySystemComponent.h"
 #include "C_UltimateGaugeWidget.generated.h"
+
+struct FOnAttributeChangeData;
 
 class UProgressBar;
 class UTextBlock;
@@ -21,6 +24,7 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual void NativeDestruct() override;
 
 public:
 	// ===== UI Elements (BindWidget) =====
@@ -42,6 +46,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Ultimate Gauge")
 	void PlayReadyAnimation();
+
+private:
+	void InitializeGauge(); 
+
+	// Mana 변경 콜백
+	void OnManaChanged(const FOnAttributeChangeData& Data);
+
+	// ASC 캐싱
+	UPROPERTY()
+	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
+
+	// Delegate Handle (언바인딩용)
+	FDelegateHandle ManaChangedHandle;
 
 protected:
 	// ===== Settings =====

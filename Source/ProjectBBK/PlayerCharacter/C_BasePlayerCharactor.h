@@ -216,4 +216,7 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Abilities")
 	TArray<TSubclassOf<class UGameplayEffect>> startupEffects; // any other gameplay effects to apply like glowing, etc.
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mana")
+	TSubclassOf<UGameplayEffect> GE_ManaRegen;
 };

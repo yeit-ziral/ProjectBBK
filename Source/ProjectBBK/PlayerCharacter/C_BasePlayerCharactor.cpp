@@ -76,6 +76,43 @@ void AC_BasePlayerCharactor::BeginPlay()
 			Subsystem->AddMappingContext(playerMappingContext, 0);
 		}
 	}
+
+	if (abilitySystemComponent.IsValid())
+	{
+		// 초기 Mana 설정
+		if (const UC_ChracterAttributeSetBase* Attributes =
+			abilitySystemComponent->GetSet<UC_ChracterAttributeSetBase>())
+		{
+			abilitySystemComponent->SetNumericAttributeBase(
+				Attributes->GetmanaAttribute(), 0.0f);
+			abilitySystemComponent->SetNumericAttributeBase(
+				Attributes->GetmaxManaAttribute(), 100.0f);
+		}
+
+		// Mana Regen GE 적용
+		if (GE_ManaRegen)
+		{
+			FGameplayEffectContextHandle EffectContext =
+				abilitySystemComponent->MakeEffectContext();
+
+			FGameplayEffectSpecHandle SpecHandle =
+				abilitySystemComponent->MakeOutgoingSpec(
+					GE_ManaRegen,
+					1.0f,
+					EffectContext
+				);
+
+			abilitySystemComponent->ApplyGameplayEffectSpecToSelf(
+				*SpecHandle.Data
+			);
+
+			UE_LOG(LogTemp, Log, TEXT("[Player] Mana Regen started"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Player] GE_ManaRegen not set!"));
+		}
+	}
 }
 
 // Called every frame
@@ -629,15 +666,12 @@ void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData&
 	// UI ��������Ʈ ��ε�ĳ��Ʈ!
 	OnManaChanged.Broadcast(Percent);
 
-	UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"),
-		Mana, MaxMana, Percent * 100.0f);
+	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"), Mana, MaxMana, Percent * 100.0f);
 
-	// 100% ���� �� �߰� ����
-	if (Percent >= 1.0f)
-	{
-		UE_LOG(LogBasePlayerCharacter, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
-		// TODO: �غ� �Ϸ� �̺�Ʈ
-	}
+	//if (Percent >= 1.0f)
+	//{
+	//	UE_LOG(LogBasePlayerCharacter, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
+	//}
 }
 
 void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData& Data)
