@@ -11,7 +11,7 @@ void UC_MonsterHPWidgetBase::SetMaxHp(float NewMaxHp)
 
 void UC_MonsterHPWidgetBase::SetCurrentHp(float NewCurrentHp)
 {
-	currentHp = FMath::Clamp(NewCurrentHp, 0.0f, maxHp);
+	curHp = FMath::Clamp(NewCurrentHp, 0.0f, maxHp);
 	UpdateWidget();
 }
 
@@ -23,7 +23,7 @@ void UC_MonsterHPWidgetBase::SetMaxGroggy(float NewMaxGroggy)
 
 void UC_MonsterHPWidgetBase::SetCurrentGroggy(float NewCurrentGroggy)
 {
-	currentGroggy = FMath::Clamp(NewCurrentGroggy, 0.0f, maxGroggy);
+	curGroggy = FMath::Clamp(NewCurrentGroggy, 0.0f, maxGroggy);
 	UpdateWidget();
 }
 

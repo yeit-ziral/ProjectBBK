@@ -20,10 +20,6 @@ void AC_RangedMonster::BeginPlay()
 {
 	Super::BeginPlay();
 	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
-	//if (MonsterHpWidget)
-	//{
-	//	MonsterHpWidget->SetCurrentHp(GetmaxHP() * 0.5f);
-	//}
 
 }
 
@@ -112,5 +108,4 @@ void AC_RangedMonster::SpawnProjectile()
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("RangedMonster: projectile spawned"));
 }

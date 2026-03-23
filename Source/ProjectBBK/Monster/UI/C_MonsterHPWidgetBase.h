@@ -31,13 +31,13 @@ protected:
     float maxHp = 1.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster UI")
-    float currentHp = 1.0f;
+    float curHp = 1.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster UI")
     float maxGroggy = 1.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster UI")
-    float currentGroggy = 1.0f;
+    float curGroggy = 1.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster UI")
     int32 monsterLevel = 1;

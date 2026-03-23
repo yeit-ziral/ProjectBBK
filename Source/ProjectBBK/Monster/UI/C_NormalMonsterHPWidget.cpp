@@ -34,13 +34,19 @@ void UC_NormalMonsterHPWidget::UpdateWidget()
 
     if (HpBar)
     {
-        const float HpPercent = (maxHp > 0.0f) ? (currentHp / maxHp) : 0.0f;
+        const float HpPercent = (maxHp > 0.0f) ? (curHp / maxHp) : 0.0f;
         HpBar->SetPercent(HpPercent);
+    }
+
+    if (HpText)
+    {
+        FString HpString = FString::Printf(TEXT("%.0f"), curHp);
+        HpText->SetText(FText::FromString(HpString));
     }
 
     if (GroggyBar)
     {
-        const float GroggyPercent = (maxGroggy > 0.0f) ? (currentGroggy / maxGroggy) : 0.0f;
+        const float GroggyPercent = (maxGroggy > 0.0f) ? (curGroggy / maxGroggy) : 0.0f;
         GroggyBar->SetPercent(GroggyPercent);
     }
 }

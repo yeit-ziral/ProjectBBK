@@ -1,2 +1,2 @@
 ﻿RawName,MonsterId,MaxHP,MaxGroggy,Attack,Defense,AttackRange,MoveSpeed,NormalCoolDown,SpecialCoolDown
-Rocket,1002,300,35,50,250,1100,500,3,10
+Rocket,1002,300,350,50,250,1100,500,3,10

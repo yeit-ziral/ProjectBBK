@@ -33,6 +33,9 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
 	virtual void PostInitializeComponents() override;
 
 protected:	 //protected variables
@@ -84,14 +87,31 @@ protected:	 //protected variables
 
 	void InitializeMonsterHpWidget();
 	void InitializeHpWidgetClass();
+	void UpdateHpWidgetRotation();
 	virtual TSubclassOf<UUserWidget> GetHpWidgetClass() const;
 #pragma endregion
+
+	void BindAttributeDelegates();
+
+	void OnHpChanged(const FOnAttributeChangeData& ChangeData);
+	void OnMaxHpChanged(const FOnAttributeChangeData& ChangeData);
+
+	void OnGroggyChanged(const FOnAttributeChangeData& ChangeData);
+	void OnMaxGroggyChanged(const FOnAttributeChangeData& ChangeData);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Manager")
 	UC_AttackManagerComponent* attackManager = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
 	UBehaviorTree* behaviorTree;
+
+	UFUNCTION(BlueprintCallable, Category = "Monster|Groggy")
+	void AddGroggy(float GroggyAmount);
+
+	UFUNCTION(BlueprintCallable, Category = "Monster|Groggy")
+	void ResetGroggy();
+
+	FTimerHandle groggyResetTimerHandle;
 
 public: // public functions
 
@@ -117,8 +137,7 @@ public: // public functions
 
 	UC_MonsterASC* GetMonsterASC() const { return monsterASC; }
 
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
