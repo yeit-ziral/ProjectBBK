@@ -116,27 +116,6 @@ void AC_BaseMonster::Tick(float DeltaTime)
 	UpdateHpWidgetRotation();
 
 	/////////////////////
-	const float CurrentHp = GetcurHP();
-	const float MaxHp = GetmaxHP();
-
-	const float CurrentGroggy = GetcurGroggy();
-	const float MaxGroggy = GetmaxGroggy();
-
-	const FString DebugString = FString::Printf(
-		TEXT("[%s] HP : %.1f / %.1f | Groggy : %.1f / %.1f"),
-		*GetName(),
-		CurrentHp,
-		MaxHp,
-		CurrentGroggy,
-		MaxGroggy
-	);
-
-	GEngine->AddOnScreenDebugMessage(
-		reinterpret_cast<uint64>(this),
-		0.0f,
-		FColor::Red,
-		DebugString
-	);
 
 	AddGroggy(1.0f);
 	/////////////////////
@@ -314,7 +293,6 @@ void AC_BaseMonster::OnHpChanged(const FOnAttributeChangeData& ChangeData)
 
 	MonsterHpWidget->SetCurrentHp(ChangeData.NewValue);
 
-	UE_LOG(LogTemp, Warning, TEXT("[%s] curHP Changed: %f"), *GetName(), ChangeData.NewValue);
 }
 
 void AC_BaseMonster::OnMaxHpChanged(const FOnAttributeChangeData& ChangeData)
@@ -325,7 +303,6 @@ void AC_BaseMonster::OnMaxHpChanged(const FOnAttributeChangeData& ChangeData)
 	MonsterHpWidget->SetMaxHp(ChangeData.NewValue);
 	MonsterHpWidget->SetCurrentHp(GetcurHP());
 
-	UE_LOG(LogTemp, Warning, TEXT("[%s] maxHP Changed: %f"), *GetName(), ChangeData.NewValue);
 }
 
 void AC_BaseMonster::OnGroggyChanged(const FOnAttributeChangeData& ChangeData)
@@ -335,7 +312,6 @@ void AC_BaseMonster::OnGroggyChanged(const FOnAttributeChangeData& ChangeData)
 
 	MonsterHpWidget->SetCurrentGroggy(ChangeData.NewValue);
 
-	UE_LOG(LogTemp, Warning, TEXT("[%s] curGroggy Changed: %f"), *GetName(), ChangeData.NewValue);
 }
 
 void AC_BaseMonster::OnMaxGroggyChanged(const FOnAttributeChangeData& ChangeData)
@@ -346,7 +322,6 @@ void AC_BaseMonster::OnMaxGroggyChanged(const FOnAttributeChangeData& ChangeData
 	MonsterHpWidget->SetMaxGroggy(ChangeData.NewValue);
 	MonsterHpWidget->SetCurrentGroggy(GetcurGroggy());
 
-	UE_LOG(LogTemp, Warning, TEXT("[%s] maxGroggy Changed: %f"), *GetName(), ChangeData.NewValue);
 }
 
 void AC_BaseMonster::AddGroggy(float GroggyAmount)
@@ -370,11 +345,6 @@ void AC_BaseMonster::AddGroggy(float GroggyAmount)
 		MonsterHpWidget->SetCurrentGroggy(NewGroggyValue);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[%s] Groggy : %.1f / %.1f"),
-		*GetName(),
-		NewGroggyValue,
-		MaxGroggyValue
-	);
 
 	if (NewGroggyValue >= MaxGroggyValue)
 	{
@@ -388,7 +358,6 @@ void AC_BaseMonster::AddGroggy(float GroggyAmount)
 				false
 			);
 
-			UE_LOG(LogTemp, Warning, TEXT("[%s] Groggy max reached. Reset in 5 seconds."), *GetName());
 		}
 	}
 }
