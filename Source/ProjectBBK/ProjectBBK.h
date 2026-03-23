@@ -16,4 +16,5 @@ enum class ProjectBBKAbilityID : uint8
 	CommonSkill		UMETA(DisplayName = "CommonSkill"),
 	UniqueSkill		UMETA(DisplayName = "UniqueSkill"),
 	Ultimate		UMETA(DisplayName = "Ultimate"),
+	Shield			UMETA(DisplayName = "Shield"),
 };
