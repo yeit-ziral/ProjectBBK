@@ -68,6 +68,10 @@ public:
 	FGameplayAttributeData maxStamina;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxStamina)
 
+	UPROPERTY(BlueprintReadOnly, Category = "Meta")
+	FGameplayAttributeData receivedDamage;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, receivedDamage)
+
 	UFUNCTION()
 	virtual void OnRep_level(const FGameplayAttributeData& OldLevel);
 
@@ -95,6 +99,9 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_maxStamina(const FGameplayAttributeData& OldMaxStamina);
+
+	UFUNCTION()
+	virtual void OnRep_ReceivedDamage(const FGameplayAttributeData& OldReceivedDamage);
 
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
