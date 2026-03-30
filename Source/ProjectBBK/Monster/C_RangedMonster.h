@@ -22,28 +22,55 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Attack")
 	void RangedSpecialAttack();
 
+	// BTì—ì„œ í˜¸ì¶œ â€” ìŠ¤í˜ì…œ ì¿¨íƒ€ì„ ì—¬ë¶€ì— ë”°ë¼ ìŠ¤í˜ì…œ/ë…¸ë§ ìë™ ì„ íƒ
+	UFUNCTION(BlueprintCallable, Category = "Attack")
+	void RangedAutoAttack();
+
 protected:
 	virtual void BeginPlay() override;
 
-	// ¾Ö´Ï¸ŞÀÌ¼Ç (BearMonster¿Í µ¿ÀÏÇÑ ¹æ½Ä)
+	// ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ (BearMonsterï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½)
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* rangedNormalMontage = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* rangedSpecialMontage = nullptr;
 
-	// ¹ß»çÃ¼ (BP·Î ÁöÁ¤ °¡´É)
+	// ì¼ë°˜ ê³µê²© ë°œì‚¬ì²´
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	TSubclassOf<AActor> projectileClass = nullptr;
 
-	// ÃÑ±¸/¼Õ ¼ÒÄÏ
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	FName muzzleSocketName = TEXT("Muzzle");
 
-	// ¹ß»çÃ¼ ½ºÆù ¿ÀÇÁ¼Â (¼ÒÄÏ ¾øÀ» ¶§ ´ëºñ)
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	FVector muzzleOffset = FVector(50.f, 0.f, 50.f);
 
+	// ë…¸ë§ ê³µê²© GA (AnimNotify â†’ GameplayEvent â†’ ë°œì‚¬ì²´ ìŠ¤í° ì²´ì¸ ìœ ì§€)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TSubclassOf<UGameplayAbility> normalAttackGAClass;
+
+	// ìŠ¤í˜ì…œ ê³µê²© ë°œì‚¬ì²´
+	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
+	TSubclassOf<AActor> specialProjectileClass = nullptr;
+
+	// ë“± ë’¤ ë°œì‚¬ ì†Œì¼“ (ì—†ìœ¼ë©´ backOffset ì‚¬ìš©)
+	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
+	FName backSocketName = TEXT("Back");
+
+	// ë“± ë’¤ ì†Œì¼“ ì—†ì„ ë•Œ ìŠ¤í° ì˜¤í”„ì…‹ (ëª¬ìŠ¤í„° ê¸°ì¤€ ë’¤ìª½)
+	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
+	FVector backOffset = FVector(-100.f, 0.f, 50.f);
+
+	// í¬ë¬¼ì„  í˜¸ ë†’ì´ (cm)
+	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
+	float specialArcHeight = 1000.f;
+
+	// ìŠ¤í˜ì…œ ë°œì‚¬ì²´ ì´ë™ ì†ë„ (cm/s)
+	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
+	float specialProjectileSpeed = 800.f;
+
 private:
 	void SpawnProjectile();
+	void SpawnSpecialProjectile();
 };

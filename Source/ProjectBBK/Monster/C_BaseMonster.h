@@ -105,11 +105,17 @@ protected:	 //protected variables
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
 	UBehaviorTree* behaviorTree;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Groggy")
+	UAnimMontage* groggyMontage;
+
 	UFUNCTION(BlueprintCallable, Category = "Monster|Groggy")
 	void AddGroggy(float GroggyAmount);
 
 	UFUNCTION(BlueprintCallable, Category = "Monster|Groggy")
 	void ResetGroggy();
+
+	void EnterGroggyState();
+	void ExitGroggyState();
 
 	FTimerHandle groggyResetTimerHandle;
 
@@ -128,6 +134,8 @@ public: // public functions
 	int32 GetAttack() const { return monsterAttributeSet->Getattack(); }
 
 	float GetAttackCooldown() const { return monsterAttributeSet->GetnormalCooldown(); }
+
+	float GetSpecialCooldown() const { return monsterAttributeSet->GetspecialCooldown(); }
 
 	float GetAttackRange() const { return monsterAttributeSet->GetattackRange(); }
 

@@ -10,6 +10,8 @@
 void UC_NormalMonsterHPWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	if (MonsterNameText)
+		MonsterNameText->SetJustification(ETextJustify::Center);
 	UpdateWidget();
 }
 
@@ -18,6 +20,7 @@ void UC_NormalMonsterHPWidget::UpdateWidget()
     if (LevelText)
     {
         LevelText->SetText(FText::FromString(FString::Printf(TEXT("Lv.%d"), monsterLevel)));
+        LevelText->SetVisibility(bUseStatusText ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
     }
 
     if (MonsterNameText)

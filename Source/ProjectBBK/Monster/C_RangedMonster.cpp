@@ -2,6 +2,7 @@
 
 
 #include "C_RangedMonster.h"
+#include "Object/C_SpecialProjectile.h"
 #include "Manager/C_AttackManagerComponent.h"
 #include "Data/AttackTypes.h"
 
@@ -23,48 +24,112 @@ void AC_RangedMonster::BeginPlay()
 
 }
 
+void AC_RangedMonster::RangedAutoAttack()
+{
+	if (!attackManager) return;
+
+	// ìŠ¤íŽ˜ì…œ ì¿¨íƒ€ìž„ì´ ëë‚¬ìœ¼ë©´ ìŠ¤íŽ˜ì…œ, ì•„ë‹ˆë©´ ë…¸ë§
+	if (attackManager->CanSpecialAttack())
+	{
+		RangedSpecialAttack();
+	}
+	else
+	{
+		RangedNormalAttack();
+	}
+}
+
 void AC_RangedMonster::RangedNormalAttack()
 {
-	if (!attackManager)
-		return;
-
-	UE_LOG(LogTemp, Warning, TEXT("RangedMonster °ø°Ý ½Ãµµ"));
+	if (!attackManager) return;
 
 	if (attackManager->DoNormalAttack())
 	{
-		if (!rangedNormalMontage)
-			UE_LOG(LogTemp, Warning, TEXT("no normal montage"))
+		// GAë¥¼ ì§ì ‘ í™œì„±í™” â†’ GAê°€ ëª½íƒ€ì£¼ ìž¬ìƒ â†’ AnimNotify â†’ GameplayEvent â†’ ë°œì‚¬ì²´ ìŠ¤í°
+		if (normalAttackGAClass && monsterASC)
+		{
+			monsterASC->TryActivateAbilityByClass(normalAttackGAClass);
+		}
 		else
-			UE_LOG(LogTemp, Warning, TEXT("yes normal montage"));
-
-		PlayAnimMontage(rangedNormalMontage);
-
-		// ¿ø°Å¸® ÇÙ½É: ½î±â
-		SpawnProjectile();
+		{
+			UE_LOG(LogTemp, Warning, TEXT("RangedMonster: normalAttackGAClass or monsterASC is NULL"));
+		}
 	}
 }
 
 void AC_RangedMonster::RangedSpecialAttack()
 {
-	UE_LOG(LogTemp, Warning, TEXT("RangedSpecialAttack È£ÃâµÊ attackManager = %s"),
+	UE_LOG(LogTemp, Warning, TEXT("RangedSpecialAttack È£ï¿½ï¿½ï¿½ attackManager = %s"),
 		attackManager ? TEXT("VALID") : TEXT("NULL"));
 
 	if (!attackManager)
 		return;
 
-	UE_LOG(LogTemp, Warning, TEXT("RangedMonster Æ¯¼ö °ø°Ý ½Ãµµ"));
+	UE_LOG(LogTemp, Warning, TEXT("RangedMonster Æ¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ãµï¿½"));
 
 	if (attackManager->DoSpecialAttack())
 	{
 		if (!rangedSpecialMontage)
-			UE_LOG(LogTemp, Warning, TEXT("no montage"));
+			UE_LOG(LogTemp, Warning, TEXT("no special montage"));
 		PlayAnimMontage(rangedSpecialMontage);
 
-		// Æ¯¼ö °ø°Ýµµ ÀÏ´Ü ¹ß»ç 1È¸ (¿øÇÏ¸é ¿¬»ç/»êÅºÀ¸·Î È®Àå)
-		SpawnProjectile();
+		SpawnSpecialProjectile();
 	}
 }
 
+
+void AC_RangedMonster::SpawnSpecialProjectile()
+{
+	if (!specialProjectileClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: specialProjectileClass is NULL"));
+		return;
+	}
+
+	UWorld* world = GetWorld();
+	if (!world) return;
+
+	// ë“± ë’¤ ìŠ¤í° ìœ„ì¹˜ ê²°ì •
+	FVector spawnLocation = GetActorLocation() + GetActorForwardVector() * backOffset.X
+	                                           + GetActorRightVector()   * backOffset.Y
+	                                           + GetActorUpVector()      * backOffset.Z;
+
+	USkeletalMeshComponent* meshComp = GetMesh();
+	if (meshComp && meshComp->DoesSocketExist(backSocketName))
+	{
+		spawnLocation = meshComp->GetSocketLocation(backSocketName);
+	}
+
+	// íƒ€ê²Ÿ(í”Œë ˆì´ì–´) ìœ„ì¹˜ íšë“
+	APawn* playerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!playerPawn)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: no player pawn found for special attack"));
+		return;
+	}
+	const FVector targetPos = playerPawn->GetActorLocation();
+
+	// ìŠ¤í°
+	FActorSpawnParameters spawnParams;
+	spawnParams.Owner = this;
+	spawnParams.Instigator = GetInstigator();
+
+	AActor* spawnedActor = world->SpawnActor<AActor>(specialProjectileClass, spawnLocation, FRotator::ZeroRotator, spawnParams);
+	if (!spawnedActor)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: special projectile spawn failed"));
+		return;
+	}
+
+	AC_SpecialProjectile* specialProjectile = Cast<AC_SpecialProjectile>(spawnedActor);
+	if (!specialProjectile)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: specialProjectileClass is not AC_SpecialProjectile"));
+		return;
+	}
+
+	specialProjectile->InitSpecialProjectile(targetPos, specialArcHeight, specialProjectileSpeed);
+}
 
 void AC_RangedMonster::SpawnProjectile()
 {
@@ -78,14 +143,14 @@ void AC_RangedMonster::SpawnProjectile()
 	if (!world)
 		return;
 
-	// ½ºÆù À§Ä¡/È¸Àü °è»ê
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡/È¸ï¿½ï¿½ ï¿½ï¿½ï¿½
 	FVector spawnLocation = GetActorLocation() + muzzleOffset;
 	FRotator spawnRotation = GetActorRotation();
 
 	USkeletalMeshComponent* meshComp = GetMesh();
 	if (meshComp)
 	{
-		// ¼ÒÄÏÀÌ ÀÖÀ¸¸é ¼ÒÄÏ ±âÁØÀ¸·Î ¹ß»ç
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½
 		if (meshComp->DoesSocketExist(muzzleSocketName))
 		{
 			const FTransform socketTransform = meshComp->GetSocketTransform(muzzleSocketName);
@@ -94,9 +159,9 @@ void AC_RangedMonster::SpawnProjectile()
 		}
 	}
 
-	// Å¸°Ù ¹æÇâÀ¸·Î ½î°í ½ÍÀ¸¸é(°¡Àå ÈçÇÑ ¹æ½Ä) "ÇöÀç ¹Ù¶óº¸´Â ¹æÇâ" ´ë½Å TargetActor¸¦ ½áµµ µÊ
-	// (BaseMonster¿¡ targetActor °°Àº °Ô ÀÖÀ¸¸é °Å±â¿¡ ¸ÂÃç ¹Ù²ãÁÙ°Ô)
-	// ¿©±â¼­´Â ÀÏ´Ü ¸ó½ºÅÍ Àü¹æ ±âÁØÀ¸·Î ¹ß»ç
+	// Å¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½) "ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¶óº¸´ï¿½ ï¿½ï¿½ï¿½ï¿½" ï¿½ï¿½ï¿½ TargetActorï¿½ï¿½ ï¿½áµµ ï¿½ï¿½
+	// (BaseMonsterï¿½ï¿½ targetActor ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Å±â¿¡ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù²ï¿½ï¿½Ù°ï¿½)
+	// ï¿½ï¿½ï¿½â¼­ï¿½ï¿½ ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½
 	FActorSpawnParameters spawnParams;
 	spawnParams.Owner = this;
 	spawnParams.Instigator = GetInstigator();

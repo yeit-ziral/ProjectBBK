@@ -10,7 +10,17 @@
 UC_MonsterBTService::UC_MonsterBTService()
 {
     NodeName = TEXT("Monster BT Service");
+	bNotifyBecomeRelevant = true;
 	bNotifyTick = true;
+	Interval = 0.1f;
+	RandomDeviation = 0.0f;
+}
+
+void UC_MonsterBTService::OnBecomeRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+{
+    Super::OnBecomeRelevant(OwnerComp, NodeMemory);
+    // BT 시작 즉시 타겟 탐색 — 첫 Tick을 기다리지 않음
+    TickNode(OwnerComp, NodeMemory, 0.f);
 }
 
 void UC_MonsterBTService::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
