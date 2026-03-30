@@ -58,6 +58,11 @@ void UC_ChracterAttributeSetBase::OnRep_maxStamina(const FGameplayAttributeData&
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, maxStamina, OldMaxStamina);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_ReceivedDamage(const FGameplayAttributeData& OldReceivedDamage)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, receivedDamage, OldReceivedDamage);
+}
+
 void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
 	Super::PreAttributeChange(Attribute, NewValue);
@@ -217,28 +222,95 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 	//	}
 	//}
 
-	else if (Data.EvaluatedData.Attribute == GetdamageAttribute())
+	//else if (Data.EvaluatedData.Attribute == GetdamageAttribute())
+	//{
+	//	//Apply damage to shield first
+	//	float RemainingDamage = Getdamage();
+	//	if (RemainingDamage > 0.0f)
+	//	{
+	//		float CurrentShield = Getshield();
+
+	//		UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+	//		if (ASC && ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active")))
+	//		{
+	//			// ���� ���� ���� ������ 0 ó��
+	//			Setdamage(0.0f);
+
+	//			// ������ �� �� ������ �ٷ� ����
+	//			ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Broken"));
+	//			ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active"));
+
+	//			return;
+	//		}
+
+	//		//this is for shield, need to change with upper codes
+	//		if (CurrentShield > 0.0f)
+	//		{
+	//			if (RemainingDamage >= CurrentShield)
+	//			{
+	//				RemainingDamage -= CurrentShield;
+	//				Setshield(0.0f);
+	//			}
+	//			else
+	//			{
+	//				Setshield(CurrentShield - RemainingDamage);
+	//				RemainingDamage = 0.0f;
+	//			}
+	//		}
+	//		//End shield application
+	//	}
+	//	//Apply remaining damage to health
+	//	if (RemainingDamage > 0.0f)
+	//	{
+	//		float CurrentHealth = Gethealth();
+	//		if (RemainingDamage >= CurrentHealth)
+	//		{
+	//			Sethealth(0.0f);
+	//		}
+	//		else
+	//		{
+	//			Sethealth(CurrentHealth - RemainingDamage); // Sethealth(FMath::Clamp(Gethealth(), 0.0f, GetmaxHealth()));
+	//		}
+	//	}
+	//	//Reset damage to zero after applying
+	//	Setdamage(0.0f);
+	//}
+
+	else if (Data.EvaluatedData.Attribute == GetreceivedDamageAttribute()) // damage -> ReceivedDamage로 변경
 	{
-		//Apply damage to shield first
-		float RemainingDamage = Getdamage();
-		if (RemainingDamage > 0.0f)
+		float RemainingDamage = GetreceivedDamage();
+		UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+
+		if (RemainingDamage > 0.0f && ASC)
 		{
-			float CurrentShield = Getshield();
-
-			UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
-			if (ASC && ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active")))
+			// 1. State.Shield 태그 확인 (1회 무효화 로직)
+			FGameplayTag ShieldTag = FGameplayTag::RequestGameplayTag(FName("State.Shield"));
+			if (ASC->HasMatchingGameplayTag(ShieldTag))
 			{
-				// ���� ���� ���� ������ 0 ó��
-				Setdamage(0.0f);
+				// 데미지 완전 무효화
+				SetreceivedDamage(0.0f);
 
-				// ������ �� �� ������ �ٷ� ����
-				ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Broken"));
-				ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active"));
+				// 실드 제거 (LooseTag를 사용 중이시라면 RemoveLooseGameplayTag 사용)
+				// 보통 GA에서 부여한 태그라면 RemoveActiveEffectsWithGrantedTags 등을 쓰기도 하지만, 
+				// 직접 태그를 제어하신다면 아래 방식이 유지됩니다.
+				ASC->RemoveLooseGameplayTag(ShieldTag);
 
+				// 무효화되었으므로 이후 로직 중단
 				return;
 			}
 
-			//this is for shield, need to change with upper codes
+			// 2. 가드 상태 확인 (기존 로직 유지 필요 시)
+			FGameplayTag GuardTag = FGameplayTag::RequestGameplayTag(FName("State.Guard.Active"));
+			if (ASC->HasMatchingGameplayTag(GuardTag))
+			{
+				SetreceivedDamage(0.0f);
+				ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Guard.Broken")));
+				ASC->RemoveLooseGameplayTag(GuardTag);
+				return;
+			}
+
+			// 3. 실드 수치(Shield Attribute) 차감 로직
+			float CurrentShield = Getshield();
 			if (CurrentShield > 0.0f)
 			{
 				if (RemainingDamage >= CurrentShield)
@@ -252,24 +324,20 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 					RemainingDamage = 0.0f;
 				}
 			}
-			//End shield application
-		}
-		//Apply remaining damage to health
-		if (RemainingDamage > 0.0f)
-		{
-			float CurrentHealth = Gethealth();
-			if (RemainingDamage >= CurrentHealth)
+
+			// 4. 남은 데미지를 체력(Health)에 적용
+			if (RemainingDamage > 0.0f)
 			{
-				Sethealth(0.0f);
-			}
-			else
-			{
-				Sethealth(CurrentHealth - RemainingDamage); // Sethealth(FMath::Clamp(Gethealth(), 0.0f, GetmaxHealth()));
+				float CurrentHealth = Gethealth();
+				// FMath::Clamp를 사용하여 안정적으로 수치 설정
+				float NewHealth = FMath::Clamp(CurrentHealth - RemainingDamage, 0.0f, GetmaxHealth());
+				Sethealth(NewHealth);
 			}
 		}
-		//Reset damage to zero after applying
-		Setdamage(0.0f);
-	}
+
+		// 데미지 처리 완료 후 초기화
+		SetreceivedDamage(0.0f);
+		}
 }
 
 void UC_ChracterAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
