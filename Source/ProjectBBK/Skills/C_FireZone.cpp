@@ -19,8 +19,6 @@ AC_FireZone::AC_FireZone()
 void AC_FireZone::BeginPlay()
 {
 	Super::BeginPlay();
-
-	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AC_FireZone::OnBeginOverlap);
 }
 
 void AC_FireZone::Initialize(
@@ -38,13 +36,16 @@ void AC_FireZone::Initialize(
 
 	CollisionSphere->SetSphereRadius(InRadius);
 
-	// 존 생성 시점에 이미 범위 안에 있는 몬스터에게도 즉시 적용
+	// 존 생성 시점에 이미 범위 안에 있는 몬스터에게 즉시 적용
 	TArray<AActor*> OverlappingActors;
 	CollisionSphere->GetOverlappingActors(OverlappingActors, AC_BaseMonster::StaticClass());
 	for (AActor* Actor : OverlappingActors)
 	{
 		ApplyEffectToTarget(Actor);
 	}
+
+	// 이후 진입하는 몬스터를 위해 바인딩 (GetOverlappingActors 이후에 등록해 중복 적용 방지)
+	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AC_FireZone::OnBeginOverlap);
 
 	// 수명 타이머
 	GetWorldTimerManager().SetTimer(
