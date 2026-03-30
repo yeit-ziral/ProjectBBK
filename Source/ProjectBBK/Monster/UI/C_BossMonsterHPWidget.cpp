@@ -8,7 +8,8 @@
 void UC_BossMonsterHPWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	if (BossNameText)
+		BossNameText->SetJustification(ETextJustify::Center);
 	UpdateWidget();
 }
 
@@ -17,6 +18,7 @@ void UC_BossMonsterHPWidget::UpdateWidget()
     if (BossLevelText)
     {
         BossLevelText->SetText(FText::FromString(FString::Printf(TEXT("Lv.%d"), monsterLevel)));
+        BossLevelText->SetVisibility(bUseStatusText ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
     }
 
     if (BossNameText)

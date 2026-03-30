@@ -20,15 +20,18 @@ public:
 	UC_AttackManagerComponent();
 
 	
-	void Initialize(AC_BaseMonster* OwnerMonster); // ¸ó½ºÅÍ°¡ BeginPlay¿¡¼­ ÀÚ½ÅÀ» ³Ñ°Ü¼­ ÃÊ±âÈ­
+	void Initialize(AC_BaseMonster* OwnerMonster); // ï¿½ï¿½ï¿½Í°ï¿½ BeginPlayï¿½ï¿½ï¿½ï¿½ ï¿½Ú½ï¿½ï¿½ï¿½ ï¿½Ñ°Ü¼ï¿½ ï¿½Ê±ï¿½È­
 
 	bool CanAttack() const;
 	void StartCooldown(float Seconds);
 
+	bool CanSpecialAttack() const;
+	void StartSpecialCooldown();
+
 	bool DoNormalAttack();
 	bool DoSpecialAttack();
 
-	void DoSlam(); //DoBearSpecialAttackSlamÀ» ¿ÜºÎ¿¡¼­ È£ÃâÇÏ±â À§ÇÑ ÇÔ¼ö
+	void DoSlam(); //DoBearSpecialAttackSlamï¿½ï¿½ ï¿½ÜºÎ¿ï¿½ï¿½ï¿½ È£ï¿½ï¿½ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½
 
 private:
 	//private functions
@@ -42,37 +45,38 @@ private:
 	//private variable
 
 	UPROPERTY()
-	AC_BaseMonster* ownerMonster = nullptr; // ¼ÒÀ¯ ¸ó½ºÅÍ
+	AC_BaseMonster* ownerMonster = nullptr; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 #pragma region attack state(lastAttackTime, coolDownTime, traceRadius, debug)
 
-	float lastAttackTime = 0.0f; // ¸¶Áö¸· °ø°Ý ½ÃÁ¡
+	float lastAttackTime = 0.0f;
+	float lastSpecialAttackTime = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
-	float coolDownTime = 1.0f; // °ø°Ý ÄðÅ¸ÀÓ
+	float coolDownTime = 1.0f; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¸ï¿½ï¿½
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
-	float traceRadius = 60.0f; // Æ®·¹ÀÌ½º ¹üÀ§
+	float traceRadius = 60.0f; // Æ®ï¿½ï¿½ï¿½Ì½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
-	bool debug = false; // µð¹ö±× Ç¥½Ã À¯¹«
+	bool debug = false; // ï¿½ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 #pragma endregion
 
 #pragma region special attack state(slamDelaySeconds, jumpPower, slamRadius, knockbackStrength, knockupStrength)
 	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float slamDelaySeconds = 0.5f; // Á¡ÇÁ ÈÄ ÂøÁö±îÁö ´ë±â ½Ã°£
+	float slamDelaySeconds = 0.5f; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½
 
 	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float jumpPower = 600.f; // Á¡ÇÁ ³ôÀÌ
+	float jumpPower = 600.f; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float slamRadius = 350.f; // °ø°Ý ¹üÀ§
+	float slamRadius = 350.f; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float knockbackStrength = 900.f; // ³Ë¹é Èû
+	float knockbackStrength = 900.f; // ï¿½Ë¹ï¿½ ï¿½ï¿½
 
 	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float knockupStrength = 250.f; // À§·Î Æ¨±â´Â Èû
+	float knockupStrength = 250.f; // ï¿½ï¿½ï¿½ï¿½ Æ¨ï¿½ï¿½ï¿½ ï¿½ï¿½
 
 
 #pragma endregion

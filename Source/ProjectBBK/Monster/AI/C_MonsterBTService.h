@@ -25,6 +25,7 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Blackboard")
     FBlackboardKeySelector DistanceToTargetKey;
 
+    virtual void OnBecomeRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
     virtual void TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 
 	

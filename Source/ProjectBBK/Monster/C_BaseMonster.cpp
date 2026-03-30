@@ -11,6 +11,8 @@
 #include "UI/C_BossMonsterHPWidget.h"
 #include "UI/C_NormalMonsterHPWidget.h"
 #include "TimerManager.h"
+#include "BrainComponent.h"
+#include "AIController.h"
 
 // Sets default values
 AC_BaseMonster::AC_BaseMonster()
@@ -68,11 +70,11 @@ void AC_BaseMonster::BeginPlay()
 			UE_LOG(LogTemp, Error, TEXT("GiveAbility: %s"), *abilityClass->GetName());
 		}
 
-		// ���� �̺�Ʈ ���ε� (AI, ����Ʈ, ���� ��)
+		// ���� �̺�Ʈ ���ε� (AI, ����Ʈ, ���� ��)
 		monsterASC->OnMonsterDeath.AddLambda([this](UC_MonsterASC* ASC)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("%s died (OnMonsterDeath)"), *GetName());
-				// ���⼭ �ִϸ��̼�, Destroy Ÿ�̸�, AI ��Ȱ��ȭ �� ó��
+				// ���⼭ �ִϸ��̼�, Destroy Ÿ�̸�, AI ��Ȱ��ȭ �� ó��
 			});
 	}
 
@@ -174,8 +176,8 @@ void AC_BaseMonster::InitializeAttributesFromDataTable()
 	monsterAttributeSet->InitnormalCooldown (Data->NormalCooldown);
 	monsterAttributeSet->InitspecialCooldown(Data->SpecialCooldown);
 
-	monsterAttributeSet->SetcurHP(Data->MaxHP);    
-	monsterAttributeSet->SetcurGroggy(Data->MaxGroggy);
+	monsterAttributeSet->SetcurHP(Data->MaxHP);
+	monsterAttributeSet->SetcurGroggy(0.0f);
 
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
@@ -329,6 +331,10 @@ void AC_BaseMonster::AddGroggy(float GroggyAmount)
 	if (!monsterAttributeSet)
 		return;
 
+	// 이미 그로기 상태면 스킵
+	if (monsterASC && monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy"))))
+		return;
+
 	const float CurrentGroggyValue = GetcurGroggy();
 	const float MaxGroggyValue = GetmaxGroggy();
 
@@ -350,6 +356,8 @@ void AC_BaseMonster::AddGroggy(float GroggyAmount)
 	{
 		if (!GetWorldTimerManager().IsTimerActive(groggyResetTimerHandle))
 		{
+			EnterGroggyState();
+
 			GetWorldTimerManager().SetTimer(
 				groggyResetTimerHandle,
 				this,
@@ -357,7 +365,73 @@ void AC_BaseMonster::AddGroggy(float GroggyAmount)
 				5.0f,
 				false
 			);
+		}
+	}
+}
 
+void AC_BaseMonster::EnterGroggyState()
+{
+	if (!monsterASC) return;
+
+	FGameplayTag TagGroggy = FGameplayTag::RequestGameplayTag(FName("State.Groggy"));
+	monsterASC->AddLooseGameplayTag(TagGroggy);
+	monsterASC->CancelAllAbilities();
+
+	// AI 정지
+	if (AAIController* AIC = Cast<AAIController>(GetController()))
+	{
+		AIC->StopMovement();
+		if (UBrainComponent* Brain = AIC->GetBrainComponent())
+		{
+			Brain->PauseLogic(TEXT("Groggy"));
+		}
+	}
+
+	// 이동 비활성화 + 잔여 속도 제거
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	// 그로기 모션 재생
+	if (groggyMontage)
+	{
+		PlayAnimMontage(groggyMontage);
+	}
+
+	// UI: 상태이상 이름 표시 + 레벨 숨김
+	if (MonsterHpWidget)
+	{
+		MonsterHpWidget->SetStatusText(FText::FromString(TEXT("Groggy")));
+	}
+}
+
+void AC_BaseMonster::ExitGroggyState()
+{
+	if (!monsterASC) return;
+
+	FGameplayTag TagGroggy = FGameplayTag::RequestGameplayTag(FName("State.Groggy"));
+	monsterASC->RemoveLooseGameplayTag(TagGroggy);
+
+	// 그로기 모션 즉시 중단
+	if (groggyMontage)
+	{
+		StopAnimMontage(groggyMontage);
+	}
+
+	// 이동 복구
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+	// UI: 원래 이름 + 레벨 복구
+	if (MonsterHpWidget)
+	{
+		MonsterHpWidget->ClearStatusText();
+	}
+
+	// AI 재개
+	if (AAIController* AIC = Cast<AAIController>(GetController()))
+	{
+		if (UBrainComponent* Brain = AIC->GetBrainComponent())
+		{
+			Brain->ResumeLogic(TEXT("Groggy"));
 		}
 	}
 }
@@ -367,13 +441,14 @@ void AC_BaseMonster::ResetGroggy()
 	if (!monsterAttributeSet)
 		return;
 
+	ExitGroggyState();
+
 	monsterAttributeSet->SetcurGroggy(0.0f);
 
 	if (MonsterHpWidget)
 	{
-		MonsterHpWidget->SetCurrentGroggy(monsterAttributeSet->GetcurGroggy());
+		MonsterHpWidget->SetCurrentGroggy(0.0f);
 	}
-
 }
 
 

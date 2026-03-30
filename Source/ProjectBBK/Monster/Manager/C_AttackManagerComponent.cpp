@@ -40,49 +40,70 @@ void UC_AttackManagerComponent::StartCooldown(float Seconds)
 	lastAttackTime = GetWorld()->GetTimeSeconds();
 }
 
+bool UC_AttackManagerComponent::CanSpecialAttack() const
+{
+	if (!ownerMonster) return false;
+	const float now = GetWorld()->GetTimeSeconds();
+	return (now - lastSpecialAttackTime) >= ownerMonster->GetSpecialCooldown();
+}
+
+void UC_AttackManagerComponent::StartSpecialCooldown()
+{
+	lastSpecialAttackTime = GetWorld()->GetTimeSeconds();
+}
+
 
 
 bool UC_AttackManagerComponent::DoNormalAttack()
 {
-	if (!ownerMonster || !CanAttack())
-		return false;
+	if (!ownerMonster) return false;
 
-	const int32 id = ownerMonster ? ownerMonster->GetMonsterID() : 0;
+	const int32 id = ownerMonster->GetMonsterID();
 
 	switch (id)
 	{
 	case MONSTER_ID_BEAR:
 	{
+		if (!CanAttack()) return false;
 		DoBearNormalAttack();
 		return true;
 	}
-
-
+	case MONSTER_ID_ROCKET:
+	{
+		// ì‹¤ì œ ê³µê²©(ëª½íƒ€ì£¼+ë°œì‚¬ì²´)ì€ C_RangedMonsterì—ì„œ ì²˜ë¦¬ â€” ì—¬ê¸°ì„  ì¿¨íƒ€ìž„ë§Œ ê´€ë¦¬
+		if (!CanAttack()) return false;
+		StartCooldown(ownerMonster->GetAttackCooldown());
+		return true;
+	}
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("No NormalAttack implementation for MonsterId=%d"), id);
-		StartCooldown(ownerMonster ? ownerMonster->GetAttackCooldown() : coolDownTime);
 		return false;
 	}
 }
 
 bool UC_AttackManagerComponent::DoSpecialAttack()
 {
-	if (!ownerMonster || !CanAttack()) 
-		return false;
+	if (!ownerMonster) return false;
 
-	const int32 id = ownerMonster ? ownerMonster->GetMonsterID() : 0;
+	const int32 id = ownerMonster->GetMonsterID();
 
 	switch (id)
 	{
 	case MONSTER_ID_BEAR:
 	{
+		if (!CanAttack()) return false;
 		DoBearSpecialAttackJump();
 		return true;
 	}
-
+	case MONSTER_ID_ROCKET:
+	{
+		// ì‹¤ì œ ê³µê²©(ëª½íƒ€ì£¼+ë°œì‚¬ì²´)ì€ C_RangedMonsterì—ì„œ ì²˜ë¦¬ â€” ì—¬ê¸°ì„  ìŠ¤íŽ˜ì…œ ì¿¨íƒ€ìž„ë§Œ ê´€ë¦¬
+		if (!CanSpecialAttack()) return false;
+		StartSpecialCooldown();
+		return true;
+	}
 	default:
-		UE_LOG(LogTemp, Warning, TEXT("No NormalAttack implementation for MonsterId=%d"), id);
-		StartCooldown(ownerMonster ? ownerMonster->GetAttackCooldown() : coolDownTime);
+		UE_LOG(LogTemp, Warning, TEXT("No SpecialAttack implementation for MonsterId=%d"), id);
 		return false;
 	}
 }
@@ -98,13 +119,13 @@ void UC_AttackManagerComponent::DoBearNormalAttack()
 	if (!ownerMonster)
 		return;
 
-	const FVector start = ownerMonster->GetActorLocation();    // ¸ó½ºÅÍÀ§Ä¡
-	const FVector dir = ownerMonster->GetActorForwardVector(); // ¸ó½ºÅÍ Á¤¸é ¹æÇâ
-	const float   range = ownerMonster->GetAttackRange();      // ¸ó½ºÅÍ °ø°Ý ¹üÀ§
-	const FVector end = start + dir * range;                   // ¸ó½ºÅÍ °ø°Ý ³¡ À§Ä¡
+	const FVector start = ownerMonster->GetActorLocation();    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¡
+	const FVector dir = ownerMonster->GetActorForwardVector(); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	const float   range = ownerMonster->GetAttackRange();      // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	const FVector end = start + dir * range;                   // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½Ä¡
 	 
 	TArray<TEnumAsByte<EObjectTypeQuery>> types;
-	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn)); //°ø°Ý ´ë»óÀ» pawnÀ¸·Î ¼³Á¤
+	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn)); //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ pawnï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	TArray<AActor*> ignore;
 	ignore.Add(ownerMonster);
@@ -115,11 +136,11 @@ void UC_AttackManagerComponent::DoBearNormalAttack()
 	{
 		ignore.Add(actor);
 	}
-	// ÀÚ±âÀÚ½Å°ú BaseMonsterÅ¬·¡½º ÀüºÎ °ø°Ý´ë»ó¿¡¼­ Á¦¿Ü
+	// ï¿½Ú±ï¿½ï¿½Ú½Å°ï¿½ BaseMonsterÅ¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ý´ï¿½ó¿¡¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-	FHitResult hit; //°ø°Ý ´ë»ó Á¤º¸ ÀúÀå
+	FHitResult hit; //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-	const bool hitOk = UKismetSystemLibrary::SphereTraceSingleForObjects  // ´ÜÀÏ°ø°Ý
+	const bool hitOk = UKismetSystemLibrary::SphereTraceSingleForObjects  // ï¿½ï¿½ï¿½Ï°ï¿½ï¿½ï¿½
 	(
 		ownerMonster, start, end, traceRadius, types, false, ignore,
 		debug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
@@ -134,7 +155,7 @@ void UC_AttackManagerComponent::DoBearNormalAttack()
 			UGameplayStatics::ApplyDamage
 			(
 				target,
-				ownerMonster->GetAttack(),                    // ³ªÁß¿¡ °è¼ö Ãß°¡
+				ownerMonster->GetAttack(),                    // ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ ï¿½ß°ï¿½
 				ownerMonster->GetController(),
 				ownerMonster,
 				nullptr
@@ -164,10 +185,10 @@ void UC_AttackManagerComponent::DoBearSpecialAttackSlam()
 	if (!ownerMonster)
 		return;
 
-	const FVector monster = ownerMonster->GetActorLocation(); // °ø°ÝÇÏ´Â ¸ó½ºÅÍÀÇ À§Ä¡
+	const FVector monster = ownerMonster->GetActorLocation(); // ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> types;
-	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn)); //°ø°Ý ´ë»óÀ» pawnÀ¸·Î ¼³Á¤
+	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn)); //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ pawnï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	TArray<AActor*> ignore;
 	ignore.Add(ownerMonster);
@@ -178,11 +199,11 @@ void UC_AttackManagerComponent::DoBearSpecialAttackSlam()
 	{
 		ignore.Add(actor);
 	}
-	// ÀÚ±âÀÚ½Å°ú BaseMonsterÅ¬·¡½º ÀüºÎ °ø°Ý´ë»ó¿¡¼­ Á¦¿Ü
+	// ï¿½Ú±ï¿½ï¿½Ú½Å°ï¿½ BaseMonsterÅ¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ý´ï¿½ó¿¡¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	TArray<FHitResult> hits;
 
-	const bool hitsOk = UKismetSystemLibrary::SphereTraceMultiForObjects  // ±¤¿ª°ø°Ý
+	const bool hitsOk = UKismetSystemLibrary::SphereTraceMultiForObjects  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	(
 		ownerMonster, monster, monster + FVector(0, 0, 1), slamRadius,
 		types, false, ignore, debug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
@@ -199,13 +220,13 @@ void UC_AttackManagerComponent::DoBearSpecialAttackSlam()
 
 			UGameplayStatics::ApplyDamage(
 				target,
-				ownerMonster->GetAttack(),         // ³ªÁß¿¡ °è¼ö Ãß°¡    
+				ownerMonster->GetAttack(),         // ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ ï¿½ß°ï¿½    
 				ownerMonster->GetController(),
 				ownerMonster,
 				nullptr
 			);
 
-			const FVector dir = (target->GetActorLocation() - monster).GetSafeNormal2D();     // ÇÃ·¹ÀÌ¾î ³Ë¹é °Å¸® Á¶Àý
+			const FVector dir = (target->GetActorLocation() - monster).GetSafeNormal2D();     // ï¿½Ã·ï¿½ï¿½Ì¾ï¿½ ï¿½Ë¹ï¿½ ï¿½Å¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 			const FVector impulse = dir * knockbackStrength + FVector(0, 0, knockupStrength);
 
 			target->LaunchCharacter(impulse, true, true);
@@ -213,7 +234,7 @@ void UC_AttackManagerComponent::DoBearSpecialAttackSlam()
 		}
 	}
 
-	StartCooldown(ownerMonster->GetAttackCooldown()); // ³ªÁß¿¡ ½ºÆä¼È ÄðÅ¸ÀÓÀ¸·Î º¯°æ
+	StartCooldown(ownerMonster->GetAttackCooldown()); // ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 }
 
 
