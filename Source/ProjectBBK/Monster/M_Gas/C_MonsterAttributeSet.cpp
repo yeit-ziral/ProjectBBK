@@ -81,39 +81,39 @@ void UC_MonsterAttributeSet::OnRep_SpecialCooldown(const FGameplayAttributeData&
 
 void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage)
 {
-	// 1. Instigator (°ø°ÝÀÚ) °¡Á®¿À±â
+	// 1. Instigator (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
 	AActor* Instigator = EffectContext.GetInstigator();
 
 	if (!Instigator)
 		return;
 
-	// 2. °ø°ÝÀÚ ASC °¡Á®¿À±â
+	// 2. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ASC ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	UAbilitySystemComponent* InstigatorASC =
 		UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Instigator);
 
 	if (!InstigatorASC)
 		return;
 
-	// 3. ±Ã±Ø±â »ç¿ë ÁßÀÎÁö Ã¼Å©
+	// 3. ï¿½Ã±Ø±ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¼Å©
 	FGameplayTag UsingUltimateTag =
 		FGameplayTag::RequestGameplayTag(FName("State.UsingUltimate"), false);
 
 	if (UsingUltimateTag.IsValid() &&
 		InstigatorASC->HasMatchingGameplayTag(UsingUltimateTag))
 	{
-		return; // ±Ã±Ø±â »ç¿ë Áß¿£ ÃæÀü ¾È ÇÔ
+		return; // ï¿½Ã±Ø±ï¿½ ï¿½ï¿½ï¿½ ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½
 	}
 
-	// 4. Mana ÃæÀü·® °è»ê
+	// 4. Mana ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 	float ManaCharge = ActualDamage * ManaChargeRate;
 	ManaCharge = FMath::Clamp(ManaCharge, MinManaCharge, MaxManaCharge);
 
-	// 5. GE È®ÀÎ
+	// 5. GE È®ï¿½ï¿½
 	if (!GE_ChargeMana)
 		return;
 
-	// 6. GE Spec »ý¼º
+	// 6. GE Spec ï¿½ï¿½ï¿½ï¿½
 	FGameplayEffectContextHandle ManaEffectContext =
 		InstigatorASC->MakeEffectContext();
 	ManaEffectContext.AddInstigator(Instigator, Instigator);
@@ -128,7 +128,7 @@ void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallback
 	if (!SpecHandle.IsValid())
 		return;
 
-	// 7. SetByCaller·Î ÃæÀü·® Àü´Þ
+	// 7. SetByCallerï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	FGameplayTag ManaChargeTag =
 		FGameplayTag::RequestGameplayTag(FName("Data.ManaCharge"), false);
 
@@ -137,7 +137,7 @@ void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallback
 
 	SpecHandle.Data->SetSetByCallerMagnitude(ManaChargeTag, ManaCharge);
 
-	// 8. GE Àû¿ë
+	// 8. GE ï¿½ï¿½ï¿½ï¿½
 	InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
@@ -186,12 +186,12 @@ void UC_MonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attrib
 void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);
- //////////////µ¥¹ÌÁö Ã³¸®////////////////////////////////////////////////////////////////////
+ //////////////ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½////////////////////////////////////////////////////////////////////
     if (Data.EvaluatedData.Attribute == GetReceivedDamageAttribute())
     {
         const float RawDamage = GetReceivedDamage();
 
-        const float Mitigated = FMath::Max(0.0f, RawDamage - Getdefense()); // ¹æ¾î·Â ¹Ý¿µ
+        const float Mitigated = FMath::Max(0.0f, RawDamage - Getdefense()); // ï¿½ï¿½ï¿½ï¿½ ï¿½Ý¿ï¿½
 
         const float NewHP = FMath::Clamp(GetcurHP() - Mitigated, 0.f, GetmaxHP());
         SetcurHP(NewHP);
@@ -208,6 +208,27 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
         return;
     }
+
+    // True Damage (DoT/ìƒíƒœì´ìƒ) â€” ë°©ì–´ë ¥ ë¬´ì‹œ
+    if (Data.EvaluatedData.Attribute == GetReceivedTrueDamageAttribute())
+    {
+        const float TrueDamage = GetReceivedTrueDamage();
+
+        const float NewHP = FMath::Clamp(GetcurHP() - TrueDamage, 0.f, GetmaxHP());
+        SetcurHP(NewHP);
+
+        UE_LOG(LogTemp, Warning, TEXT("[Monster] HP: %.1f (TrueDamage: %.1f)"),
+            NewHP, TrueDamage);
+
+        SetReceivedTrueDamage(0.0f);
+
+        if (TrueDamage > 0.0f)
+        {
+            ChargeAttackerMana(Data, TrueDamage);
+        }
+
+        return;
+    }
 ///////////////////////////////////////////////////////////////////////////////////////////////
     if (Data.EvaluatedData.Attribute == GetmaxHPAttribute())
     {
@@ -220,7 +241,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
         if (NewHP <= 0.f)
         {
-            // ASC Ã£¾Æ¼­ HandleDeath È£Ãâ
+            // ASC Ã£ï¿½Æ¼ï¿½ HandleDeath È£ï¿½ï¿½
             if (AActor* Owner = GetOwningActor())
             {
                 if (UAbilitySystemComponent* ASCBase = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Owner))

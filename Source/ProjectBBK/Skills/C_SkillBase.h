@@ -78,9 +78,13 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	bool IsOnCooldown() const;
 
-	/** Apply Gameplay Effects from Skill Data */
+	/** Apply Gameplay Effects to Self from Skill Data */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	void ApplySkillEffects();
+
+	/** Apply EffectsToTarget from Skill Data to given actors (즉시 AoE 스킬용) */
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void ApplySkillEffectsToTargets(const TArray<AActor*>& Targets);
 
 	/** Play Skill Animation */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
@@ -157,4 +161,8 @@ public:
 	/** Get Cooldown Duration from Data */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	float GetCooldownDuration() const;
+
+	/** EffectsToTarget 배열에서 Index번째 GE 클래스 반환 (FireZone 등 존 기반 스킬용) */
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	TSubclassOf<UGameplayEffect> GetTargetEffectClass(int32 Index = 0) const;
 };

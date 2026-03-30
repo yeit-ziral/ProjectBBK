@@ -101,6 +101,11 @@ public:
     FGameplayAttributeData ReceivedDamage;
     ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet, ReceivedDamage)
 
+    // 방어력을 무시하는 고정 데미지 (DoT, 상태이상 전용)
+    UPROPERTY(BlueprintReadOnly, Category = "Meta")
+    FGameplayAttributeData ReceivedTrueDamage;
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet, ReceivedTrueDamage)
+
 #pragma endregion   
 
 public:

@@ -74,6 +74,9 @@ struct PROJECTBBK_API FSkillData : public FTableRowBase
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ranage")
 	float radius = 100.0f;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ranage")
+	float zoneDuration = 6.0f;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Animation")
 	UAnimMontage* castAnimation;
 
@@ -102,6 +105,7 @@ struct PROJECTBBK_API FSkillData : public FTableRowBase
 		, damageMultiplier(1.0f)
 		, range(500.0f)
 		, radius(100.0f)
+		, zoneDuration(6.0f)
 		, castAnimation(nullptr)
 		, castEffect(nullptr)
 		, impactEffect(nullptr)

@@ -4,6 +4,7 @@
 #include "C_SkillBase.h"
 
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectTypes.h" 
 #include "Animation/AnimMontage.h"
@@ -253,11 +254,58 @@ void UC_SkillBase::ApplySkillEffects()
 		}
 	}
 
-	// TODO: Apply Effects to Target (타겟 시스템 구현 후)
-	// for (TSubclassOf<UGameplayEffect> EffectClass : CachedSkillData.EffectsToTarget)
-	// {
-	//     ...
-	// }
+}
+
+void UC_SkillBase::ApplySkillEffectsToTargets(const TArray<AActor*>& Targets)
+{
+	if (!bSkillDataLoaded)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] Skill Data not loaded! Cannot apply effects to targets."));
+		return;
+	}
+
+	if (CachedSkillData.EffectsToTarget.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] EffectsToTarget is empty!"));
+		return;
+	}
+
+	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	if (!SourceASC)
+	{
+		return;
+	}
+
+	for (AActor* Target : Targets)
+	{
+		if (!Target) continue;
+
+		UAbilitySystemComponent* TargetASC =
+			UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Target);
+
+		if (!TargetASC) continue;
+
+		for (TSubclassOf<UGameplayEffect> EffectClass : CachedSkillData.EffectsToTarget)
+		{
+			if (!EffectClass) continue;
+
+			FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+			Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
+
+			FGameplayEffectSpecHandle Spec = SourceASC->MakeOutgoingSpec(
+				EffectClass,
+				GetAbilityLevel(),
+				Context
+			);
+
+			if (Spec.IsValid())
+			{
+				SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data, TargetASC);
+				UE_LOG(LogTemp, Log, TEXT("[C_SkillBase] Applied %s to %s"),
+					*EffectClass->GetName(), *Target->GetName());
+			}
+		}
+	}
 }
 
 void UC_SkillBase::PlaySkillAnimation()
@@ -356,4 +404,21 @@ FText UC_SkillBase::GetSkillDescription() const
 float UC_SkillBase::GetCooldownDuration() const
 {
 	return bSkillDataLoaded ? CachedSkillData.cooldown : 0.0f;
+}
+
+TSubclassOf<UGameplayEffect> UC_SkillBase::GetTargetEffectClass(int32 Index) const
+{
+	if (!bSkillDataLoaded)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] Skill Data not loaded!"));
+		return nullptr;
+	}
+
+	if (!CachedSkillData.EffectsToTarget.IsValidIndex(Index))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] EffectsToTarget index %d out of range!"), Index);
+		return nullptr;
+	}
+
+	return CachedSkillData.EffectsToTarget[Index];
 }

@@ -219,7 +219,8 @@ Skills/
 | GA_Dodge | — | ✅ 완료 | |
 | GA_Shield | — | ✅ 완료 | GE_GiveShield |
 | GA_SpeedBuff | F (Skill Wheel) | ✅ 완료 | GE_GenericCooldown 공유, GE_SpeedBuff |
-| Skill Wheel 추가 스킬 x2~4 | F (Skill Wheel) | 📋 계획 중 | Skill Wheel 구현 전 선행 작업 |
+| GA_Ablaze | F (Skill Wheel) | ✅ 완료 | 지면 AOE, GE_Ablaze(DoT), AC_FireZone, ReceivedTrueDamage |
+| Skill Wheel 추가 스킬 x1~3 | F (Skill Wheel) | 📋 계획 중 | Skill Wheel 구현 전 선행 작업 |
 | Skill Wheel (F키 슬롯 교체) | F | 📋 계획 중 | GA_SpeedBuff 포함 3~5개 스킬 순환 |
 
 ### Monster Abilities
@@ -254,7 +255,7 @@ Skills/
 | GE_GiveShield | ✅ 완료 | GA_Shield 사용 |
 | GE_Cost_Ultimate | ✅ 완료 | GA_MeleeUltimate 사용 |
 | GE_UltimateBuff | ✅ 완료 | |
-| GE_Ablaze | ✅ 완료 | 상태이상: 화염 |
+| GE_Ablaze | ✅ 완료 | 상태이상: 화염 — 플레이어(Health)·몬스터(ReceivedTrueDamage) 동시 지원, Set by Caller |
 | GE_Wet | ✅ 완료 | 상태이상: 침수 |
 | GE_ManaRegen | ✅ 완료 | |
 | GE_ChargeMana | ✅ 완료 | |
@@ -290,6 +291,8 @@ Skills/
    [Core.Log]
    LogAbilitySystem=Verbose
    ```
+7. **Set by Caller `Data None` 에러** — `FGameplayEffectSpec::GetMagnitude called for Data None` 발생 시 → GE의 Set by Caller Data Tag와 코드의 `RequestGameplayTag()` 태그명 일치 여부 확인
+8. **GetHitResultUnderCursorByChannel이 항상 같은 위치 반환** — 3인칭 카메라(커서 숨김 + 마우스로 카메라 회전) 방식에서는 사용 불가 → 카메라 전방 `LineTraceByChannel`로 교체
 
 ---
 
@@ -319,4 +322,44 @@ SphereOverlapActors
   → Actors to Ignore: GetAvatarActorFromActorInfo
   → DrawDebugSphere (개발 중 시각화용)
 → ForEach → ApplyGameplayEffectToTarget
+```
+
+### 단일 GE로 플레이어/몬스터 동시 지원
+GE Modifier를 2개 추가하되 각각 다른 AttributeSet을 대상으로 설정.
+타겟에 해당 AttributeSet이 없으면 GAS가 자동으로 해당 Modifier를 무시.
+```
+예) GE_Ablaze Modifiers:
+  ① C_ChracterAttributeSetBase.Health       Add  (플레이어에게만 적용)
+  ② UC_MonsterAttributeSet.ReceivedTrueDamage Add  (몬스터에게만 적용)
+```
+
+### 지면 AOE 존 패턴 (GA_Ablaze / AC_FireZone 참고)
+GA가 존을 스폰하고 즉시 EndAbility. 존이 자체적으로 GE 관리.
+```
+GA ActivateAbility
+  → 지면 위치 탐색 (아래 패턴 참고)
+  → SpawnActorFromClass (AC_FireZone)
+  → Cast to AC_FireZone → Initialize
+      (InstigatorASC, InstigatorActor, EffectClass, Radius, Lifetime, Damage)
+  → ApplySkillCooldown → EndAbility
+
+AC_FireZone::Initialize()
+  → CollisionSphere 반경 설정
+  → OnBeginOverlap 등록
+  → OnInitialized(Radius) 호출 (BP에서 VFX 스케일 조정)
+  → 수명 타이머 설정 후 OnExpired()에서 Destroy
+```
+- GE 클래스: `UC_SkillBase::GetTargetEffectClass(0)`으로 DT에서 가져옴
+- Radius / zoneDuration / baseDamage: `GetSkillData → Break FSkillData`로 DT에서 가져옴
+
+### 3인칭 카메라 지면 위치 탐색 패턴
+커서가 없는 3인칭 카메라에서 캐릭터 전방 지면 좌표를 구하는 방법.
+```
+GetActorLocation + GetActorForwardVector × range → ForwardPoint
+
+LineTraceByChannel
+  Start: ForwardPoint + (0, 0, 500)
+  End:   ForwardPoint + (0, 0, -500)
+  TraceChannel: Visibility
+→ ImpactPoint → 스폰 위치로 사용
 ```
