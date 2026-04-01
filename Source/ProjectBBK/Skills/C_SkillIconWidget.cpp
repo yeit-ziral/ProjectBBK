@@ -207,10 +207,10 @@ UC_SkillBase* UC_SkillIconWidget::FindAbilityByTag(UAbilitySystemComponent* ASC,
 		{
 			UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] Checking ability: %s, Tag: %s"),
 				*SkillData.skillName.ToString(),
-				*SkillData.SkillTag.ToString());
+				*SkillData.skillTag.ToString());
 
 			// Tag 비교
-			if (SkillData.SkillTag.MatchesTagExact(SearchTag))
+			if (SkillData.skillTag.MatchesTagExact(SearchTag))
 			{
 				UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] ✅ Found matching ability: %s"),
 					*SkillData.skillName.ToString());

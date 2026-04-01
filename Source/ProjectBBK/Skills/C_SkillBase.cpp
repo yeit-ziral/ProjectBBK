@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "Engine/AssetManager.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectTypes.h" 
 #include "Animation/AnimMontage.h"
@@ -32,15 +33,24 @@ void UC_SkillBase::OnGiveAbility(
 {
 	Super::OnGiveAbility(ActorInfo, Spec);
 
-	// Ability가 부여될 때 Skill Data 로드Fge
-	LoadSkillData();
+	// Ability가 부여될 때 Skill Data 로드 후 GE 에셋 선행 로드
+	if (LoadSkillData())
+	{
+		PreloadSkillAssets();
+	}
 }
 
 bool UC_SkillBase::LoadSkillData()
 {
+	// CDO는 SkillDataTable이 항상 null이므로 로그 없이 스킵
+	if (HasAnyFlags(RF_ClassDefaultObject))
+	{
+		return false;
+	}
+
 	if (!SkillDataTable || SkillRowName.IsNone())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[C_SkillBase] SkillDataTable or SkillRowName not set!"));
+		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] SkillDataTable or SkillRowName not set! Check BP defaults: %s"), *GetName());
 		return false;
 	}
 
@@ -79,6 +89,33 @@ bool UC_SkillBase::GetSkillData(FSkillData& OutSkillData)
 
 	OutSkillData = CachedSkillData;
 	return true;
+}
+
+void UC_SkillBase::PreloadSkillAssets()
+{
+	TArray<FSoftObjectPath> AssetsToLoad;
+
+	for (const TSoftClassPtr<UGameplayEffect>& SoftClass : CachedSkillData.effectsToSelf)
+	{
+		if (!SoftClass.IsNull())
+			AssetsToLoad.Add(SoftClass.ToSoftObjectPath());
+	}
+
+	for (const TSoftClassPtr<UGameplayEffect>& SoftClass : CachedSkillData.effectsToTarget)
+	{
+		if (!SoftClass.IsNull())
+			AssetsToLoad.Add(SoftClass.ToSoftObjectPath());
+	}
+
+	if (AssetsToLoad.Num() == 0) return;
+
+	SkillAssetHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+		AssetsToLoad,
+		FStreamableDelegate::CreateLambda([this]()
+		{
+			UE_LOG(LogTemp, Log, TEXT("[C_SkillBase] Skill assets preloaded: %s"), *SkillRowName.ToString());
+		})
+	);
 }
 
 void UC_SkillBase::ApplySkillCooldown()
@@ -141,6 +178,9 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 	SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, CooldownDuration);
 
 	// 4. Add Cooldown Tag dynamically
+	// GE_GenericCooldown 하나를 모든 스킬이 공유하기 위해 태그를 런타임에 주입.
+	// 이 방식 때문에 GAS 내장 CheckCooldown()이 동작하지 않으며,
+	// CanActivateAbility()에서 IsOnCooldown()으로 수동 체크해야 한다.
 	SpecHandle.Data->DynamicGrantedTags.AddTag(CooldownTag);
 
 	// 5. Apply!
@@ -157,12 +197,12 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 		if (bSkillDataLoaded)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] 🔔 Broadcasting OnCooldownStarted! SkillTag: %s"),
-				*CachedSkillData.SkillTag.ToString());
-			OnCooldownStarted.Broadcast(CooldownDuration, CachedSkillData.SkillTag, CooldownTag);
+				*CachedSkillData.skillTag.ToString());
+			OnCooldownStarted.Broadcast(CooldownDuration, CachedSkillData.skillTag, CooldownTag);
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("[C_SkillBase] ❌ SkillData not loaded! Cannot broadcast!"));
+			UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] SkillData not loaded, cooldown UI not updated."));
 		}
 	}
 	else
@@ -188,6 +228,14 @@ bool UC_SkillBase::IsOnCooldown() const
 }
 
 
+void UC_SkillBase::ApplyCooldown(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	// 의도적으로 비워둠. 쿨다운은 ApplySkillCooldown()이 담당.
+}
+
 bool UC_SkillBase::CanActivateAbility(
 	const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo,
@@ -201,7 +249,12 @@ bool UC_SkillBase::CanActivateAbility(
 		return false;
 	}
 
-	// 쿨다운 체크
+	// [주의] 수동 쿨다운 체크가 필요한 이유:
+	// GAS 내장 CheckCooldown()은 GetCooldownTags() 반환값을 기준으로 동작하는데,
+	// 이 클래스는 GE_GenericCooldown 하나를 공유하고 쿨다운 태그를 DynamicGrantedTags로
+	// 동적 주입하는 방식을 사용한다. GetCooldownTags()를 오버라이드하지 않았으므로
+	// Super의 쿨다운 체크는 항상 통과하고, 여기서 직접 ASC의 태그를 확인해야 한다.
+	// ApplyGenericCooldown() 참고.
 	if (IsOnCooldown())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] Skill is on cooldown!"));
@@ -226,7 +279,7 @@ void UC_SkillBase::ApplySkillEffects()
 	}
 
 	// Apply Effects to Self ⭐
-	for (const TSoftClassPtr<UGameplayEffect>& SoftEffectClass : CachedSkillData.EffectsToSelf)
+	for (const TSoftClassPtr<UGameplayEffect>& SoftEffectClass : CachedSkillData.effectsToSelf)
 	{
 		// 소프트 레퍼런스 동기 로드
 		TSubclassOf<UGameplayEffect> EffectClass = SoftEffectClass.LoadSynchronous();
@@ -256,7 +309,7 @@ void UC_SkillBase::ApplySkillEffects()
 
 }
 
-void UC_SkillBase::ApplySkillEffectsToTargets(const TArray<AActor*>& Targets)
+void UC_SkillBase::ApplySkillEffectsToTargets(const TArray<AActor*>& Targets, AActor* EffectCauser)
 {
 	if (!bSkillDataLoaded)
 	{
@@ -264,9 +317,9 @@ void UC_SkillBase::ApplySkillEffectsToTargets(const TArray<AActor*>& Targets)
 		return;
 	}
 
-	if (CachedSkillData.EffectsToTarget.Num() == 0)
+	if (CachedSkillData.effectsToTarget.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] EffectsToTarget is empty!"));
+		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] effectsToTarget is empty!"));
 		return;
 	}
 
@@ -275,6 +328,19 @@ void UC_SkillBase::ApplySkillEffectsToTargets(const TArray<AActor*>& Targets)
 	{
 		return;
 	}
+
+	// Instigator: Controller 우선, 없으면 Avatar
+	// EffectCauser: 호출 측이 지정한 오브젝트(투사체, FireZone 등), 없으면 Avatar
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	AActor* Instigator = AvatarActor;
+	if (const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo())
+	{
+		if (ActorInfo->PlayerController.IsValid())
+		{
+			Instigator = ActorInfo->PlayerController.Get();
+		}
+	}
+	AActor* Causer = EffectCauser ? EffectCauser : AvatarActor;
 
 	for (AActor* Target : Targets)
 	{
@@ -285,12 +351,13 @@ void UC_SkillBase::ApplySkillEffectsToTargets(const TArray<AActor*>& Targets)
 
 		if (!TargetASC) continue;
 
-		for (TSubclassOf<UGameplayEffect> EffectClass : CachedSkillData.EffectsToTarget)
+		for (const TSoftClassPtr<UGameplayEffect>& SoftEffectClass : CachedSkillData.effectsToTarget)
 		{
+			TSubclassOf<UGameplayEffect> EffectClass = SoftEffectClass.LoadSynchronous();
 			if (!EffectClass) continue;
 
 			FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-			Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
+			Context.AddInstigator(Instigator, Causer);
 
 			FGameplayEffectSpecHandle Spec = SourceASC->MakeOutgoingSpec(
 				EffectClass,
@@ -414,11 +481,11 @@ TSubclassOf<UGameplayEffect> UC_SkillBase::GetTargetEffectClass(int32 Index) con
 		return nullptr;
 	}
 
-	if (!CachedSkillData.EffectsToTarget.IsValidIndex(Index))
+	if (!CachedSkillData.effectsToTarget.IsValidIndex(Index))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] EffectsToTarget index %d out of range!"), Index);
+		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] effectsToTarget index %d out of range!"), Index);
 		return nullptr;
 	}
 
-	return CachedSkillData.EffectsToTarget[Index];
+	return CachedSkillData.effectsToTarget[Index].LoadSynchronous();
 }

@@ -17,16 +17,6 @@ enum class ESkillType : uint8
 	Ultimate	UMETA(DisplayName = "Ultimate")
 };
 
-//Skill State
-UENUM(BlueprintType)
-enum class ESkillState : uint8
-{
-	Ready        UMETA(DisplayName = "Ready"),
-	Cooldown    UMETA(DisplayName = "Cooldown"),
-	Casting        UMETA(DisplayName = "Casting"),
-	Locked        UMETA(DisplayName = "Locked")
-};
-
 //Skill Data Struct
 USTRUCT(BlueprintType)
 struct PROJECTBBK_API FSkillData : public FTableRowBase
@@ -45,16 +35,16 @@ struct PROJECTBBK_API FSkillData : public FTableRowBase
 	ESkillType skillType;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Tags")
-	FGameplayTag SkillTag;
+	FGameplayTag skillTag;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Ability")
-	TSubclassOf<class UGameplayAbility> AbilityClass;
+	TSubclassOf<class UGameplayAbility> abilityClass;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Effects")
-	TArray<TSoftClassPtr<UGameplayEffect>> EffectsToSelf;
+	TArray<TSoftClassPtr<UGameplayEffect>> effectsToSelf;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GAS|Effects")
-	TArray<TSubclassOf<UGameplayEffect>> EffectsToTarget;
+	TArray<TSoftClassPtr<UGameplayEffect>> effectsToTarget;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "UI")
 	UTexture2D* skillIcon;
@@ -68,13 +58,13 @@ struct PROJECTBBK_API FSkillData : public FTableRowBase
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Damage")
 	float damageMultiplier = 1.0f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ranage")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Range")
 	float range = 500.0f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ranage")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Range")
 	float radius = 100.0f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ranage")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Range")
 	float zoneDuration = 6.0f;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Animation")
@@ -97,8 +87,8 @@ struct PROJECTBBK_API FSkillData : public FTableRowBase
 		, skillName(FText::FromString("Default Skill"))
 		, description(FText::FromString("Default skill description"))
 		, skillType(ESkillType::None)
-		, SkillTag(FGameplayTag())
-		, AbilityClass(nullptr)
+		, skillTag(FGameplayTag())
+		, abilityClass(nullptr)
 		, skillIcon(nullptr)
 		, cooldown(10.0f)
 		, baseDamage(50.0f)

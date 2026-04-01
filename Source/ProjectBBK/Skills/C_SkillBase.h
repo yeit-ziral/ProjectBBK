@@ -5,6 +5,7 @@
 #include "../GAS/Abilities/C_CharacterGA.h"
 #include "GameplayTagContainer.h"
 #include "Engine/DataTable.h"
+#include "Engine/StreamableManager.h"
 #include "SkillData.h"
 #include "C_SkillBase.generated.h"
 
@@ -58,13 +59,18 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Skill")
 	bool bSkillDataLoaded;
 
+	/** Streamable Handle - effectsToSelf/effectsToTarget 선행 로드용 (해제 방지) */
+	TSharedPtr<FStreamableHandle> SkillAssetHandle;
+
 	// ========================================
 	// Core Functions
 	// ========================================
 
 	/** Load Skill Data from DataTable */
-	UFUNCTION(BlueprintCallable, Category = "Skill")
 	bool LoadSkillData();
+
+	/** effectsToSelf / effectsToTarget 비동기 선행 로드 (OnGiveAbility에서 호출) */
+	void PreloadSkillAssets();
 
 	/** Apply Generic Cooldown using DataTable cooldown value */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
@@ -82,9 +88,11 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	void ApplySkillEffects();
 
-	/** Apply EffectsToTarget from Skill Data to given actors (즉시 AoE 스킬용) */
+	/** Apply EffectsToTarget from Skill Data to given actors (즉시 AoE 스킬용)
+	 *  @param EffectCauser 실제로 데미지를 준 오브젝트. nullptr이면 AvatarActor 사용
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
-	void ApplySkillEffectsToTargets(const TArray<AActor*>& Targets);
+	void ApplySkillEffectsToTargets(const TArray<AActor*>& Targets, AActor* EffectCauser = nullptr);
 
 	/** Play Skill Animation */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
@@ -117,6 +125,16 @@ protected:
 		const FGameplayAbilitySpec& Spec
 	) override;
 
+	/** UC_SkillBase는 ApplySkillCooldown()으로 쿨다운을 직접 관리하므로
+	 *  CommitAbility()를 통한 GAS 내장 쿨다운 경로를 차단한다.
+	 *  CooldownGameplayEffectClass를 설정해도 동작하지 않는다.
+	 */
+	virtual void ApplyCooldown(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo
+	) const override;
+
 public:
 	// ========================================
 	// Event Dispatchers (for UI)
@@ -132,15 +150,6 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Skill|Events")
 	FOnCooldownStartedSignature OnCooldownStarted;
-
-	/** Called when skill is activated */
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
-		FOnSkillActivatedSignature,
-		FGameplayTag, SkillTag
-	);
-
-	UPROPERTY(BlueprintAssignable, Category = "Skill|Events")
-	FOnSkillActivatedSignature OnSkillActivated;
 
 	// ========================================
 	// Helper Functions
