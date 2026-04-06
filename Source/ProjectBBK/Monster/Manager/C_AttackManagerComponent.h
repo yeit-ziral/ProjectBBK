@@ -31,21 +31,18 @@ public:
 	bool DoNormalAttack();
 	bool DoSpecialAttack();
 
-	void DoSlam(); //DoBearSpecialAttackSlam�� �ܺο��� ȣ���ϱ� ���� �Լ�
+	void DoSlam();
 
 private:
 	//private functions
 
-
-	void DoBearNormalAttack();
-	void DoBearSpecialAttackJump();
-	void DoBearSpecialAttackSlam();
+	void DoMeleeNormalAttack();
 
 private:
 	//private variable
 
 	UPROPERTY()
-	AC_BaseMonster* ownerMonster = nullptr; // ���� ����
+	AC_BaseMonster* ownerMonster = nullptr;
 
 #pragma region attack state(lastAttackTime, coolDownTime, traceRadius, debug)
 
@@ -53,32 +50,13 @@ private:
 	float lastSpecialAttackTime = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
-	float coolDownTime = 1.0f; // ���� ��Ÿ��
+	float coolDownTime = 1.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
-	float traceRadius = 60.0f; // Ʈ���̽� ����
+	float traceRadius = 60.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
-	bool debug = false; // ����� ǥ�� ����
-#pragma endregion
-
-#pragma region special attack state(slamDelaySeconds, jumpPower, slamRadius, knockbackStrength, knockupStrength)
-	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float slamDelaySeconds = 0.5f; // ���� �� �������� ��� �ð�
-
-	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float jumpPower = 600.f; // ���� ����
-
-	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float slamRadius = 350.f; // ���� ����
-
-	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float knockbackStrength = 900.f; // �˹� ��
-
-	UPROPERTY(EditAnywhere, Category = "Special Attack")
-	float knockupStrength = 250.f; // ���� ƨ��� ��
-
-
+	bool debug = false;
 #pragma endregion
 
 

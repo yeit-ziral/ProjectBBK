@@ -27,6 +27,7 @@ void AC_MonsterAIController::OnPossess(APawn* InPawn)
             {
                 AActor* Player0 = UGameplayStatics::GetPlayerPawn(this, 0);
                 BB->SetValueAsObject(TEXT("TargetActor"), Player0);
+                SetFocus(Player0);
             }
         }
     }

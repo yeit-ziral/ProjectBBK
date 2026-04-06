@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "C_BaseMonster.h"
@@ -56,9 +56,6 @@ void AC_BaseMonster::BeginPlay()
 	Super::BeginPlay();
 
 
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Bear C++ BeginPlay!"));
-
 	if (monsterASC)
 	{
 		monsterASC->InitAbilityActorInfo(this, this);
@@ -67,14 +64,13 @@ void AC_BaseMonster::BeginPlay()
 			if (!abilityClass) continue;
 
 			monsterASC->GiveAbility(FGameplayAbilitySpec(abilityClass, 1, 0));
-			UE_LOG(LogTemp, Error, TEXT("GiveAbility: %s"), *abilityClass->GetName());
 		}
 
-		// ���� �̺�Ʈ ���ε� (AI, ����Ʈ, ���� ��)
+		// 사망 이벤트 바인딩 (AI, 위젯, 연출 등)
 		monsterASC->OnMonsterDeath.AddLambda([this](UC_MonsterASC* ASC)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("%s died (OnMonsterDeath)"), *GetName());
-				// ���⼭ �ִϸ��̼�, Destroy Ÿ�̸�, AI ��Ȱ��ȭ �� ó��
+				// 여기서 애니메이션, Destroy 타이머, AI 비활성화 등 처리
 			});
 	}
 
@@ -94,20 +90,8 @@ void AC_BaseMonster::BeginPlay()
 	ApplyMonsterTypeTag();
 	InitializeMonsterHpWidget();
 	BindAttributeDelegates();
-	//////////////////////
-	if (GEngine)
-	{
-		FString Msg = FString::Printf(TEXT("BeginPlay: MonsterId=%d, MaxHP=%.1f, ATK=%.1f"),
-			monsterId,
-			monsterAttributeSet ? monsterAttributeSet->GetmaxHP() : -1.0f,
-			monsterAttributeSet ? monsterAttributeSet->Getattack() : -1.0f);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Msg);
-	}
-	/////////////////////////
 	if (attackManager)
 		attackManager->Initialize(this);
-	
-	PrintMonsterTags();
 }
 
 // Called every frame
@@ -183,33 +167,10 @@ void AC_BaseMonster::InitializeAttributesFromDataTable()
 	{
 		Move->MaxWalkSpeed = monsterAttributeSet->GetmoveSpeed();
 	}
-	UE_LOG(LogTemp, Error, TEXT("Monster MaxHP = %d"), GetmaxHP());
 }
 
 void AC_BaseMonster::PrintMonsterTags()
 {
-	if (!monsterASC)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("monsterASC is NULL"));
-		return;
-	}
-
-	FGameplayTagContainer OwnedTags;
-	monsterASC->GetOwnedGameplayTags(OwnedTags);
-
-	UE_LOG(LogTemp, Warning, TEXT("===== Monster Owned Tags Start ====="));
-
-	if (OwnedTags.Num() == 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("No Owned Tags"));
-	}
-
-	for (const FGameplayTag& Tag : OwnedTags)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Owned Tag : %s"), *Tag.ToString());
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("===== Monster Owned Tags End ====="));
 }
 
 void AC_BaseMonster::InitializeMonsterHpWidget()

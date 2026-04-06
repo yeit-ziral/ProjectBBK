@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -33,7 +33,26 @@ protected:
     void InitializeBossHpWidget();
     void RemoveBossHpWidget();
 
-    // �׽�Ʈ�� ���� GA
+    void OnInvincibleTagChanged(const FGameplayTag& Tag, int32 NewCount);
+
+    void OnBossHpChanged(const FOnAttributeChangeData& ChangeData);
+    void OnBossGroggyChanged(const FOnAttributeChangeData& ChangeData);
+
+    // TODO: 테스트용 무적 토글 — 확인 후 삭제
+    void ToggleInvincible();
+    FTimerHandle invincibleTestTimerHandle;
+
+
+    // TODO: 테스트용 데미지 — 확인 후 삭제
+    void ApplyTestDamage();
+    FTimerHandle testDamageTimerHandle;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Test")
+    TSubclassOf<UGameplayEffect> testDamageGE;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Test")
+    TSubclassOf<UGameplayEffect> testTrueDamageGE;
+    // 테스트용 보스 GA
     UPROPERTY(EditDefaultsOnly, Category = "Boss")
     TSubclassOf<UGameplayAbility> bossStormPatternGA;
 

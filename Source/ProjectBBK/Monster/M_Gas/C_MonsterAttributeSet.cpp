@@ -81,39 +81,39 @@ void UC_MonsterAttributeSet::OnRep_SpecialCooldown(const FGameplayAttributeData&
 
 void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage)
 {
-	// 1. Instigator (������) ��������
+	// 1. Instigator (공격자) 가져오기
 	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
 	AActor* Instigator = EffectContext.GetInstigator();
 
 	if (!Instigator)
 		return;
 
-	// 2. ������ ASC ��������
+	// 2. 공격자 ASC 가져오기
 	UAbilitySystemComponent* InstigatorASC =
 		UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Instigator);
 
 	if (!InstigatorASC)
 		return;
 
-	// 3. �ñر� ��� ������ üũ
+	// 3. 궁극기 사용 여부 체크
 	FGameplayTag UsingUltimateTag =
 		FGameplayTag::RequestGameplayTag(FName("State.UsingUltimate"), false);
 
 	if (UsingUltimateTag.IsValid() &&
 		InstigatorASC->HasMatchingGameplayTag(UsingUltimateTag))
 	{
-		return; // �ñر� ��� �߿� ���� �� ��
+		return; // 궁극기 사용 중에는 마나 충전 안 함
 	}
 
-	// 4. Mana ������ ���
+	// 4. Mana 충전량 계산
 	float ManaCharge = ActualDamage * ManaChargeRate;
 	ManaCharge = FMath::Clamp(ManaCharge, MinManaCharge, MaxManaCharge);
 
-	// 5. GE Ȯ��
+	// 5. GE 확인
 	if (!GE_ChargeMana)
 		return;
 
-	// 6. GE Spec ����
+	// 6. GE Spec 생성
 	FGameplayEffectContextHandle ManaEffectContext =
 		InstigatorASC->MakeEffectContext();
 	ManaEffectContext.AddInstigator(Instigator, Instigator);
@@ -128,7 +128,7 @@ void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallback
 	if (!SpecHandle.IsValid())
 		return;
 
-	// 7. SetByCaller�� ������ ����
+	// 7. SetByCaller로 수치 설정
 	FGameplayTag ManaChargeTag =
 		FGameplayTag::RequestGameplayTag(FName("Data.ManaCharge"), false);
 
@@ -137,7 +137,7 @@ void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallback
 
 	SpecHandle.Data->SetSetByCallerMagnitude(ManaChargeTag, ManaCharge);
 
-	// 8. GE ����
+	// 8. GE 적용
 	InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
@@ -165,40 +165,41 @@ void UC_MonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attrib
 
     if (Attribute == GetmaxHPAttribute())
         NewValue = FMath::Max(NewValue, 1.f);
-    else if (Attribute == GetcurHPAttribute())       
+    else if (Attribute == GetcurHPAttribute())
         NonNegative(NewValue);
-    else if (Attribute == GetmaxGroggyAttribute())    
+    else if (Attribute == GetmaxGroggyAttribute())
         NewValue = FMath::Max(NewValue, 1.f);
-    else if (Attribute == GetcurGroggyAttribute())       
+    else if (Attribute == GetcurGroggyAttribute())
         NonNegative(NewValue);
-    else if (Attribute == GetattackAttribute())      
+    else if (Attribute == GetattackAttribute())
         NonNegative(NewValue);
-    else if (Attribute == GetdefenseAttribute())     
+    else if (Attribute == GetdefenseAttribute())
         NonNegative(NewValue);
-    else if (Attribute == GetmoveSpeedAttribute())    
+    else if (Attribute == GetmoveSpeedAttribute())
         NonNegative(NewValue);
-    else if (Attribute == GetattackRangeAttribute())  
+    else if (Attribute == GetattackRangeAttribute())
         NonNegative(NewValue);
-    else if (Attribute == GetnormalCooldownAttribute() || Attribute == GetspecialCooldownAttribute()) 
+    else if (Attribute == GetnormalCooldownAttribute() || Attribute == GetspecialCooldownAttribute())
         NonNegative(NewValue);
 }
 
 void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);
- //////////////������ ó��////////////////////////////////////////////////////////////////////
+ //////////////데미지 처리////////////////////////////////////////////////////////////////////
+    const bool bInvincible = Data.Target.HasMatchingGameplayTag(
+        FGameplayTag::RequestGameplayTag(FName("State.Invincible")));
+
     if (Data.EvaluatedData.Attribute == GetReceivedDamageAttribute())
     {
+        if (bInvincible) { SetReceivedDamage(0.0f); return; }
+
         const float RawDamage = GetReceivedDamage();
 
-        const float Mitigated = FMath::Max(0.0f, RawDamage - Getdefense()); // ���� �ݿ�
+        const float Mitigated = FMath::Max(0.0f, RawDamage - Getdefense()); // 방어 반영
 
         const float NewHP = FMath::Clamp(GetcurHP() - Mitigated, 0.f, GetmaxHP());
         SetcurHP(NewHP);
-
-		UE_LOG(LogTemp, Warning, TEXT("[Monster] HP: %.1f (Damage: %.1f)"),
-			NewHP, Mitigated);
-
         SetReceivedDamage(0.0f);
 
 		if (Mitigated > 0.0f)
@@ -212,14 +213,12 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
     // True Damage (DoT/상태이상) — 방어력 무시
     if (Data.EvaluatedData.Attribute == GetReceivedTrueDamageAttribute())
     {
+        if (bInvincible) { SetReceivedTrueDamage(0.0f); return; }
+
         const float TrueDamage = GetReceivedTrueDamage();
 
         const float NewHP = FMath::Clamp(GetcurHP() - TrueDamage, 0.f, GetmaxHP());
         SetcurHP(NewHP);
-
-        UE_LOG(LogTemp, Warning, TEXT("[Monster] HP: %.1f (TrueDamage: %.1f)"),
-            NewHP, TrueDamage);
-
         SetReceivedTrueDamage(0.0f);
 
         if (TrueDamage > 0.0f)
@@ -241,7 +240,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
         if (NewHP <= 0.f)
         {
-            // ASC ã�Ƽ� HandleDeath ȣ��
+            // ASC 찾아서 HandleDeath 호출
             if (AActor* Owner = GetOwningActor())
             {
                 if (UAbilitySystemComponent* ASCBase = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Owner))

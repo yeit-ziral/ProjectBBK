@@ -29,7 +29,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// �ִϸ��̼� (BearMonster�� ������ ���)
+	// �ִϸ��̼� (MeleeMonster�� ������ ���)
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* rangedNormalMontage = nullptr;
 

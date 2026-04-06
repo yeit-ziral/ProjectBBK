@@ -10,12 +10,15 @@
 class UProgressBar;
 class UTextBlock;
 /**
- * 
+ *
  */
 UCLASS()
 class PROJECTBBK_API UC_BossMonsterHPWidget : public UC_MonsterHPWidgetBase
 {
 	GENERATED_BODY()
+
+public:
+    void SetInvincible(bool bInvincible);
 
 private:
     virtual void NativeConstruct() override;
@@ -32,4 +35,6 @@ private:
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* BossLevelText;
+
+    FLinearColor originalHpBarColor;
 };

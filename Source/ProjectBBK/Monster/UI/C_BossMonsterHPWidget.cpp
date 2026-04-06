@@ -10,7 +10,19 @@ void UC_BossMonsterHPWidget::NativeConstruct()
 	Super::NativeConstruct();
 	if (BossNameText)
 		BossNameText->SetJustification(ETextJustify::Center);
+	if (BossHpBar)
+		originalHpBarColor = BossHpBar->GetFillColorAndOpacity();
 	UpdateWidget();
+}
+
+void UC_BossMonsterHPWidget::SetInvincible(bool bInvincible)
+{
+	if (!BossHpBar) return;
+
+	if (bInvincible)
+		BossHpBar->SetFillColorAndOpacity(FLinearColor(0.4f, 0.4f, 0.4f, 1.0f));
+	else
+		BossHpBar->SetFillColorAndOpacity(originalHpBarColor);
 }
 
 void UC_BossMonsterHPWidget::UpdateWidget()

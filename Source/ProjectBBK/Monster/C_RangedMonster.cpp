@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "C_RangedMonster.h"
@@ -50,29 +50,17 @@ void AC_RangedMonster::RangedNormalAttack()
 		{
 			monsterASC->TryActivateAbilityByClass(normalAttackGAClass);
 		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("RangedMonster: normalAttackGAClass or monsterASC is NULL"));
-		}
 	}
 }
 
 void AC_RangedMonster::RangedSpecialAttack()
 {
-	UE_LOG(LogTemp, Warning, TEXT("RangedSpecialAttack ȣ��� attackManager = %s"),
-		attackManager ? TEXT("VALID") : TEXT("NULL"));
-
 	if (!attackManager)
 		return;
 
-	UE_LOG(LogTemp, Warning, TEXT("RangedMonster Ư�� ���� �õ�"));
-
 	if (attackManager->DoSpecialAttack())
 	{
-		if (!rangedSpecialMontage)
-			UE_LOG(LogTemp, Warning, TEXT("no special montage"));
 		PlayAnimMontage(rangedSpecialMontage);
-
 		SpawnSpecialProjectile();
 	}
 }
@@ -81,10 +69,7 @@ void AC_RangedMonster::RangedSpecialAttack()
 void AC_RangedMonster::SpawnSpecialProjectile()
 {
 	if (!specialProjectileClass)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: specialProjectileClass is NULL"));
 		return;
-	}
 
 	UWorld* world = GetWorld();
 	if (!world) return;
@@ -103,10 +88,7 @@ void AC_RangedMonster::SpawnSpecialProjectile()
 	// 타겟(플레이어) 위치 획득
 	APawn* playerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	if (!playerPawn)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: no player pawn found for special attack"));
 		return;
-	}
 	const FVector targetPos = playerPawn->GetActorLocation();
 
 	// 스폰
@@ -116,17 +98,11 @@ void AC_RangedMonster::SpawnSpecialProjectile()
 
 	AActor* spawnedActor = world->SpawnActor<AActor>(specialProjectileClass, spawnLocation, FRotator::ZeroRotator, spawnParams);
 	if (!spawnedActor)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: special projectile spawn failed"));
 		return;
-	}
 
 	AC_SpecialProjectile* specialProjectile = Cast<AC_SpecialProjectile>(spawnedActor);
 	if (!specialProjectile)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: specialProjectileClass is not AC_SpecialProjectile"));
 		return;
-	}
 
 	specialProjectile->InitSpecialProjectile(targetPos, specialArcHeight, specialProjectileSpeed);
 }
@@ -134,23 +110,20 @@ void AC_RangedMonster::SpawnSpecialProjectile()
 void AC_RangedMonster::SpawnProjectile()
 {
 	if (!projectileClass)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: projectileClass is NULL"));
 		return;
-	}
 
 	UWorld* world = GetWorld();
 	if (!world)
 		return;
 
-	// ���� ��ġ/ȸ�� ���
+	// 스폰 위치/회전 결정
 	FVector spawnLocation = GetActorLocation() + muzzleOffset;
 	FRotator spawnRotation = GetActorRotation();
 
 	USkeletalMeshComponent* meshComp = GetMesh();
 	if (meshComp)
 	{
-		// ������ ������ ���� �������� �߻�
+		// 총구 소켓이 있는 경우 소켓에서 발사
 		if (meshComp->DoesSocketExist(muzzleSocketName))
 		{
 			const FTransform socketTransform = meshComp->GetSocketTransform(muzzleSocketName);
@@ -159,18 +132,15 @@ void AC_RangedMonster::SpawnProjectile()
 		}
 	}
 
-	// Ÿ�� �������� ��� ������(���� ���� ���) "���� �ٶ󺸴� ����" ��� TargetActor�� �ᵵ ��
-	// (BaseMonster�� targetActor ���� �� ������ �ű⿡ ���� �ٲ��ٰ�)
-	// ���⼭�� �ϴ� ���� ���� �������� �߻�
+	// 타겟 방향 투사체 — 추후 TargetActor 도입 예정
+	// (BaseMonster의 targetActor 구현 미루었기 때문에 임시로 전방 발사)
+	// 여기서는 일단 항상 앞쪽 방향으로 발사
 	FActorSpawnParameters spawnParams;
 	spawnParams.Owner = this;
 	spawnParams.Instigator = GetInstigator();
 
 	AActor* projectile = world->SpawnActor<AActor>(projectileClass, spawnLocation, spawnRotation, spawnParams);
 	if (!projectile)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RangedMonster: projectile spawn failed"));
 		return;
-	}
 
 }

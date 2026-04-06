@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "ANC_BearSpecialAttack.h"
+#include "ANC_MeleeSpecialAttack.h"
 #include "../C_BaseMonster.h"
 #include "../Manager/C_AttackManagerComponent.h"
 
-void UANC_BearSpecialAttack::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
+void UANC_MeleeSpecialAttack::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
     if (!MeshComp) return;
 
@@ -14,6 +14,6 @@ void UANC_BearSpecialAttack::Notify(USkeletalMeshComponent* MeshComp, UAnimSeque
 
     if (UC_AttackManagerComponent* Manager = OwnerMonster->GetAttackManager())
     {
-        Manager->DoSlam(); 
+        Manager->DoSlam();
     }
 }

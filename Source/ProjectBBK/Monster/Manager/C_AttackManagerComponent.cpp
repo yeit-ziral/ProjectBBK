@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "C_AttackManagerComponent.h"
@@ -65,7 +65,7 @@ bool UC_AttackManagerComponent::DoNormalAttack()
 	case MONSTER_ID_BEAR:
 	{
 		if (!CanAttack()) return false;
-		DoBearNormalAttack();
+		DoMeleeNormalAttack();
 		return true;
 	}
 	case MONSTER_ID_ROCKET:
@@ -91,9 +91,7 @@ bool UC_AttackManagerComponent::DoSpecialAttack()
 	{
 	case MONSTER_ID_BEAR:
 	{
-		if (!CanAttack()) return false;
-		DoBearSpecialAttackJump();
-		return true;
+		return false; // TODO: 스페셜 공격 미구현
 	}
 	case MONSTER_ID_ROCKET:
 	{
@@ -110,22 +108,22 @@ bool UC_AttackManagerComponent::DoSpecialAttack()
 
 void UC_AttackManagerComponent::DoSlam()
 {
-	DoBearSpecialAttackSlam();
+	// TODO: 스페셜 공격 미구현
 }
 
-void UC_AttackManagerComponent::DoBearNormalAttack()
+void UC_AttackManagerComponent::DoMeleeNormalAttack()
 {
 
 	if (!ownerMonster)
 		return;
 
-	const FVector start = ownerMonster->GetActorLocation();    // ������ġ
-	const FVector dir = ownerMonster->GetActorForwardVector(); // ���� ���� ����
-	const float   range = ownerMonster->GetAttackRange();      // ���� ���� ����
-	const FVector end = start + dir * range;                   // ���� ���� �� ��ġ
+	const FVector start = ownerMonster->GetActorLocation();    // 몬스터 위치
+	const FVector dir = ownerMonster->GetActorForwardVector(); // 몬스터 앞 방향 벡터
+	const float   range = ownerMonster->GetAttackRange();      // 공격 범위 설정
+	const FVector end = start + dir * range;                   // 공격 범위 끝 위치
 	 
 	TArray<TEnumAsByte<EObjectTypeQuery>> types;
-	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn)); //���� ����� pawn���� ����
+	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn)); //충돌 대상을 Pawn으로 설정
 
 	TArray<AActor*> ignore;
 	ignore.Add(ownerMonster);
@@ -136,11 +134,11 @@ void UC_AttackManagerComponent::DoBearNormalAttack()
 	{
 		ignore.Add(actor);
 	}
-	// �ڱ��ڽŰ� BaseMonsterŬ���� ���� ���ݴ�󿡼� ����
+	// 자기자신과 BaseMonster 클래스 같은 공격대상에서 제외
 
-	FHitResult hit; //���� ��� ���� ����
+	FHitResult hit; // 히트 결과 저장 변수
 
-	const bool hitOk = UKismetSystemLibrary::SphereTraceSingleForObjects  // ���ϰ���
+	const bool hitOk = UKismetSystemLibrary::SphereTraceSingleForObjects  // 구체 탐지
 	(
 		ownerMonster, start, end, traceRadius, types, false, ignore,
 		debug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
@@ -155,12 +153,11 @@ void UC_AttackManagerComponent::DoBearNormalAttack()
 			UGameplayStatics::ApplyDamage
 			(
 				target,
-				ownerMonster->GetAttack(),                    // ���߿� ��� �߰�
+			ownerMonster->GetAttack(),                    // 나중에 나누기 추가
 				ownerMonster->GetController(),
 				ownerMonster,
 				nullptr
 			);
-			UE_LOG(LogTemp, Warning, TEXT("Bear Normal hit %s (DMG=%d)"), *target->GetName(), ownerMonster->GetAttack());
 		}
 	}
 	
@@ -168,74 +165,6 @@ void UC_AttackManagerComponent::DoBearNormalAttack()
 	StartCooldown(ownerMonster->GetAttackCooldown());
 }
 
-void UC_AttackManagerComponent::DoBearSpecialAttackJump()
-{
-	if (ACharacter* bear = Cast<ACharacter>(ownerMonster))
-	{
-		
-		FVector velocity = bear->GetVelocity();
-		velocity.Z = jumpPower;
-		bear->LaunchCharacter(velocity, true, true);
-	}
-
-}
-
-void UC_AttackManagerComponent::DoBearSpecialAttackSlam()
-{
-	if (!ownerMonster)
-		return;
-
-	const FVector monster = ownerMonster->GetActorLocation(); // �����ϴ� ������ ��ġ
-
-	TArray<TEnumAsByte<EObjectTypeQuery>> types;
-	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn)); //���� ����� pawn���� ����
-
-	TArray<AActor*> ignore;
-	ignore.Add(ownerMonster);
-	TArray<AActor*> allMonsters;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AC_BaseMonster::StaticClass(), allMonsters);
-
-	for (AActor* actor : allMonsters)
-	{
-		ignore.Add(actor);
-	}
-	// �ڱ��ڽŰ� BaseMonsterŬ���� ���� ���ݴ�󿡼� ����
-
-	TArray<FHitResult> hits;
-
-	const bool hitsOk = UKismetSystemLibrary::SphereTraceMultiForObjects  // ��������
-	(
-		ownerMonster, monster, monster + FVector(0, 0, 1), slamRadius,
-		types, false, ignore, debug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
-		hits, true
-	);
-
-	if (hitsOk)
-	{
-		for (const FHitResult& hit : hits)
-		{
-			ACharacter* target = Cast<ACharacter>(hit.GetActor());
-			if (!target) 
-				continue;
-
-			UGameplayStatics::ApplyDamage(
-				target,
-				ownerMonster->GetAttack(),         // ���߿� ��� �߰�    
-				ownerMonster->GetController(),
-				ownerMonster,
-				nullptr
-			);
-
-			const FVector dir = (target->GetActorLocation() - monster).GetSafeNormal2D();     // �÷��̾� �˹� �Ÿ� ����
-			const FVector impulse = dir * knockbackStrength + FVector(0, 0, knockupStrength);
-
-			target->LaunchCharacter(impulse, true, true);
-	
-		}
-	}
-
-	StartCooldown(ownerMonster->GetAttackCooldown()); // ���߿� ����� ��Ÿ������ ����
-}
 
 
 // Called when the game starts

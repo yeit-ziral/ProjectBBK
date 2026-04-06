@@ -4,16 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotify.h"
-#include "ANC_BearSpecialAttack.generated.h"
+#include "ANC_MeleeSpecialAttack.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
-class PROJECTBBK_API UANC_BearSpecialAttack : public UAnimNotify
+class PROJECTBBK_API UANC_MeleeSpecialAttack : public UAnimNotify
 {
 	GENERATED_BODY()
-	
+
 public:
 	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation) override;
 };

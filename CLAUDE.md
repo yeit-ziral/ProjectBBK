@@ -81,7 +81,7 @@ Player state (`UC_PlayerState`) owns the ASC and attribute set. The character ge
 
 ```
 AC_BaseMonster (ACharacter)
-├── AC_BearMonster       // Melee: normal attack + jump slam special
+├── AC_MeleeMonster      // Melee: normal attack + jump slam special
 ├── AC_RangedMonster     // Projectile spawning via AnimNotify
 └── AC_BossMonster       // Beam pattern + Storm pattern GAs
 ```
@@ -226,7 +226,7 @@ Skills/
 ### Monster Abilities
 | Ability | 상태 | 비고 |
 |---------|------|------|
-| BPC_MeleeMonsterNormalAttackGA | ✅ 완료 | AC_BearMonster 사용 |
+| BPC_MeleeMonsterNormalAttackGA | ✅ 완료 | AC_MeleeMonster 사용 |
 | BPC_RangedMonsterNormalAttackGA | ✅ 완료 | AC_RangedMonster 사용 |
 | BPC_BossBeamPatternGA | ✅ 완료 | AC_BossMonster 사용 |
 | BPC_BossStormPatternGA | ✅ 완료 | AC_BossMonster 사용 |
