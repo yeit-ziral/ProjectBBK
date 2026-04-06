@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "C_BasePlayerCharactor.h"
@@ -193,7 +193,7 @@ void AC_BasePlayerCharactor::BindASCInput()
 	{
 		if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PC->InputComponent))
 		{
-			// Ability Input Mapping (��: GA_Sprint, GA_Attack ��)
+			// Ability Input Mapping (예: GA_Sprint, GA_Attack 등)
 			const FGameplayAbilityInputBinds Binds(
 				TEXT("Confirm"), 
 				TEXT("Cancel"), 
@@ -233,17 +233,17 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 
 	if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
 	{
-		// Health ���� ����
+		// Health 변경 감지
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			attributeSetBase->GethealthAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
 
-		// Mana ���� ���� (�ٽ�!)
+		// Mana 변경 감지 (다시!)
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			attributeSetBase->GetmanaAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
 
-		// Shield ���� ����
+		// Shield 변경 감지
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			attributeSetBase->GetshieldAttribute()
 		).AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
@@ -650,7 +650,7 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
 
 	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
 
-	// ���� ó��
+	// 사망 처리
 	if (Health <= 0.0f && IsAlive())
 	{
 		Die();
@@ -663,7 +663,7 @@ void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData&
 	float MaxMana = GetMaxMana();
 	float Percent = (MaxMana > 0.0f) ? (Mana / MaxMana) : 0.0f;
 
-	// UI ��������Ʈ ��ε�ĳ��Ʈ!
+	// UI 업데이트 브로드캐스트
 	OnManaChanged.Broadcast(Percent);
 
 	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"), Mana, MaxMana, Percent * 100.0f);

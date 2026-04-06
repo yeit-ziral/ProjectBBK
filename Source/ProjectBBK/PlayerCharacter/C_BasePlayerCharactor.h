@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -192,7 +192,7 @@ protected:
 	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	//class UInputAction* attackAction;
 
-	// ����Ī�� (Week 1���� ������)
+	// 멀티캐릭터 (Week 1에서 구현 예정)
 	int32 ActiveCharacterIndex = 0;
 
 	TWeakObjectPtr<class UC_CharacterASC> abilitySystemComponent;
