@@ -97,10 +97,15 @@ protected:
 
 	virtual void PossessedBy(AController* NewController) override;
 
+	virtual void UnPossessed() override;
+
 	virtual void OnRep_PlayerState() override;
 
 	// Binding Input with GAS
 	virtual void BindASCInput();
+
+	// MappingContext 등록 (BeginPlay + PossessedBy 양쪽에서 호출)
+	void SetupMappingContext();
 
 	void InitializeStartingValues(AC_PlayerState* PS);
 

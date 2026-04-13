@@ -64,11 +64,8 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& O
 	AIControllerClass = AC_PlayerAIController::StaticClass();
 }
 
-// Called when the game starts or when spawned
-void AC_BasePlayerCharactor::BeginPlay()
+void AC_BasePlayerCharactor::SetupMappingContext()
 {
-	Super::BeginPlay();
-	
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -76,6 +73,14 @@ void AC_BasePlayerCharactor::BeginPlay()
 			Subsystem->AddMappingContext(playerMappingContext, 0);
 		}
 	}
+}
+
+// Called when the game starts or when spawned
+void AC_BasePlayerCharactor::BeginPlay()
+{
+	Super::BeginPlay();
+
+	SetupMappingContext();
 
 	if (abilitySystemComponent.IsValid())
 	{
@@ -153,6 +158,10 @@ void AC_BasePlayerCharactor::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
+	// 로스터 교체 시 비소유 상태로 스폰된 캐릭터는 BeginPlay에서
+	// MappingContext가 등록되지 않으므로 여기서 다시 시도
+	SetupMappingContext();
+
 	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
 
 	if (PS)
@@ -163,6 +172,14 @@ void AC_BasePlayerCharactor::PossessedBy(AController* NewController)
 
 		AddCharacterAbilities();
 	}
+}
+
+void AC_BasePlayerCharactor::UnPossessed()
+{
+	Super::UnPossessed();
+
+	// 다음 소유 시 ASC 입력 바인딩이 다시 실행되도록 리셋
+	bASCInputBound = false;
 }
 
 void AC_BasePlayerCharactor::OnRep_PlayerState()

@@ -3,18 +3,125 @@
 
 #include "C_PlayerController.h"
 #include "../C_PlayerState.h"
+#include "../C_BasePlayerCharactor.h"
 #include "AbilitySystemComponent.h"
+#include "EnhancedInputComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
+void AC_PlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 서버(싱글플레이어 포함)에서만 스폰
+	if (!HasAuthority()) return;
+
+	// 스폰 위치: PlayerStart 기준
+	FTransform SpawnTransform = FTransform::Identity;
+	if (AActor* PlayerStart = UGameplayStatics::FindPlayerStart(this, FName()))
+	{
+		SpawnTransform = PlayerStart->GetActorTransform();
+	}
+
+	if (characterRosterClasses.Num() == 0) return;
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	for (TSubclassOf<AC_BasePlayerCharactor>& CharClass : characterRosterClasses)
+	{
+		if (!CharClass) continue;
+
+		AC_BasePlayerCharactor* Char = GetWorld()->SpawnActor<AC_BasePlayerCharactor>(
+			CharClass, SpawnTransform, SpawnParams);
+
+		if (Char)
+		{
+			// 일단 모두 비활성화 (0번만 나중에 활성화)
+			Char->SetActorHiddenInGame(true);
+			Char->SetActorEnableCollision(false);
+			characterRoster.Add(Char);
+		}
+	}
+
+	// 0번 캐릭터로 시작
+	if (characterRoster.IsValidIndex(0))
+	{
+		characterRoster[0]->SetActorHiddenInGame(false);
+		characterRoster[0]->SetActorEnableCollision(true);
+		Possess(characterRoster[0]);
+		currentCharacterIndex = 0;
+	}
+}
 
 void AC_PlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
 	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
-
 	if (PS)
 	{
 		PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, InPawn);
 	}
 }
 
-// TODO -- Add HUD stuff
+void AC_PlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		if (IA_SwitchChar0)
+			EIC->BindAction(IA_SwitchChar0, ETriggerEvent::Started, this, [this]() { SwitchToCharacter(0); });
+
+		if (IA_SwitchChar1)
+			EIC->BindAction(IA_SwitchChar1, ETriggerEvent::Started, this, [this]() { SwitchToCharacter(1); });
+
+		if (IA_SwitchCharNext)
+			EIC->BindAction(IA_SwitchCharNext, ETriggerEvent::Started, this, &AC_PlayerController::SwitchToNextCharacter);
+	}
+}
+
+void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
+{
+	if (bIsSwitching) return;
+	if (NextIndex == currentCharacterIndex) return;
+	if (!characterRoster.IsValidIndex(NextIndex)) return;
+
+	AC_BasePlayerCharactor* OldChar = characterRoster[currentCharacterIndex];
+	AC_BasePlayerCharactor* NewChar = characterRoster[NextIndex];
+
+	if (!OldChar || !NewChar) return;
+
+	bIsSwitching = true;
+
+	// 새 캐릭터를 현재 위치/회전으로 이동
+	NewChar->SetActorLocationAndRotation(
+		OldChar->GetActorLocation(),
+		OldChar->GetActorRotation()
+	);
+
+	// 속도 이어받기 (공중에서 교체 시 자연스러운 낙하)
+	NewChar->GetCharacterMovement()->Velocity = OldChar->GetCharacterMovement()->Velocity;
+
+	// 새 캐릭터 활성화
+	NewChar->SetActorHiddenInGame(false);
+	NewChar->SetActorEnableCollision(true);
+
+	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
+	Possess(NewChar);
+	currentCharacterIndex = NextIndex;
+
+	// 이전 캐릭터 비활성화
+	OldChar->SetActorHiddenInGame(true);
+	OldChar->SetActorEnableCollision(false);
+
+	bIsSwitching = false;
+}
+
+void AC_PlayerController::SwitchToNextCharacter()
+{
+	if (characterRoster.Num() == 0) return;
+	const int32 NextIndex = (currentCharacterIndex + 1) % characterRoster.Num();
+	SwitchToCharacter(NextIndex);
+}
