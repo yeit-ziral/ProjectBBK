@@ -2,9 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Claude Code에게:** 작업 중 아래 상황이 발생하면 해당 섹션에 추가할 것을 **반드시 제안**할 것.
-> - 예상치 못한 GAS/UE 동작, 함수 호출 오류, 삽질 끝에 해결한 문제 → **Debugging Checklist** 추가 제안
-> - 새로운 GA/GE/UI 구현 패턴이 확립된 경우 → **Common Patterns** 추가 제안
+> **Claude Code에게:** `/패턴정리` 명령어 입력 시 현재 세션에서 작업한 내용을 검토하고 Debugging Checklist / Common Patterns / Design Decisions에 추가할 항목을 제안할 것. 또한 Current Development Status 섹션의 각 테이블(Player Abilities / Monster Abilities / UI / Effects)에서 상태 변경이 필요한 항목(새로 완료된 항목, 계획 중→진행 중 전환 등)도 함께 제안할 것.
 
 ## Project Overview
 
@@ -198,7 +196,10 @@ Skills/
 - `.uasset` / `.umap` 파일은 직접 읽거나 편집할 수 없음 — C++ 변경 시 어떤 BP를 리컴파일해야 하는지 명시할 것
 
 ### GAS 작업 규칙
-- Damage: `GE_BasicDamage`와 Set by Caller(`Data.Damage` 태그) 사용 — 하드코딩 절대 금지
+- Damage: 데미지는 무조건 전용 GE가 담당 — GA에서 직접 수치 적용 절대 금지
+  - 즉발 데미지 → `GE_BasicDamage` (Set by Caller, `Data.Damage` 태그)
+  - 지속 데미지(DoT) → `GE_DotDamage` (Set by Caller, `Data.Damage` 태그)
+  - 새로운 데미지 유형(크리티컬 등) → 전용 GE를 새로 생성
 - Cooldown: `GE_GenericCooldown`을 GA 간 공유 — GA별 개별 쿨다운 GE 생성 금지
 - ASC 참조: 반드시 `PlayerState`에서 가져올 것 — `Character`에서 직접 참조 금지
 - Overlap의 `Actors to Ignore`: `GetOwner()` 대신 `GetAvatarActorFromActorInfo()` 사용 — GA 컨텍스트에서는 `GetOwner()`가 동작하지 않음 (GA_MeleeUltimate 구현 시 확인된 사항)
@@ -255,7 +256,8 @@ Skills/
 | GE_GiveShield | ✅ 완료 | GA_Shield 사용 |
 | GE_Cost_Ultimate | ✅ 완료 | GA_MeleeUltimate 사용 |
 | GE_UltimateBuff | ✅ 완료 | |
-| GE_Ablaze | ✅ 완료 | 상태이상: 화염 — 플레이어(Health)·몬스터(ReceivedTrueDamage) 동시 지원, Set by Caller |
+| GE_Ablaze | ✅ 완료 | 상태이상: 화염 — State.Ablaze 태그 부여 + GameplayCue.Debug.Ablaze, 데미지는 GE_DotDamage가 처리 |
+| GE_DotDamage | ✅ 완료 | DoT 데미지 처리 — 플레이어(Health)·몬스터(ReceivedTrueDamage) 동시 지원, Set by Caller |
 | GE_Wet | ✅ 완료 | 상태이상: 침수 |
 | GE_ManaRegen | ✅ 완료 | |
 | GE_ChargeMana | ✅ 완료 | |
@@ -293,6 +295,8 @@ Skills/
    ```
 7. **Set by Caller `Data None` 에러** — `FGameplayEffectSpec::GetMagnitude called for Data None` 발생 시 → GE의 Set by Caller Data Tag와 코드의 `RequestGameplayTag()` 태그명 일치 여부 확인
 8. **GetHitResultUnderCursorByChannel이 항상 같은 위치 반환** — 3인칭 카메라(커서 숨김 + 마우스로 카메라 회전) 방식에서는 사용 불가 → 카메라 전방 `LineTraceByChannel`로 교체
+9. **GameplayCue 이펙트가 맵 중앙(0,0,0)에 스폰될 때** — `GameplayCueNotify_Actor`의 Class Defaults에서 `Auto Attach to Owner = true` 확인. 또는 Begin Play에서 `Attach Actor to Component`로 캐릭터 Mesh에 명시적 부착
+10. **`[C_SkillIconWidget] Failed to get skill data from: Default__GA_Heal_C` 경고** — 새로 추가한 스킬이 한 번도 활성화되지 않은 상태에서 위젯이 초기화될 때 발생. `C_SkillBase::LoadSkillData()`의 CDO 가드가 원인 (현재 코드에서 수정 완료 — CDO 가드 제거, `FindAbilityByTag`에서 인스턴스 우선 확인으로 변경)
 
 ---
 
@@ -324,13 +328,19 @@ SphereOverlapActors
 → ForEach → ApplyGameplayEffectToTarget
 ```
 
-### 단일 GE로 플레이어/몬스터 동시 지원
-GE Modifier를 2개 추가하되 각각 다른 AttributeSet을 대상으로 설정.
-타겟에 해당 AttributeSet이 없으면 GAS가 자동으로 해당 Modifier를 무시.
+### 상태이상 GE 구조 패턴 (GE_Ablaze / GE_DotDamage 참고)
+상태이상 태그 부여와 DoT 데미지 처리를 GE 두 개로 분리.
 ```
-예) GE_Ablaze Modifiers:
-  ① C_ChracterAttributeSetBase.Health       Add  (플레이어에게만 적용)
-  ② UC_MonsterAttributeSet.ReceivedTrueDamage Add  (몬스터에게만 적용)
+GE_Ablaze
+  → 역할: State.Ablaze 태그 부여만 담당 (Modifier 없음)
+  → Duration: 상태이상 지속 시간
+
+GE_DotDamage
+  → 역할: 실제 DoT 데미지 처리
+  → Set by Caller (Data.Damage) 로 데미지 값 주입
+  → 플레이어: UC_ChracterAttributeSetBase.Health 적용
+  → 몬스터: UC_MonsterAttributeSet.ReceivedTrueDamage 적용
+  → GAS가 타겟에 없는 AttributeSet Modifier를 자동 무시 → 분기 처리 불필요
 ```
 
 ### 지면 AOE 존 패턴 (GA_Ablaze / AC_FireZone 참고)
@@ -352,6 +362,32 @@ AC_FireZone::Initialize()
 - GE 클래스: `UC_SkillBase::GetTargetEffectClass(0)`으로 DT에서 가져옴
 - Radius / zoneDuration / baseDamage: `GetSkillData → Break FSkillData`로 DT에서 가져옴
 
+### Set by Caller + CurveTable 레벨 스케일링 패턴 (GA_Heal 참고)
+`ApplySkillEffects()` 대신 GE Spec을 수동 생성해야 Set by Caller 값 주입 가능.
+```
+GA ActivateAbility
+  → GetGameplayAttributeValue(UC_ChracterAttributeSetBase.level) → CurrentLevel
+  → EvaluateCurveTableRow(CT_SkillData, RowName, CurrentLevel) → 수치
+  → MakeOutgoingSpec(GE클래스, Level: 1)
+  → AssignTagSetByCallerMagnitude(Data.태그, 수치)
+  → ApplyGameplayEffectSpecToSelf
+  → ApplySkillCooldown → EndAbility
+```
+- CT_SkillData 하나로 모든 스킬의 레벨별 수치를 통합 관리
+- 레벨별 수치는 CSV Import로 일괄 입력 가능 (첫 행: 레벨, 첫 열: RowName)
+
+### 지속 VFX GameplayCue 패턴 (GC_Heal / GC_Ablaze 참고)
+GA가 EndAbility한 이후에도 GE 생명주기 동안 VFX가 자동 유지됨.
+```
+GameplayCueNotify_Actor 설정
+  → Class Defaults: Auto Attach to Owner = true
+  → Particle System Component 추가, Auto Activate = true
+GE에 GameplayCue 태그 부여
+  → GE 활성화 시: GC 액터 자동 스폰 + Owner(캐릭터)에 자동 부착
+  → GE 만료 시: GC 액터 자동 소멸 + VFX 종료
+```
+타이머 없이 GE 생명주기와 VFX가 자동 동기화됨.
+
 ### 3인칭 카메라 지면 위치 탐색 패턴
 커서가 없는 3인칭 카메라에서 캐릭터 전방 지면 좌표를 구하는 방법.
 ```
@@ -363,3 +399,28 @@ LineTraceByChannel
   TraceChannel: Visibility
 → ImpactPoint → 스폰 위치로 사용
 ```
+
+---
+
+## Design Decisions
+
+> 설계 방식을 결정할 때 대안이 존재했던 경우 여기에 기록.
+> 형식: 선택한 방식 / 고려했던 대안 / 선택 이유 / 트레이드오프
+
+### GE_Ablaze + GE_DotDamage — 상태이상과 데미지 처리 분리
+- **선택:** GE_Ablaze는 State.Ablaze 태그 부여 + GameplayCue.Debug.Ablaze 담당, 실제 DoT 데미지는 GE_DotDamage가 별도 처리
+- **대안:** GE_Ablaze Modifier에 Health / ReceivedTrueDamage를 직접 포함해 단일 GE로 처리
+- **선택 이유:** 상태이상 태그 관리와 데미지 수치 계산을 분리하면 각자 독립적으로 수정 가능. GE_DotDamage를 다른 상태이상(GE_Wet 등)에서도 재사용할 수 있음
+- **트레이드오프:** GE가 두 개로 늘어나 적용 순서와 생명주기를 함께 관리해야 함
+
+### GA_Heal — GE 단일 구조 (GE_Ablaze의 분리 구조 미적용)
+- **선택:** GE_HealOverTime 하나로 Health Modifier + State.Healing 태그 + GameplayCue.Heal 통합
+- **대안:** GE_Ablaze처럼 상태 태그용 GE와 수치 처리 GE를 분리
+- **선택 이유:** GA_Heal은 회복 단일 목적이므로 분리할 책임이 없음. GE_Ablaze 분리는 DoT와 상태이상을 독립적으로 재사용하기 위한 것
+- **트레이드오프:** 향후 State.Healing 태그를 다른 GE에서 재사용하려면 분리 구조로 리팩토링 필요
+
+### Mana Charge — C++ SetByCaller vs MMC
+- **선택:** C++ SetByCaller로 마나 충전량 전달
+- **대안:** MMC(Modifier Magnitude Calculation)로 계산 로직 캡슐화
+- **선택 이유:** 충전량이 전투 상황(피격, 공격 등)에 따라 호출 시점마다 달라지므로 런타임에 값을 직접 주입하는 SetByCaller가 적합. MMC는 AttributeSet 기반 정적 계산에 더 어울림
+- **트레이드오프:** SetByCaller는 호출부에서 태그와 값을 직접 관리해야 하므로 태그 불일치 오류에 취약 (Debugging Checklist 7번 참고)
