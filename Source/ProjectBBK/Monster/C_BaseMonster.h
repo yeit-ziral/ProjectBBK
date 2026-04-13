@@ -11,13 +11,13 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "Components/WidgetComponent.h"
 #include "GameplayTagContainer.h"
-#include "UI/C_MonsterHPWidgetBase.h"
 
 #include "C_BaseMonster.generated.h"
 
-class UDataTable;
 class UC_AttackManagerComponent;
-struct FMonsterData;
+class UC_MonsterDataComponent;
+class UC_GroggyComponent;
+class UC_MonsterHPDisplayComponent;
 
 UCLASS()
 class PROJECTBBK_API AC_BaseMonster : public ACharacter
@@ -25,37 +25,16 @@ class PROJECTBBK_API AC_BaseMonster : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	AC_BaseMonster();
 
-
-
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
 	virtual void PostInitializeComponents() override;
 
-protected:	 //protected variables
+protected:
 
-#pragma region data(rowName, monsterTable)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
-	FName rowName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
-	TSoftObjectPtr<UDataTable> monsterTable;
-#pragma endregion
-
-#pragma region stats(monsterId)
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	int32 monsterId;
-
-#pragma endregion
-
-#pragma region Gas(MonsterASC, MonsterAttributeSet, InitializeAttributesFromDataTable, Tag)
+#pragma region GAS(MonsterASC, MonsterAttributeSet, GameplayAbilities)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UC_MonsterASC* monsterASC;
 
@@ -65,90 +44,56 @@ protected:	 //protected variables
 	UPROPERTY()
 	UC_MonsterAttributeSet* monsterAttributeSet;
 
+	// 파생 클래스에서 BeginPlay에 설정 후 ApplyMonsterTypeTag() 호출
 	FGameplayTag monsterTypeTag;
-
 	void ApplyMonsterTypeTag();
-
-	void InitializeAttributesFromDataTable();
-
-	void PrintMonsterTags();
-
 #pragma endregion
 
-#pragma region UI(HpWidgetComponent, MonsterHpWidget)
-	UPROPERTY(VisibleAnywhere, Category = "UI")
-	UWidgetComponent* HpWidgetComponent;
-
-	UPROPERTY()
-	UC_MonsterHPWidgetBase* MonsterHpWidget;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UUserWidget> hpWidgetClass;
-
-	void InitializeMonsterHpWidget();
-	void InitializeHpWidgetClass();
-	void UpdateHpWidgetRotation();
-	virtual TSubclassOf<UUserWidget> GetHpWidgetClass() const;
-#pragma endregion
-
-	void BindAttributeDelegates();
-
-	void OnHpChanged(const FOnAttributeChangeData& ChangeData);
-	void OnMaxHpChanged(const FOnAttributeChangeData& ChangeData);
-
-	void OnGroggyChanged(const FOnAttributeChangeData& ChangeData);
-	void OnMaxGroggyChanged(const FOnAttributeChangeData& ChangeData);
-
+#pragma region Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Manager")
 	UC_AttackManagerComponent* attackManager = nullptr;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Data")
+	UC_MonsterDataComponent* dataComponent = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Groggy")
+	UC_GroggyComponent* groggyComponent = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	UC_MonsterHPDisplayComponent* hpDisplayComponent = nullptr;
+
+	// Scene 컴포넌트 — 생성자에서 루트에 부착, HPDisplayComponent가 관리
+	UPROPERTY(VisibleAnywhere, Category = "UI")
+	UWidgetComponent* HpWidgetComponent;
+#pragma endregion
+
+#pragma region AI
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	UBehaviorTree* behaviorTree;
+#pragma endregion
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Groggy")
-	UAnimMontage* groggyMontage;
+public:
 
-	UFUNCTION(BlueprintCallable, Category = "Monster|Groggy")
-	void AddGroggy(float GroggyAmount);
+#pragma region Getters
+	int32 GetMonsterID()      const;
+	FName GetRowName()        const;  // BossMonster 호환용
 
-	UFUNCTION(BlueprintCallable, Category = "Monster|Groggy")
-	void ResetGroggy();
-
-	void EnterGroggyState();
-	void ExitGroggyState();
-
-	FTimerHandle groggyResetTimerHandle;
-
-public: // public functions
-
-	int32 GetMonsterID() const { return monsterId; }
-
-	int32 GetmaxHP() const { return monsterAttributeSet->GetmaxHP(); }
-
-	int32 GetcurHP() const { return monsterAttributeSet->GetcurHP(); }
-
-	int32 GetmaxGroggy() const { return monsterAttributeSet->GetmaxGroggy(); }
-
-	int32 GetcurGroggy() const { return monsterAttributeSet->GetcurGroggy(); }
-
-	int32 GetAttack() const { return monsterAttributeSet->Getattack(); }
-
+	int32 GetmaxHP()          const { return monsterAttributeSet->GetmaxHP(); }
+	int32 GetcurHP()          const { return monsterAttributeSet->GetcurHP(); }
+	int32 GetmaxGroggy()      const { return monsterAttributeSet->GetmaxGroggy(); }
+	int32 GetcurGroggy()      const { return monsterAttributeSet->GetcurGroggy(); }
+	int32 GetAttack()         const { return monsterAttributeSet->Getattack(); }
 	float GetAttackCooldown() const { return monsterAttributeSet->GetnormalCooldown(); }
+	float GetSpecialCooldown()const { return monsterAttributeSet->GetspecialCooldown(); }
+	float GetAttackRange()    const { return monsterAttributeSet->GetattackRange(); }
 
-	float GetSpecialCooldown() const { return monsterAttributeSet->GetspecialCooldown(); }
+	UC_AttackManagerComponent*   GetAttackManager()       const { return attackManager; }
+	UBehaviorTree*               GetBehaviorTree()        const { return behaviorTree; }
+	UC_MonsterASC*               GetMonsterASC()          const { return monsterASC; }
+	UC_MonsterAttributeSet*      GetMonsterAttributeSet() const { return monsterAttributeSet; }
+	UC_MonsterDataComponent*     GetDataComponent()       const { return dataComponent; }
+	UC_MonsterHPDisplayComponent*GetHPDisplayComponent()  const { return hpDisplayComponent; }
+#pragma endregion
 
-	float GetAttackRange() const { return monsterAttributeSet->GetattackRange(); }
-
-	UC_AttackManagerComponent* GetAttackManager() const { return attackManager; }
-
-	UBehaviorTree* GetBehaviorTree() const { return behaviorTree; }
-
-	UC_MonsterASC* GetMonsterASC() const { return monsterASC; }
-
-
-
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-
 };

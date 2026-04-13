@@ -7,6 +7,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
 
 
 // Sets default values for this component's properties
@@ -91,7 +92,9 @@ bool UC_AttackManagerComponent::DoSpecialAttack()
 	{
 	case MONSTER_ID_BEAR:
 	{
-		return false; // TODO: 스페셜 공격 미구현
+		if (!CanSpecialAttack()) return false;
+		StartSpecialCooldown();
+		return true;
 	}
 	case MONSTER_ID_ROCKET:
 	{
@@ -108,7 +111,53 @@ bool UC_AttackManagerComponent::DoSpecialAttack()
 
 void UC_AttackManagerComponent::DoSlam()
 {
-	// TODO: 스페셜 공격 미구현
+	if (!ownerMonster) return;
+
+	const FVector center = ownerMonster->GetActorLocation();
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> types;
+	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn));
+
+	// 몬스터 자신 및 다른 몬스터는 제외
+	TArray<AActor*> ignore;
+	ignore.Add(ownerMonster);
+	TArray<AActor*> allMonsters;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AC_BaseMonster::StaticClass(), allMonsters);
+	for (AActor* actor : allMonsters)
+	{
+		ignore.Add(actor);
+	}
+
+	TArray<AActor*> hitActors;
+	UKismetSystemLibrary::SphereOverlapActors(
+		ownerMonster, center, slamRadius, types, nullptr, ignore, hitActors
+	);
+
+	if (debug)
+	{
+		DrawDebugSphere(GetWorld(), center, slamRadius, 16, FColor::Orange, false, 2.0f);
+	}
+
+	for (AActor* actor : hitActors)
+	{
+		ACharacter* target = Cast<ACharacter>(actor);
+		if (!target) continue;
+
+		// 데미지 적용
+		UGameplayStatics::ApplyDamage(
+			target,
+			ownerMonster->GetAttack() * slamDamageMultiplier,
+			ownerMonster->GetController(),
+			ownerMonster,
+			nullptr
+		);
+
+		// 넉백: 몬스터에서 타겟 방향으로 날려보냄
+		FVector knockbackDir = (target->GetActorLocation() - ownerMonster->GetActorLocation()).GetSafeNormal2D();
+		knockbackDir.Z = 0.5f; // 약간의 상향 성분
+		knockbackDir.Normalize();
+		target->LaunchCharacter(knockbackDir * knockbackStrength, true, true);
+	}
 }
 
 void UC_AttackManagerComponent::DoMeleeNormalAttack()
