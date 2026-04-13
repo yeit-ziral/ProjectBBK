@@ -201,9 +201,21 @@ UC_SkillBase* UC_SkillIconWidget::FindAbilityByTag(UAbilitySystemComponent* ASC,
 			continue;
 		}
 
+		// 인스턴스 우선, 없으면 CDO 사용
+		UC_SkillBase* AbilityToCheck = SkillBase;
+		UGameplayAbility* InstancedAbility = Spec.GetPrimaryInstance();
+		if (InstancedAbility)
+		{
+			UC_SkillBase* InstancedSkillBase = Cast<UC_SkillBase>(InstancedAbility);
+			if (InstancedSkillBase)
+			{
+				AbilityToCheck = InstancedSkillBase;
+			}
+		}
+
 		// Skill Data 가져오기
 		FSkillData SkillData;
-		if (SkillBase->GetSkillData(SkillData))
+		if (AbilityToCheck->GetSkillData(SkillData))
 		{
 			UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] Checking ability: %s, Tag: %s"),
 				*SkillData.skillName.ToString(),
@@ -214,27 +226,13 @@ UC_SkillBase* UC_SkillIconWidget::FindAbilityByTag(UAbilitySystemComponent* ASC,
 			{
 				UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] ✅ Found matching ability: %s"),
 					*SkillData.skillName.ToString());
-				
-				UGameplayAbility* InstancedAbility = Spec.GetPrimaryInstance();
-				if (InstancedAbility)
-				{
-					UC_SkillBase* InstancedSkillBase = Cast<UC_SkillBase>(InstancedAbility);
-					if (InstancedSkillBase)
-					{
-						UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] Using INSTANCED ability: %p"), InstancedSkillBase);
-						return InstancedSkillBase;
-					}
-				}
-
-				// 인스턴스가 없으면 CDO 반환 (fallback)
-				UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] No instance found, using CDO: %p"), SkillBase);
-				return SkillBase;
+				return AbilityToCheck;
 			}
 		}
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] Failed to get skill data from: %s"),
-				*SkillBase->GetName());
+				*AbilityToCheck->GetName());
 		}
 	}
 
