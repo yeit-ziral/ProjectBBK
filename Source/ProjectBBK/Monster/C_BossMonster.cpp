@@ -86,7 +86,7 @@ void AC_BossMonster::InitializeBossHpWidget()
     bossHpWidget->SetCurrentGroggy(GetcurGroggy());
 
     bossHpWidget->SetMonsterLevel(50);
-    bossHpWidget->SetMonsterName(FText::FromName(rowName));
+    bossHpWidget->SetMonsterName(FText::FromName(GetRowName()));
 }
 
 void AC_BossMonster::ApplyTestDamage()

@@ -1,0 +1,121 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "C_GroggyComponent.h"
+#include "../C_BaseMonster.h"
+#include "../M_Gas/C_MonsterASC.h"
+#include "../M_Gas/C_MonsterAttributeSet.h"
+#include "../UI/C_MonsterHPDisplayComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameplayTagContainer.h"
+#include "AIController.h"
+#include "BrainComponent.h"
+
+UC_GroggyComponent::UC_GroggyComponent()
+{
+	PrimaryComponentTick.bCanEverTick = false;
+}
+
+void UC_GroggyComponent::Initialize(AC_BaseMonster* InOwner, UC_MonsterHPDisplayComponent* InHPDisplay)
+{
+	ownerMonster    = InOwner;
+	hpDisplayComponent = InHPDisplay;
+}
+
+void UC_GroggyComponent::TickGroggy(float DeltaTime)
+{
+	AddGroggy(groggyAccumulationRate * DeltaTime);
+}
+
+void UC_GroggyComponent::AddGroggy(float GroggyAmount)
+{
+	if (!ownerMonster) return;
+
+	UC_MonsterAttributeSet* attrSet = ownerMonster->GetMonsterAttributeSet();
+	if (!attrSet) return;
+
+	UC_MonsterASC* asc = ownerMonster->GetMonsterASC();
+	if (asc && asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy"))))
+		return;
+
+	const float cur    = attrSet->GetcurGroggy();
+	const float max    = attrSet->GetmaxGroggy();
+	const float newVal = FMath::Clamp(cur + GroggyAmount, 0.0f, max);
+
+	attrSet->SetcurGroggy(newVal);
+
+	if (newVal >= max)
+	{
+		if (!GetWorld()->GetTimerManager().IsTimerActive(groggyResetTimerHandle))
+		{
+			EnterGroggyState();
+			GetWorld()->GetTimerManager().SetTimer(
+				groggyResetTimerHandle,
+				this,
+				&UC_GroggyComponent::ResetGroggy,
+				5.0f,
+				false
+			);
+		}
+	}
+}
+
+void UC_GroggyComponent::ResetGroggy()
+{
+	if (!ownerMonster) return;
+
+	ExitGroggyState();
+
+	if (UC_MonsterAttributeSet* attrSet = ownerMonster->GetMonsterAttributeSet())
+		attrSet->SetcurGroggy(0.0f);
+}
+
+void UC_GroggyComponent::EnterGroggyState()
+{
+	if (!ownerMonster) return;
+
+	UC_MonsterASC* asc = ownerMonster->GetMonsterASC();
+	if (!asc) return;
+
+	asc->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")));
+	asc->CancelAllAbilities();
+
+	if (AAIController* AIC = Cast<AAIController>(ownerMonster->GetController()))
+	{
+		AIC->StopMovement();
+		if (UBrainComponent* Brain = AIC->GetBrainComponent())
+			Brain->PauseLogic(TEXT("Groggy"));
+	}
+
+	ownerMonster->GetCharacterMovement()->StopMovementImmediately();
+	ownerMonster->GetCharacterMovement()->DisableMovement();
+
+	if (groggyMontage)
+		ownerMonster->PlayAnimMontage(groggyMontage);
+
+	if (hpDisplayComponent)
+		hpDisplayComponent->ShowGroggyStatus();
+}
+
+void UC_GroggyComponent::ExitGroggyState()
+{
+	if (!ownerMonster) return;
+
+	UC_MonsterASC* asc = ownerMonster->GetMonsterASC();
+	if (!asc) return;
+
+	asc->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")));
+
+	if (groggyMontage)
+		ownerMonster->StopAnimMontage(groggyMontage);
+
+	ownerMonster->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+	if (hpDisplayComponent)
+		hpDisplayComponent->ClearGroggyStatus();
+
+	if (AAIController* AIC = Cast<AAIController>(ownerMonster->GetController()))
+	{
+		if (UBrainComponent* Brain = AIC->GetBrainComponent())
+			Brain->ResumeLogic(TEXT("Groggy"));
+	}
+}
