@@ -133,7 +133,7 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 		// 100% 도달 시
 		if (Getmana() >= GetmaxMana())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
+			//UE_LOG(LogTemp, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
 			// TODO: 준비 완료 이벤트
 		}
 	}

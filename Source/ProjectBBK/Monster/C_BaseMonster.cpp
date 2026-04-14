@@ -1,23 +1,16 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BaseMonster.h"
 #include "Manager/C_AttackManagerComponent.h"
-#include "Data/MonsterData.h"                 
-#include "AI/C_MonsterAIController.h"  
+#include "Manager/C_MonsterDataComponent.h"
+#include "Manager/C_GroggyComponent.h"
+#include "UI/C_MonsterHPDisplayComponent.h"
+#include "AI/C_MonsterAIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
-#include "Blueprint/UserWidget.h"
-#include "UI/C_BossMonsterHPWidget.h"
-#include "UI/C_NormalMonsterHPWidget.h"
-#include "TimerManager.h"
-#include "BrainComponent.h"
-#include "AIController.h"
 
-// Sets default values
 AC_BaseMonster::AC_BaseMonster()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	monsterASC = CreateDefaultSubobject<UC_MonsterASC>(TEXT("MonsterASC"));
@@ -27,19 +20,18 @@ AC_BaseMonster::AC_BaseMonster()
 	monsterAttributeSet = CreateDefaultSubobject<UC_MonsterAttributeSet>(TEXT("MonsterAttributes"));
 	monsterASC->AddAttributeSetSubobject(monsterAttributeSet);
 
-
-
-	attackManager = CreateDefaultSubobject<UC_AttackManagerComponent>(TEXT("AttackManager"));
-
+	attackManager      = CreateDefaultSubobject<UC_AttackManagerComponent>  (TEXT("AttackManager"));
+	dataComponent      = CreateDefaultSubobject<UC_MonsterDataComponent>    (TEXT("DataComponent"));
+	groggyComponent    = CreateDefaultSubobject<UC_GroggyComponent>         (TEXT("GroggyComponent"));
+	hpDisplayComponent = CreateDefaultSubobject<UC_MonsterHPDisplayComponent>(TEXT("HPDisplayComponent"));
 
 	AIControllerClass = AC_MonsterAIController::StaticClass();
-	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	AutoPossessAI     = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	bUseControllerRotationYaw = false;
-
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->bOrientRotationToMovement    = true;
 	GetCharacterMovement()->bUseControllerDesiredRotation = false;
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 720.f, 0.f);
+	GetCharacterMovement()->RotationRate                  = FRotator(0.f, 720.f, 0.f);
 
 	HpWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HpWidget"));
 	HpWidgetComponent->SetupAttachment(GetRootComponent());
@@ -50,375 +42,87 @@ AC_BaseMonster::AC_BaseMonster()
 	HpWidgetComponent->SetTwoSided(true);
 }
 
-// Called when the game starts or when spawned
-void AC_BaseMonster::BeginPlay()
-{
-	Super::BeginPlay();
-
-
-	if (monsterASC)
-	{
-		monsterASC->InitAbilityActorInfo(this, this);
-		for (const TSubclassOf<UGameplayAbility>& abilityClass : gamePlayAbilities)
-		{
-			if (!abilityClass) continue;
-
-			monsterASC->GiveAbility(FGameplayAbilitySpec(abilityClass, 1, 0));
-		}
-
-		// 사망 이벤트 바인딩 (AI, 위젯, 연출 등)
-		monsterASC->OnMonsterDeath.AddLambda([this](UC_MonsterASC* ASC)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("%s died (OnMonsterDeath)"), *GetName());
-				// 여기서 애니메이션, Destroy 타이머, AI 비활성화 등 처리
-			});
-	}
-
-	if (HasAuthority())
-	{
-		if (!monsterTable.Get())
-			monsterTable.LoadSynchronous();
-
-		InitializeAttributesFromDataTable();
-	}
-
-	if (monsterAttributeSet)
-	{
-		monsterAttributeSet->SetcurGroggy(0.0f);
-	}
-
-	ApplyMonsterTypeTag();
-	InitializeMonsterHpWidget();
-	BindAttributeDelegates();
-	if (attackManager)
-		attackManager->Initialize(this);
-}
-
-// Called every frame
-void AC_BaseMonster::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	UpdateHpWidgetRotation();
-
-	/////////////////////
-
-	AddGroggy(1.0f);
-	/////////////////////
-}
-
 void AC_BaseMonster::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	InitializeHpWidgetClass();
+	// 위젯 클래스 설정 — BeginPlay 전에 위젯 객체가 생성되어야 함
+	if (hpDisplayComponent)
+		hpDisplayComponent->InitializeWidgetClass(HpWidgetComponent);
+}
+
+void AC_BaseMonster::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// GAS 초기화
+	if (monsterASC)
+	{
+		monsterASC->InitAbilityActorInfo(this, this);
+
+		for (const TSubclassOf<UGameplayAbility>& abilityClass : gamePlayAbilities)
+		{
+			if (!abilityClass) continue;
+			monsterASC->GiveAbility(FGameplayAbilitySpec(abilityClass, 1, 0));
+		}
+
+		monsterASC->OnMonsterDeath.AddLambda([this](UC_MonsterASC* ASC)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s died (OnMonsterDeath)"), *GetName());
+		});
+	}
+
+	// DataTable에서 스탯 로드 (서버/단독 실행에서만)
+	if (HasAuthority() && dataComponent)
+		dataComponent->Initialize(this);
+
+	// curGroggy는 권한 여부와 관계없이 0으로 초기화
+	if (monsterAttributeSet)
+		monsterAttributeSet->SetcurGroggy(0.0f);
+
+	ApplyMonsterTypeTag();
+
+	// UI 초기화 (DataComponent 이후 — 스탯이 이미 세팅된 상태)
+	if (hpDisplayComponent)
+		hpDisplayComponent->Initialize(this, HpWidgetComponent);
+
+	// 그로기 컴포넌트 초기화
+	if (groggyComponent)
+		groggyComponent->Initialize(this, hpDisplayComponent);
+
+	// 어택 매니저 초기화
+	if (attackManager)
+		attackManager->Initialize(this);
+}
+
+void AC_BaseMonster::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (hpDisplayComponent)
+		hpDisplayComponent->UpdateWidgetRotation();
+
+	if (groggyComponent)
+		groggyComponent->TickGroggy(DeltaTime);
 }
 
 void AC_BaseMonster::ApplyMonsterTypeTag()
 {
-	if (!monsterASC)
-		return;
-
-	if (monsterTypeTag.IsValid())
-	{
-		monsterASC->AddLooseGameplayTag(monsterTypeTag);
-	}
+	if (!monsterASC || !monsterTypeTag.IsValid()) return;
+	monsterASC->AddLooseGameplayTag(monsterTypeTag);
 }
 
-void AC_BaseMonster::InitializeAttributesFromDataTable()
+int32 AC_BaseMonster::GetMonsterID() const
 {
-	if (!monsterAttributeSet)
-		return;
-
-
-	UDataTable* Table = monsterTable.Get();
-	if (!Table)
-		Table = monsterTable.LoadSynchronous();
-
-	if (!Table)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("MonsterDataTable not loaded!"));
-		return;
-	}
-
-	const FMonsterData* Data = Table->FindRow<FMonsterData>(rowName, TEXT("InitMonster"));
-	if (!Data)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Row %s not found in MonsterDataTable"), *rowName.ToString());
-		return;
-	}
-
-	
-	monsterId = Data->MonsterId;
-
-	monsterAttributeSet->InitmaxHP          (Data->MaxHP);
-	monsterAttributeSet->InitmaxGroggy      (Data->MaxGroggy);
-	monsterAttributeSet->Initattack         (Data->Attack);
-	monsterAttributeSet->Initdefense        (Data->Defense);
-	monsterAttributeSet->InitattackRange    (Data->AttackRange);
-	monsterAttributeSet->InitmoveSpeed      (Data->MoveSpeed);
-	monsterAttributeSet->InitnormalCooldown (Data->NormalCooldown);
-	monsterAttributeSet->InitspecialCooldown(Data->SpecialCooldown);
-
-	monsterAttributeSet->SetcurHP(Data->MaxHP);
-	monsterAttributeSet->SetcurGroggy(0.0f);
-
-	if (UCharacterMovementComponent* Move = GetCharacterMovement())
-	{
-		Move->MaxWalkSpeed = monsterAttributeSet->GetmoveSpeed();
-	}
+	return dataComponent ? dataComponent->GetMonsterId() : 0;
 }
 
-void AC_BaseMonster::PrintMonsterTags()
+FName AC_BaseMonster::GetRowName() const
 {
+	return dataComponent ? dataComponent->GetRowName() : NAME_None;
 }
 
-void AC_BaseMonster::InitializeMonsterHpWidget()
-{
-	if (!HpWidgetComponent)
-		return;
-
-	UUserWidget* Widget = HpWidgetComponent->GetUserWidgetObject();
-	if (!Widget)
-		return;
-
-	MonsterHpWidget = Cast<UC_MonsterHPWidgetBase>(Widget);
-	if (!MonsterHpWidget)
-		return;
-
-	MonsterHpWidget->SetMaxHp(GetmaxHP());
-	MonsterHpWidget->SetCurrentHp(GetcurHP());
-
-	MonsterHpWidget->SetMaxGroggy(GetmaxGroggy());
-	MonsterHpWidget->SetCurrentGroggy(GetcurGroggy());
-
-	MonsterHpWidget->SetMonsterLevel(1);
-	MonsterHpWidget->SetMonsterName(FText::FromName(rowName));
-
-}
-
-
-void AC_BaseMonster::InitializeHpWidgetClass()
-{
-	if (!HpWidgetComponent)
-		return;
-
-	TSubclassOf<UUserWidget> WidgetClass = GetHpWidgetClass();
-	if (!WidgetClass)
-		return;
-
-	HpWidgetComponent->SetWidget(nullptr);
-	HpWidgetComponent->SetWidgetClass(WidgetClass);
-}
-
-void AC_BaseMonster::UpdateHpWidgetRotation()
-{
-	if (!HpWidgetComponent)
-		return;
-
-	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
-	if (!PlayerController)
-		return;
-
-	FRotator CameraRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
-
-	FRotator WidgetRotation = FRotator(0.0f, CameraRotation.Yaw + 180.0f, 0.0f);
-	HpWidgetComponent->SetWorldRotation(WidgetRotation);
-}
-
-TSubclassOf<UUserWidget> AC_BaseMonster::GetHpWidgetClass() const
-{
-	return hpWidgetClass;
-}
-
-void AC_BaseMonster::BindAttributeDelegates()
-{
-	if (!monsterASC)
-		return;
-
-	monsterASC->GetGameplayAttributeValueChangeDelegate
-    (UC_MonsterAttributeSet::GetcurHPAttribute()).AddUObject(this, &AC_BaseMonster::OnHpChanged);
-
-	monsterASC->GetGameplayAttributeValueChangeDelegate
-	(UC_MonsterAttributeSet::GetmaxHPAttribute()).AddUObject(this, &AC_BaseMonster::OnMaxHpChanged);
-
-	monsterASC->GetGameplayAttributeValueChangeDelegate
-	(UC_MonsterAttributeSet::GetcurGroggyAttribute()).AddUObject(this, &AC_BaseMonster::OnGroggyChanged);
-
-	monsterASC->GetGameplayAttributeValueChangeDelegate
-	(UC_MonsterAttributeSet::GetmaxGroggyAttribute()).AddUObject(this, &AC_BaseMonster::OnMaxGroggyChanged);
-}
-
-void AC_BaseMonster::OnHpChanged(const FOnAttributeChangeData& ChangeData)
-{
-	if (!MonsterHpWidget)
-		return;
-
-	MonsterHpWidget->SetCurrentHp(ChangeData.NewValue);
-
-}
-
-void AC_BaseMonster::OnMaxHpChanged(const FOnAttributeChangeData& ChangeData)
-{
-	if (!MonsterHpWidget)
-		return;
-
-	MonsterHpWidget->SetMaxHp(ChangeData.NewValue);
-	MonsterHpWidget->SetCurrentHp(GetcurHP());
-
-}
-
-void AC_BaseMonster::OnGroggyChanged(const FOnAttributeChangeData& ChangeData)
-{
-	if (!MonsterHpWidget)
-		return;
-
-	MonsterHpWidget->SetCurrentGroggy(ChangeData.NewValue);
-
-}
-
-void AC_BaseMonster::OnMaxGroggyChanged(const FOnAttributeChangeData& ChangeData)
-{
-	if (!MonsterHpWidget)
-		return;
-
-	MonsterHpWidget->SetMaxGroggy(ChangeData.NewValue);
-	MonsterHpWidget->SetCurrentGroggy(GetcurGroggy());
-
-}
-
-void AC_BaseMonster::AddGroggy(float GroggyAmount)
-{
-	if (!monsterAttributeSet)
-		return;
-
-	// 이미 그로기 상태면 스킵
-	if (monsterASC && monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy"))))
-		return;
-
-	const float CurrentGroggyValue = GetcurGroggy();
-	const float MaxGroggyValue = GetmaxGroggy();
-
-	const float NewGroggyValue = FMath::Clamp(
-		CurrentGroggyValue + GroggyAmount,
-		0.0f,
-		MaxGroggyValue
-	);
-
-	monsterAttributeSet->SetcurGroggy(NewGroggyValue);
-
-	if (MonsterHpWidget)
-	{
-		MonsterHpWidget->SetCurrentGroggy(NewGroggyValue);
-	}
-
-
-	if (NewGroggyValue >= MaxGroggyValue)
-	{
-		if (!GetWorldTimerManager().IsTimerActive(groggyResetTimerHandle))
-		{
-			EnterGroggyState();
-
-			GetWorldTimerManager().SetTimer(
-				groggyResetTimerHandle,
-				this,
-				&AC_BaseMonster::ResetGroggy,
-				5.0f,
-				false
-			);
-		}
-	}
-}
-
-void AC_BaseMonster::EnterGroggyState()
-{
-	if (!monsterASC) return;
-
-	FGameplayTag TagGroggy = FGameplayTag::RequestGameplayTag(FName("State.Groggy"));
-	monsterASC->AddLooseGameplayTag(TagGroggy);
-	monsterASC->CancelAllAbilities();
-
-	// AI 정지
-	if (AAIController* AIC = Cast<AAIController>(GetController()))
-	{
-		AIC->StopMovement();
-		if (UBrainComponent* Brain = AIC->GetBrainComponent())
-		{
-			Brain->PauseLogic(TEXT("Groggy"));
-		}
-	}
-
-	// 이동 비활성화 + 잔여 속도 제거
-	GetCharacterMovement()->StopMovementImmediately();
-	GetCharacterMovement()->DisableMovement();
-
-	// 그로기 모션 재생
-	if (groggyMontage)
-	{
-		PlayAnimMontage(groggyMontage);
-	}
-
-	// UI: 상태이상 이름 표시 + 레벨 숨김
-	if (MonsterHpWidget)
-	{
-		MonsterHpWidget->SetStatusText(FText::FromString(TEXT("Groggy")));
-	}
-}
-
-void AC_BaseMonster::ExitGroggyState()
-{
-	if (!monsterASC) return;
-
-	FGameplayTag TagGroggy = FGameplayTag::RequestGameplayTag(FName("State.Groggy"));
-	monsterASC->RemoveLooseGameplayTag(TagGroggy);
-
-	// 그로기 모션 즉시 중단
-	if (groggyMontage)
-	{
-		StopAnimMontage(groggyMontage);
-	}
-
-	// 이동 복구
-	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-
-	// UI: 원래 이름 + 레벨 복구
-	if (MonsterHpWidget)
-	{
-		MonsterHpWidget->ClearStatusText();
-	}
-
-	// AI 재개
-	if (AAIController* AIC = Cast<AAIController>(GetController()))
-	{
-		if (UBrainComponent* Brain = AIC->GetBrainComponent())
-		{
-			Brain->ResumeLogic(TEXT("Groggy"));
-		}
-	}
-}
-
-void AC_BaseMonster::ResetGroggy()
-{
-	if (!monsterAttributeSet)
-		return;
-
-	ExitGroggyState();
-
-	monsterAttributeSet->SetcurGroggy(0.0f);
-
-	if (MonsterHpWidget)
-	{
-		MonsterHpWidget->SetCurrentGroggy(0.0f);
-	}
-}
-
-
-
-
-// Called to bind functionality to input
 void AC_BaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
-

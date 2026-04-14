@@ -55,6 +55,18 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	float traceRadius = 60.0f;
 
+	// 슬램 AOE 반경
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float slamRadius = 250.0f;
+
+	// 스페셜 공격 데미지 배율 (기본 Attack 스탯 기준)
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float slamDamageMultiplier = 2.0f;
+
+	// 넉백 강도
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float knockbackStrength = 900.0f;
+
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	bool debug = false;
 #pragma endregion

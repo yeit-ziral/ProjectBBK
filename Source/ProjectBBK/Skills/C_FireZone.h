@@ -23,20 +23,24 @@ public:
 
 	/**
 	 * GA_Ablaze에서 스폰 직후 호출.
-	 * @param InInstigatorASC  플레이어 ASC (GE 적용 및 마나 충전 컨텍스트용)
-	 * @param InInstigatorActor 플레이어 Actor
-	 * @param InEffectClass    적용할 GE (GE_Ablaze)
-	 * @param InRadius         존 반경
-	 * @param InLifetime       존 유지 시간 (초)
+	 * @param InInstigatorASC      플레이어 ASC (GE 적용 및 마나 충전 컨텍스트용)
+	 * @param InInstigatorActor    플레이어 Actor
+	 * @param InStatusEffectClass  상태이상 GE (태그 + Cue만 담당, 예: GE_Ablaze)
+	 * @param InDamageEffectClass  데미지 GE (ReceivedTrueDamage, 예: GE_TrueDamage)
+	 * @param InRadius             존 반경
+	 * @param InLifetime           존 유지 시간 (초)
+	 * @param InDamageAmount       데미지 수치
 	 */
 	UFUNCTION(BlueprintCallable, Category = "FireZone")
 	void Initialize(
 		UAbilitySystemComponent* InInstigatorASC,
 		AActor* InInstigatorActor,
-		TSubclassOf<UGameplayEffect> InEffectClass,
+		TSubclassOf<UGameplayEffect> InStatusEffectClass,
+		TSubclassOf<UGameplayEffect> InDamageEffectClass,
 		float InRadius,
 		float InLifetime,
-		float InDamageAmount
+		float InDamageAmount,
+		float InDotDuration
 	);
 
 	/** Initialize() 완료 후 호출 — BP_FireZone에서 VFX 스케일 조정에 사용 */
@@ -50,10 +54,12 @@ protected:
 	class USphereComponent* CollisionSphere;
 
 private:
-	TSubclassOf<UGameplayEffect> EffectClass;
+	TSubclassOf<UGameplayEffect> StatusEffectClass;
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
 	TWeakObjectPtr<UAbilitySystemComponent> InstigatorASC;
 	TWeakObjectPtr<AActor> InstigatorActor;
 	float DamageAmount = 0.0f;
+	float DotDuration = 0.0f;
 
 	FTimerHandle LifetimeHandle;
 

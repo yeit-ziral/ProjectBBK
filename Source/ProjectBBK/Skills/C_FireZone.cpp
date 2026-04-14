@@ -24,15 +24,19 @@ void AC_FireZone::BeginPlay()
 void AC_FireZone::Initialize(
 	UAbilitySystemComponent* InInstigatorASC,
 	AActor* InInstigatorActor,
-	TSubclassOf<UGameplayEffect> InEffectClass,
+	TSubclassOf<UGameplayEffect> InStatusEffectClass,
+	TSubclassOf<UGameplayEffect> InDamageEffectClass,
 	float InRadius,
 	float InLifetime,
-	float InDamageAmount)
+	float InDamageAmount,
+	float InDotDuration)
 {
 	InstigatorASC = InInstigatorASC;
 	InstigatorActor = InInstigatorActor;
-	EffectClass = InEffectClass;
+	StatusEffectClass = InStatusEffectClass;
+	DamageEffectClass = InDamageEffectClass;
 	DamageAmount = InDamageAmount;
+	DotDuration = InDotDuration;
 
 	CollisionSphere->SetSphereRadius(InRadius);
 
@@ -78,7 +82,7 @@ void AC_FireZone::OnBeginOverlap(
 
 void AC_FireZone::ApplyEffectToTarget(AActor* TargetActor)
 {
-	if (!EffectClass || !InstigatorASC.IsValid() || !InstigatorActor.IsValid())
+	if (!InstigatorASC.IsValid() || !InstigatorActor.IsValid())
 	{
 		return;
 	}
@@ -94,22 +98,42 @@ void AC_FireZone::ApplyEffectToTarget(AActor* TargetActor)
 	FGameplayEffectContextHandle Context = InstigatorASC->MakeEffectContext();
 	Context.AddInstigator(InstigatorActor.Get(), InstigatorActor.Get());
 
-	FGameplayEffectSpecHandle Spec = InstigatorASC->MakeOutgoingSpec(
-		EffectClass,
-		1.0f,
-		Context
-	);
-
-	if (Spec.IsValid())
+	// 1. 상태이상 GE 적용 (태그 + Cue)
+	if (StatusEffectClass)
 	{
-		// Set by Caller로 데미지 전달
-		FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
-		Spec.Data->SetSetByCallerMagnitude(DamageTag, DamageAmount);
+		FGameplayEffectSpecHandle StatusSpec = InstigatorASC->MakeOutgoingSpec(
+			StatusEffectClass,
+			1.0f,
+			Context
+		);
 
-		InstigatorASC->ApplyGameplayEffectSpecToTarget(*Spec.Data, TargetASC);
+		if (StatusSpec.IsValid())
+		{
+			InstigatorASC->ApplyGameplayEffectSpecToTarget(*StatusSpec.Data, TargetASC);
+		}
+	}
 
-		UE_LOG(LogTemp, Log, TEXT("[FireZone] Applied %s to %s (Damage: %.1f)"),
-			*EffectClass->GetName(), *TargetActor->GetName(), DamageAmount);
+	// 2. 데미지 GE 적용 (Set by Caller로 데미지 전달)
+	if (DamageEffectClass)
+	{
+		FGameplayEffectSpecHandle DamageSpec = InstigatorASC->MakeOutgoingSpec(
+			DamageEffectClass,
+			1.0f,
+			Context
+		);
+
+		if (DamageSpec.IsValid())
+		{
+			FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+			FGameplayTag DurationTag = FGameplayTag::RequestGameplayTag(FName("Data.Duration"));
+			DamageSpec.Data->SetSetByCallerMagnitude(DamageTag, DamageAmount);
+			DamageSpec.Data->SetSetByCallerMagnitude(DurationTag, DotDuration);
+
+			InstigatorASC->ApplyGameplayEffectSpecToTarget(*DamageSpec.Data, TargetASC);
+
+			UE_LOG(LogTemp, Log, TEXT("[FireZone] Applied %s to %s (Damage: %.1f)"),
+				*DamageEffectClass->GetName(), *TargetActor->GetName(), DamageAmount);
+		}
 	}
 }
 

@@ -1,2 +1,2 @@
 ﻿RawName,MonsterId,MaxHP,MaxGroggy,Attack,Defense,AttackRange,MoveSpeed,NormalCoolDown,SpecialCoolDown
-tank,1001,300,35,50,250,150,500,3,10
+tank,1001,300,100,50,250,150,500,3,10

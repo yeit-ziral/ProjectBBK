@@ -14,9 +14,7 @@ AC_MeleeMonster::AC_MeleeMonster()
 
 void AC_MeleeMonster::Tick(float DeltaTime)
 {
-	// TODO: 테스트용 그로기 누적 비활성화 — 정식 수치 확정 후 Super::Tick(DeltaTime)으로 교체
-	ACharacter::Tick(DeltaTime);
-	UpdateHpWidgetRotation();
+	Super::Tick(DeltaTime);
 }
 
 void AC_MeleeMonster::BeginPlay()
@@ -33,8 +31,14 @@ void AC_MeleeMonster::MeleeAutoAttack()
 {
 	if (!attackManager) return;
 
-	// TODO: 스페셜 공격 구현 후 CanSpecialAttack() 체크 추가
-	MeleeNormalAttack();
+	if (attackManager->CanSpecialAttack())
+	{
+		MeleeSpecialAttack();
+	}
+	else
+	{
+		MeleeNormalAttack();
+	}
 }
 
 void AC_MeleeMonster::MeleeNormalAttack()
@@ -51,5 +55,10 @@ void AC_MeleeMonster::MeleeNormalAttack()
 
 void AC_MeleeMonster::MeleeSpecialAttack()
 {
-	// TODO: 스페셜 공격 미구현
+	if (!attackManager) return;
+
+	if (attackManager->DoSpecialAttack())
+	{
+		PlayAnimMontage(meleeSpecialMontage);
+	}
 }

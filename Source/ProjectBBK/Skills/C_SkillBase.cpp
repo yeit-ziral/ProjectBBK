@@ -42,12 +42,6 @@ void UC_SkillBase::OnGiveAbility(
 
 bool UC_SkillBase::LoadSkillData()
 {
-	// CDO는 SkillDataTable이 항상 null이므로 로그 없이 스킵
-	if (HasAnyFlags(RF_ClassDefaultObject))
-	{
-		return false;
-	}
-
 	if (!SkillDataTable || SkillRowName.IsNone())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] SkillDataTable or SkillRowName not set! Check BP defaults: %s"), *GetName());
