@@ -221,7 +221,8 @@ Skills/
 | GA_Shield | — | ✅ 완료 | GE_GiveShield |
 | GA_SpeedBuff | F (Skill Wheel) | ✅ 완료 | GE_GenericCooldown 공유, GE_SpeedBuff |
 | GA_Ablaze | F (Skill Wheel) | ✅ 완료 | 지면 AOE, GE_Ablaze(DoT), AC_FireZone, ReceivedTrueDamage |
-| Skill Wheel 추가 스킬 x1~3 | F (Skill Wheel) | 📋 계획 중 | Skill Wheel 구현 전 선행 작업 |
+| GA_RockSpear | F (Skill Wheel) | ✅ 완료 | 2단계 입력, C_StoneSpearProjectile, GE_BasicDamage, GE_Slowed |
+| Skill Wheel 추가 스킬 x1~3 | F (Skill Wheel) | 📋 계획 중 | Skill Wheel 구현 전 선행 작업 (GA_RockSpear 포함 1개 완료) |
 | Skill Wheel (F키 슬롯 교체) | F | 📋 계획 중 | GA_SpeedBuff 포함 3~5개 스킬 순환 |
 
 ### Monster Abilities
@@ -240,6 +241,7 @@ Skills/
 | WBP_UltimateGauge | ✅ 완료 | WBP_HUD의 child widget으로 포함 |
 | BPC_NormalMonsterHPWidget | ✅ 완료 | 3D 위젯, UC_MonsterAttributeSet 바인딩 |
 | BPC_BossMonsterHPWidget | ✅ 완료 | 3D 위젯, UC_MonsterAttributeSet 바인딩 |
+| WBP_RockSpearAim | ✅ 완료 | 조준선 위젯, GA_RockSpear 생명주기 직접 관리, 마우스 위치 추적 |
 
 ### Effects
 | Effect | 상태 | 비고 |
@@ -265,6 +267,7 @@ Skills/
 | GE_StaminaRegenDelay | ✅ 완료 | |
 | GE_Recover_Health | ✅ 완료 | |
 | GE_Recover_Stamina | ✅ 완료 | |
+| GE_Slowed | ✅ 완료 | 상태이상: 감속 — State.Slowed 태그 부여 + MoveSpeed × 0.2, Duration 5초, GA_RockSpear 사용 |
 
 ---
 
@@ -297,6 +300,9 @@ Skills/
 8. **GetHitResultUnderCursorByChannel이 항상 같은 위치 반환** — 3인칭 카메라(커서 숨김 + 마우스로 카메라 회전) 방식에서는 사용 불가 → 카메라 전방 `LineTraceByChannel`로 교체
 9. **GameplayCue 이펙트가 맵 중앙(0,0,0)에 스폰될 때** — `GameplayCueNotify_Actor`의 Class Defaults에서 `Auto Attach to Owner = true` 확인. 또는 Begin Play에서 `Attach Actor to Component`로 캐릭터 Mesh에 명시적 부착
 10. **`[C_SkillIconWidget] Failed to get skill data from: Default__GA_Heal_C` 경고** — 새로 추가한 스킬이 한 번도 활성화되지 않은 상태에서 위젯이 초기화될 때 발생. `C_SkillBase::LoadSkillData()`의 CDO 가드가 원인 (현재 코드에서 수정 완료 — CDO 가드 제거, `FindAbilityByTag`에서 인스턴스 우선 확인으로 변경)
+11. **Duration GE가 attribute 변경 시 외부 컴포넌트에 반영 안 될 때** — `PostGameplayEffectExecute`는 Instant GE에만 호출됨. Duration GE의 Modifier는 `PostAttributeChange`에서 처리해야 함. 예: `GE_Slowed`로 `moveSpeed`를 바꿔도 `MaxWalkSpeed`가 갱신되지 않는 경우 → `PostAttributeChange` 오버라이드로 해결
+12. **Instant GE의 `FActiveGameplayEffectHandle.IsValid()`가 항상 false** — Instant GE는 즉시 실행 후 사라지므로 Active Handle이 존재하지 않음. `IsValid() = false`가 실패를 의미하지 않음 — 실제 적용 여부는 `PostGameplayEffectExecute` 로그로 확인
+13. **몬스터에게 데미지가 0으로 들어올 때** — `PostGameplayEffectExecute`의 방어력 감산 로직 확인: `Mitigated = Max(0, RawDamage - defense)`. defense 값이 데미지보다 크면 실제 HP 변화 없음
 
 ---
 
@@ -400,6 +406,77 @@ LineTraceByChannel
 → ImpactPoint → 스폰 위치로 사용
 ```
 
+### 플레이어 Projectile 스킬 패턴 (C_StoneSpearProjectile 참고)
+GA가 Projectile을 스폰하고 즉시 EndAbility. Projectile이 자체적으로 GE 관리.
+```
+GA ActivateAbility
+  → SpawnActor(BP_StoneSpearProjectile)
+  → Cast → InitProjectile(InstigatorASC, InstigatorActor, DamageGE, StatusGE, Damage, Direction)
+  → ApplySkillCooldown → EndAbility
+
+AC_StoneSpearProjectile::InitProjectile()
+  → TWeakObjectPtr에 ASC·Actor·GE 클래스 저장
+  → ProjectileMovement->Velocity 설정
+  → Collision->IgnoreActorWhenMoving(InstigatorActor)   // 발사자 충돌 제외
+
+OnSphereBeginOverlap (ECC_Pawn → Overlap)
+  → Cast to AC_BaseMonster 성공 시 ApplyEffectsToTarget → HandleImpact
+
+OnComponentHit (WorldStatic/Dynamic → Block)
+  → HandleImpact
+
+HandleImpact()
+  → StopMovementImmediately + NoCollision
+  → ProjectileEffect->Deactivate, ImpactEffect->Activate
+  → SetLifeSpan(2.0f)   // Impact VFX 재생 후 소멸
+```
+- NiagaraComponent를 비행용(ProjectileEffect)·충돌용(ImpactEffect) 두 개로 분리
+- 즉시 Destroy 대신 SetLifeSpan 사용 — Actor 살아있는 동안 ImpactEffect 재생 보장
+- Instant GE는 `FActiveGameplayEffectHandle.IsValid() = false`여도 정상 적용 (Debugging Checklist 12번 참고)
+
+### 2단계 입력 어빌리티 패턴 (GA_RockSpear 참고)
+조준 → 발사 구조처럼 동일 키를 두 번 눌러 단계를 진행하는 어빌리티.
+```
+F키 Input Action (Pressed 트리거)
+→ SendGameplayEventToActor (Tag: Event.Skill.XXX.Fire)  ← 반드시 먼저
+→ TryActivateAbilityByTag
+
+GA ActivateAbility
+  → SetIgnoreLookInput(true)
+  → Create Widget → Add to Viewport
+  → Wait Gameplay Event (Tag: Event.Skill.XXX.Fire) → On Event → 발사 확정 로직
+  → CheckCancelInput 호출 (폴링 루프)
+
+CheckCancelInput (Custom Event)
+  → Wait Game Time (0.05)
+  → Is Input Key Down (LMB or RMB) → True: 취소 / False: 재귀 호출
+
+종료 시퀀스 (확정·취소 공통, EndAbility 직전)
+  → Remove from Parent (Widget)
+  → SetIgnoreLookInput(false)
+```
+- `SendGameplayEventToActor`가 `TryActivateAbilityByTag`보다 반드시 앞에 와야 함 (순서 반대 시 즉시 발사)
+- `IA_CommonSkill` 트리거 타입은 반드시 `Pressed`로 설정 (`Triggered`면 매 프레임 발동)
+- `OnInputPressed` BlueprintImplementableEvent: `UC_CharacterGA`에서 `InputPressed` C++ override → Blueprint 노출. 어빌리티 활성 중 동일 입력 감지 필요 시 활용 가능 (단, `TryActivateAbilityByTag` 방식에서는 `AbilityLocalInputPressed` 미호출로 동작 안 함)
+
+### 3인칭 카메라 기반 Projectile 조준 패턴 (GA_RockSpear 참고)
+조준선(커서 대체 위젯)과 발사 방향을 완전히 일치시키는 방법.
+```
+// 조준 방향 계산
+GetMousePosition → DeprojectScreenPositionToWorld → WorldOrigin, WorldDir
+
+// Projectile 스폰
+SpawnLocation = WorldOrigin + WorldDir * 100   // 카메라 앞 100cm
+FireDir = WorldDir                              // 크로스헤어와 완전 일치
+
+// 조준선 위젯 위치 (SetPositionInViewport)
+SetPositionInViewport(MouseX - DesiredSize.X / 2, MouseY - DesiredSize.Y / 2)
+// 위젯 기준점이 좌상단이므로 크기의 절반만큼 offset 필수
+```
+- `(TargetPoint - SpawnLocation).Normalize()` 방식은 카메라-스폰 시차(Parallax)로 근거리 오차 발생
+- WorldDir 직접 사용 시 LineTrace 불필요 — `bBlockingHit` 폴백 처리도 생략 가능
+- 조준 모드 진입 시 `SetIgnoreLookInput(true)`로 카메라 회전 차단 → 마우스 위치가 의미 있어짐
+
 ---
 
 ## Design Decisions
@@ -418,6 +495,18 @@ LineTraceByChannel
 - **대안:** GE_Ablaze처럼 상태 태그용 GE와 수치 처리 GE를 분리
 - **선택 이유:** GA_Heal은 회복 단일 목적이므로 분리할 책임이 없음. GE_Ablaze 분리는 DoT와 상태이상을 독립적으로 재사용하기 위한 것
 - **트레이드오프:** 향후 State.Healing 태그를 다른 GE에서 재사용하려면 분리 구조로 리팩토링 필요
+
+### PostAttributeChange vs PostGameplayEffectExecute — attribute 변경 외부 반영 위치
+- **선택:** `PostAttributeChange`에서 `moveSpeed` → `MaxWalkSpeed` 동기화 (`UC_MonsterAttributeSet` 구현)
+- **대안:** `PostGameplayEffectExecute`에서 처리
+- **선택 이유:** `PostGameplayEffectExecute`는 Instant GE 실행 시에만 호출됨. Duration GE(GE_Slowed 등)의 Modifier 변경은 `PostAttributeChange`를 통해야 모든 케이스 커버 가능
+- **트레이드오프:** `PostAttributeChange`는 모든 attribute 변경에 호출되므로 attribute 분기 처리 필수
+
+### Projectile SpawnLocation — 카메라 위치 기반
+- **선택:** `WorldOrigin + WorldDir * 100` (카메라 기준 스폰)
+- **대안:** 캐릭터 위치 + ForwardVector offset
+- **선택 이유:** 캐릭터-카메라 시차(Parallax)로 인해 캐릭터 기준 발사 시 크로스헤어 방향과 실제 발사 방향이 어긋남. 카메라 기준 발사 시 크로스헤어와 완전 일치
+- **트레이드오프:** 투사체가 캐릭터 모델이 아닌 카메라 앞 허공에서 시작하는 것처럼 보일 수 있음 (VFX로 커버 가능)
 
 ### Mana Charge — C++ SetByCaller vs MMC
 - **선택:** C++ SetByCaller로 마나 충전량 전달
