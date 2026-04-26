@@ -38,24 +38,18 @@ protected:
     void OnBossHpChanged(const FOnAttributeChangeData& ChangeData);
     void OnBossGroggyChanged(const FOnAttributeChangeData& ChangeData);
 
-    // TODO: 테스트용 무적 토글 — 확인 후 삭제
-    void ToggleInvincible();
-    FTimerHandle invincibleTestTimerHandle;
-
-
-    // TODO: 테스트용 데미지 — 확인 후 삭제
-    void ApplyTestDamage();
-    FTimerHandle testDamageTimerHandle;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Test")
-    TSubclassOf<UGameplayEffect> testDamageGE;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Test")
-    TSubclassOf<UGameplayEffect> testTrueDamageGE;
     // 테스트용 보스 GA
     UPROPERTY(EditDefaultsOnly, Category = "Boss")
     TSubclassOf<UGameplayAbility> bossStormPatternGA;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss")
     TSubclassOf<UGameplayAbility> bossBeamPatternGA;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Phase")
+    TSubclassOf<UGameplayAbility> bossGridLaserPatternGA;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Phase")
+    float phase2HpRatio = 0.5f;
+
+    bool bPhase2Triggered = false;
 };

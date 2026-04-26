@@ -75,6 +75,7 @@ public:
 protected:
 
 	void ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage);
+	void CheckAndHandleDeath(float NewHP);
 	TSubclassOf<UGameplayEffect> GE_ChargeMana;
 	float ManaChargeRate = 0.05f;
 	float MinManaCharge = 0.0f;

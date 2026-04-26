@@ -183,6 +183,23 @@ void UC_MonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attrib
         NonNegative(NewValue);
 }
 
+void UC_MonsterAttributeSet::CheckAndHandleDeath(float NewHP)
+{
+    if (NewHP <= 0.f)
+    {
+        if (AActor* Owner = GetOwningActor())
+        {
+            if (UAbilitySystemComponent* ASCBase = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Owner))
+            {
+                if (UC_MonsterASC* monsterASC = Cast<UC_MonsterASC>(ASCBase))
+                {
+                    monsterASC->HandleDeath();
+                }
+            }
+        }
+    }
+}
+
 void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);
@@ -207,6 +224,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 			ChargeAttackerMana(Data, Mitigated);
 		}
 
+        CheckAndHandleDeath(NewHP);
         return;
     }
 
@@ -226,6 +244,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
             ChargeAttackerMana(Data, TrueDamage);
         }
 
+        CheckAndHandleDeath(NewHP);
         return;
     }
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -237,21 +256,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
     {
         const float NewHP = GetcurHP();
         SetcurHP(FMath::Clamp(NewHP, 0.f, GetmaxHP()));
-
-        if (NewHP <= 0.f)
-        {
-            // ASC 찾아서 HandleDeath 호출
-            if (AActor* Owner = GetOwningActor())
-            {
-                if (UAbilitySystemComponent* ASCBase = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Owner))
-                {
-                    if (UC_MonsterASC* monsterASC = Cast<UC_MonsterASC>(ASCBase))
-                    {
-                        monsterASC->HandleDeath();
-                    }
-                }
-            }
-        }
+        CheckAndHandleDeath(NewHP);
     }
     else if (Data.EvaluatedData.Attribute == GetmaxGroggyAttribute())
     {

@@ -91,6 +91,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetMaxStamina() const;
 
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Camera")
+	void SetTopDownCamera(bool bTopDown, float BlendTime = 0.75f,
+		float TopDownArmLength = 1600.f, float TopDownPitch = -85.f);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -140,6 +144,17 @@ protected:
 
 	// Protecting from duplication
 	bool bASCInputBound = false;
+
+	// 카메라 블렌딩
+	bool bCameraBlending = false;
+	bool bTopDownActive = false;
+	float cameraBlendRemain = 0.f;
+	float targetArmLength = 400.f;
+	FRotator targetSpringArmRotation = FRotator::ZeroRotator;
+	float defaultArmLength = 400.f;
+	FRotator defaultSpringArmRotation = FRotator::ZeroRotator;
+	FTimerHandle cameraRestoreTimerHandle;
+	void RestoreCameraAfterBlend();
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float staminaDrainTime;
 	UPROPERTY(EditAnywhere, Category = "Movement")

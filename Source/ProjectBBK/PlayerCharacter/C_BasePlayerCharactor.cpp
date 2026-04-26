@@ -41,9 +41,12 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& O
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	springArm = CreateDefaultSubobject<USpringArmComponent>("springArm");
-	springArm->SetupAttachment(RootComponent); 
+	springArm->SetupAttachment(RootComponent);
 	springArm->TargetArmLength = 400.0f;
 	springArm->bUsePawnControlRotation = true;
+
+	defaultArmLength = 400.f;
+	defaultSpringArmRotation = FRotator::ZeroRotator;
 
 	camera = CreateDefaultSubobject<UCameraComponent>("camera");
 	camera->SetupAttachment(springArm, USpringArmComponent::SocketName);
@@ -121,6 +124,73 @@ void AC_BasePlayerCharactor::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	//UpdateStamina();
+
+	if (bCameraBlending && springArm)
+	{
+		springArm->TargetArmLength = FMath::FInterpTo(
+			springArm->TargetArmLength, targetArmLength, DeltaTime, 5.f);
+		springArm->SetRelativeRotation(FMath::RInterpTo(
+			springArm->GetRelativeRotation(), targetSpringArmRotation, DeltaTime, 5.f));
+
+		// 탑다운→일반 복귀 시 기능 복원은 RestoreCameraAfterBlend 타이머가 담당
+		// 탑다운 진입 블렌딩 완료는 여기서 처리
+		if (bTopDownActive)
+		{
+			cameraBlendRemain -= DeltaTime;
+			if (cameraBlendRemain <= 0.f)
+			{
+				bCameraBlending = false;
+				springArm->TargetArmLength = targetArmLength;
+				springArm->SetRelativeRotation(targetSpringArmRotation);
+			}
+		}
+	}
+}
+
+void AC_BasePlayerCharactor::SetTopDownCamera(bool bTopDown, float BlendTime,
+	float TopDownArmLength, float TopDownPitch)
+{
+	if (!springArm) return;
+
+	bTopDownActive = bTopDown;
+	cameraBlendRemain = FMath::Max(BlendTime, 0.01f);
+	bCameraBlending = true;
+
+	if (bTopDown)
+	{
+		springArm->bUsePawnControlRotation = false;
+		springArm->bInheritYaw   = false;
+		springArm->bInheritPitch = false;
+		springArm->bInheritRoll  = false;
+		targetArmLength = TopDownArmLength;
+		targetSpringArmRotation = FRotator(TopDownPitch, 0.f, 0.f);
+	}
+	else
+	{
+		// 블렌딩 중 카메라가 컨트롤러 방향을 향하도록 현재 Yaw를 타겟에 굽힘
+		const float controllerYaw = GetController() ? GetController()->GetControlRotation().Yaw : 0.f;
+		targetArmLength = defaultArmLength;
+		targetSpringArmRotation = FRotator(defaultSpringArmRotation.Pitch, controllerYaw, 0.f);
+
+		// 타이머로 확실하게 복귀 — Tick 카운트다운보다 신뢰성 높음
+		GetWorldTimerManager().SetTimer(
+			cameraRestoreTimerHandle,
+			this, &AC_BasePlayerCharactor::RestoreCameraAfterBlend,
+			FMath::Max(BlendTime, 0.01f), false);
+	}
+}
+
+void AC_BasePlayerCharactor::RestoreCameraAfterBlend()
+{
+	if (!springArm || bTopDownActive) return;
+
+	springArm->bInheritYaw   = true;
+	springArm->bInheritPitch = true;
+	springArm->bInheritRoll  = true;
+	springArm->TargetArmLength = targetArmLength;
+	springArm->SetRelativeRotation(targetSpringArmRotation);
+	springArm->bUsePawnControlRotation = true;
+	bCameraBlending = false;
 }
 
 // Called to bind functionality to input
@@ -448,24 +518,33 @@ void AC_BasePlayerCharactor::MyMove(const FInputActionValue& Value)
 {
 	if (Controller != nullptr)
 	{
-		//Get 2D vector (x = forward/backward, y = right/left)
 		FVector2D MovementVector = Value.Get<FVector2D>();
 
-		//Get forward and right direction
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		FVector ForwardDirection;
+		FVector RightDirection;
 
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+		if (bTopDownActive)
+		{
+			// 탑다운 시점: W=월드+X(위), S=월드-X(아래), D=월드+Y(오른쪽), A=월드-Y(왼쪽)
+			ForwardDirection = FVector::ForwardVector;
+			RightDirection   = FVector::RightVector;
+		}
+		else
+		{
+			const FRotator YawRotation(0, Controller->GetControlRotation().Yaw, 0);
+			ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+			RightDirection   = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+		}
 
-		//adding Movement forward and right
 		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection, MovementVector.X);
+		AddMovementInput(RightDirection,   MovementVector.X);
 	}
 }
 
 void AC_BasePlayerCharactor::MyLook(const FInputActionValue& Value)
 {
+	if (bTopDownActive) return;
+
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
 	if (Controller != nullptr)
