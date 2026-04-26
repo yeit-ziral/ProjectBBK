@@ -20,6 +20,11 @@ public:
 
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 
+	virtual void InputPressed(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) override;
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Ability")
+	void OnInputPressed();
+
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Ability")
 	ProjectBBKAbilityID abilityInputID = ProjectBBKAbilityID::None; // To bind ability to input so this will active whenever input is pressed
 

@@ -2,6 +2,8 @@
 
 
 #include "C_MonsterAttributeSet.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayEffectExtension.h"
 #include "C_MonsterASC.h"
 #include "AbilitySystemGlobals.h"
@@ -265,6 +267,21 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
     else if (Data.EvaluatedData.Attribute == GetcurGroggyAttribute())
     {
         SetcurGroggy(FMath::Clamp(GetcurGroggy(), 0.0f, GetmaxGroggy()));
+    }
+}
 
+void UC_MonsterAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
+{
+    Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
+    if (Attribute == GetmoveSpeedAttribute())
+    {
+        if (AActor* Owner = GetOwningActor())
+        {
+            if (ACharacter* Char = Cast<ACharacter>(Owner))
+            {
+                Char->GetCharacterMovement()->MaxWalkSpeed = NewValue;
+            }
+        }
     }
 }
