@@ -13,13 +13,13 @@ void UC_MonsterASC::BeginPlay()
 {
     Super::BeginPlay();
 
-    // ÀÚ±â ÀÚ½Å¿¡°Ô Àû¿ëµÇ´Â GE µ¨¸®°ÔÀÌÆ®¿¡ ¹ÙÀÎµù
+    // ï¿½Ú±ï¿½ ï¿½Ú½Å¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ GE ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½
     OnGameplayEffectAppliedDelegateToSelf.AddUObject(this, &UC_MonsterASC::OnEffectAppliedToSelf);
 
-    // GE Á¦°Å µ¨¸®°ÔÀÌÆ® (ÇÊ¿äÇÏ¸é »ç¿ë)
+    // GE ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® (ï¿½Ê¿ï¿½ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½)
     OnAnyGameplayEffectRemovedDelegate().AddUObject(this, &UC_MonsterASC::OnEffectRemoved);
 
-    // Ability Á¾·á µ¨¸®°ÔÀÌÆ®
+    // Ability ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®
     OnAbilityEnded.AddUObject(this, &UC_MonsterASC::OnAbilityEndedCallback);
 }
 
@@ -30,12 +30,22 @@ void UC_MonsterASC::HandleDeath()
         return;
     }
 
-    // »óÅÂ ÅÂ±× Ãß°¡
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½Â±ï¿½ ï¿½ß°ï¿½
     AddLooseGameplayTag(TagStateDead);
 
-    // ¾ÕÀ¸·Î È®Àå: State.Groggy Á¦°Å, ¹öÇÁ/µğ¹öÇÁ Á¦°Å, AI Áß´Ü µî
-    // ¿¹: ¸ğµç Ability Ãë¼Ò
+    // ê·¸ë¡œê¸° ì¤‘ ì‚¬ë§ ì‹œ ì¶©ëŒ ë°©ì§€ â€” Groggy íƒœê·¸ ì œê±°
+    if (HasMatchingGameplayTag(TagStateGroggy))
+    {
+        RemoveLooseGameplayTag(TagStateGroggy);
+    }
+
+    // ëª¨ë“  Ability ì·¨ì†Œ
     CancelAllAbilities();
+
+    // State.RemoveOnDeath íƒœê·¸ê°€ ë¶€ì—¬ëœ GE ì œê±° (DoT, ìƒíƒœì´ìƒ ë“±)
+    FGameplayTagContainer RemoveTags;
+    RemoveTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.RemoveOnDeath")));
+    RemoveActiveEffectsWithGrantedTags(RemoveTags);
 
     OnMonsterDeath.Broadcast(this);
 }
@@ -47,7 +57,7 @@ void UC_MonsterASC::InterruptCurrentAbilities()
 
 bool UC_MonsterASC::CanUseAbilityByTag(FGameplayTag AbilityTag) const
 {
-    //  Á×¾ú°Å³ª ÄğÅ¸ÀÓÀÏ ¶§
+    //  ï¿½×¾ï¿½ï¿½Å³ï¿½ ï¿½ï¿½Å¸ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
     if (HasMatchingGameplayTag(TagStateDead) || HasMatchingGameplayTag(TagStateGroggy))
     {
         return false;
