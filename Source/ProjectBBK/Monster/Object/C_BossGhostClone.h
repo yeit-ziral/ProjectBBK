@@ -7,7 +7,7 @@
 #include "C_BossGhostClone.generated.h"
 
 class USkeletalMeshComponent;
-class UWidgetComponent;
+class UStaticMeshComponent;
 class USphereComponent;
 class UC_BossGridLaserPatternGA;
 class AC_GridLaser;
@@ -45,7 +45,7 @@ private:
 	USkeletalMeshComponent* ghostMesh;
 
 	UPROPERTY(EditAnywhere, Category = "GhostClone")
-	UWidgetComponent* markWidget;
+	UStaticMeshComponent* markMesh;
 
 	UPROPERTY(EditAnywhere, Category = "GhostClone")
 	USphereComponent* hitDetectSphere;

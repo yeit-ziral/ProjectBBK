@@ -3,7 +3,7 @@
 
 #include "C_BossGhostClone.h"
 #include "Components/SphereComponent.h"
-#include "Components/WidgetComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "../../PlayerCharacter/C_BasePlayerCharactor.h"
@@ -23,13 +23,13 @@ AC_BossGhostClone::AC_BossGhostClone()
 	// 메시 임포트 방향이 다를 경우 BPC_BossGhostClone에서 GhostMesh Rotation을 조정
 	ghostMesh->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 
-	markWidget = CreateDefaultSubobject<UWidgetComponent>("MarkWidget");
-	markWidget->SetupAttachment(rootComp);
-	markWidget->SetWidgetSpace(EWidgetSpace::World);
-	markWidget->SetDrawSize(FVector2D(150.f, 150.f));
-	markWidget->SetRelativeLocation(FVector(0.f, 0.f, 200.f));
-	markWidget->SetVisibility(false);
-	markWidget->SetHiddenInGame(true);
+	markMesh = CreateDefaultSubobject<UStaticMeshComponent>("MarkMesh");
+	markMesh->SetupAttachment(rootComp);
+	markMesh->SetRelativeLocation(FVector(0.f, 0.f, 5.f));
+	markMesh->SetRelativeRotation(FRotator(0.f, 0.f, 0.f));
+	markMesh->SetCastShadow(false);
+	markMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	markMesh->SetVisibility(false);
 
 	hitDetectSphere = CreateDefaultSubobject<USphereComponent>("HitDetectSphere");
 	hitDetectSphere->SetupAttachment(rootComp);
@@ -84,6 +84,8 @@ void AC_BossGhostClone::SetMarked(bool bMarked)
 	bIsMarked = bMarked;
 
 	SetActorTickEnabled(bMarked);
+
+	markMesh->SetVisibility(bMarked);
 
 	hitDetectSphere->SetCollisionEnabled(
 		bMarked ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
