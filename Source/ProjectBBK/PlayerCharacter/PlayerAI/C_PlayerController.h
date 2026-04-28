@@ -55,5 +55,8 @@ protected:
 	UInputAction* IA_SwitchCharNext;
 
 private:
+	void OnSwitchChar0Input();
+	void OnSwitchChar1Input();
+
 	bool bIsSwitching = false;
 };

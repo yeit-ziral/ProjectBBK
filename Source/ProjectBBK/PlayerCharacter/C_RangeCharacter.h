@@ -12,7 +12,7 @@ class PROJECTBBK_API AC_RangeCharacter : public AC_BasePlayerCharactor
 	GENERATED_BODY()
 
 public:
-	AC_RangeCharacter(const class FObjectInitializer& ObjectInitializer);
+	AC_RangeCharacter(const class FObjectInitializer &ObjectInitializer);
 
 protected:
 	virtual void BeginPlay() override;
@@ -20,6 +20,15 @@ protected:
 public:
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
 
+	/**  AnimBP에서 AimOffset 구동에 사용. 카메라 pitch(-90 ~ 90) */
+	UPROPERTY(BlueprintReadOnly, Category = "RangeCharacter|Aim")
+	float aimPitch = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "RangeCharacter|Aim")
+	float aimYaw = 0.0f;
+
+private:
+	void UpdateAimOffset();
 };

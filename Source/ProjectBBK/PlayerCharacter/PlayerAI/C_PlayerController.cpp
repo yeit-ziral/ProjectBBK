@@ -6,8 +6,9 @@
 #include "../C_BasePlayerCharactor.h"
 #include "AbilitySystemComponent.h"
 #include "EnhancedInputComponent.h"
-#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerStart.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "EngineUtils.h"
 
 void AC_PlayerController::BeginPlay()
 {
@@ -16,11 +17,12 @@ void AC_PlayerController::BeginPlay()
 	// 서버(싱글플레이어 포함)에서만 스폰
 	if (!HasAuthority()) return;
 
-	// 스폰 위치: PlayerStart 기준
+	// 스폰 위치: 레벨에 배치된 첫 번째 PlayerStart 기준
 	FTransform SpawnTransform = FTransform::Identity;
-	if (AActor* PlayerStart = UGameplayStatics::FindPlayerStart(this, FName()))
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
 	{
-		SpawnTransform = PlayerStart->GetActorTransform();
+		SpawnTransform = It->GetActorTransform();
+		break;
 	}
 
 	if (characterRosterClasses.Num() == 0) return;
@@ -72,14 +74,24 @@ void AC_PlayerController::SetupInputComponent()
 	if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(InputComponent))
 	{
 		if (IA_SwitchChar0)
-			EIC->BindAction(IA_SwitchChar0, ETriggerEvent::Started, this, [this]() { SwitchToCharacter(0); });
+			EIC->BindAction(IA_SwitchChar0, ETriggerEvent::Started, this, &AC_PlayerController::OnSwitchChar0Input);
 
 		if (IA_SwitchChar1)
-			EIC->BindAction(IA_SwitchChar1, ETriggerEvent::Started, this, [this]() { SwitchToCharacter(1); });
+			EIC->BindAction(IA_SwitchChar1, ETriggerEvent::Started, this, &AC_PlayerController::OnSwitchChar1Input);
 
 		if (IA_SwitchCharNext)
 			EIC->BindAction(IA_SwitchCharNext, ETriggerEvent::Started, this, &AC_PlayerController::SwitchToNextCharacter);
 	}
+}
+
+void AC_PlayerController::OnSwitchChar0Input()
+{
+	SwitchToCharacter(0);
+}
+
+void AC_PlayerController::OnSwitchChar1Input()
+{
+	SwitchToCharacter(1);
 }
 
 void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
