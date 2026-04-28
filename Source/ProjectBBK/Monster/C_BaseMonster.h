@@ -14,6 +14,8 @@
 
 #include "C_BaseMonster.generated.h"
 
+class UNiagaraSystem;
+
 class UC_AttackManagerComponent;
 class UC_MonsterDataComponent;
 class UC_GroggyComponent;
@@ -96,4 +98,31 @@ public:
 #pragma endregion
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+#pragma region Death
+public:
+	// ANC_DeathVFX AnimNotify에서 호출 — 안개 VFX 스폰 + 메시 숨김 + 소멸 타이머 시작
+	void OnDeathMontageVFXPoint();
+
+protected:
+	// OnMonsterDeath 델리게이트에서 호출 — AI·이동·콜리전 정지, 몽타주 재생
+	virtual void ExecuteDeathSequence();
+
+	// deathDestroyDelay 후 호출
+	void DestroyAfterDeath();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	UAnimMontage* deathMontage = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	UNiagaraSystem* deathFogVFX = nullptr;
+
+	// 안개 VFX 스폰 후 액터 소멸까지 대기 시간 (VFX 지속 시간보다 길어야 함)
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	float deathDestroyDelay = 2.0f;
+
+private:
+	FTimerHandle deathDestroyTimerHandle;
+	bool bDeathVFXTriggered = false;
+#pragma endregion
 };

@@ -34,7 +34,9 @@ void UC_GroggyComponent::AddGroggy(float GroggyAmount)
 	if (!attrSet) return;
 
 	UC_MonsterASC* asc = ownerMonster->GetMonsterASC();
-	if (asc && asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy"))))
+	if (asc && (asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))
+	         || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")))
+	         || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Invincible")))))
 		return;
 
 	const float cur    = attrSet->GetcurGroggy();
@@ -102,6 +104,9 @@ void UC_GroggyComponent::ExitGroggyState()
 
 	UC_MonsterASC* asc = ownerMonster->GetMonsterASC();
 	if (!asc) return;
+
+	// 그로기 리셋 타이머 도중 몬스터가 사망한 경우 무시
+	if (asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))) return;
 
 	asc->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")));
 

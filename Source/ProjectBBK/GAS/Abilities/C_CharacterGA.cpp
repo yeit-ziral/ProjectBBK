@@ -25,6 +25,12 @@ void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, con
 	}
 }
 
+void UC_CharacterGA::InputPressed(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
+{
+	Super::InputPressed(Handle, ActorInfo, ActivationInfo);
+	OnInputPressed();
+}
+
 void UC_CharacterGA::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	if (CooldownGameplayEffectClass)

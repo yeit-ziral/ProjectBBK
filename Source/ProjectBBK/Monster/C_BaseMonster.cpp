@@ -7,7 +7,13 @@
 #include "UI/C_MonsterHPDisplayComponent.h"
 #include "AI/C_MonsterAIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
+#include "AIController.h"
+#include "BrainComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+#include "Animation/AnimInstance.h"
 
 AC_BaseMonster::AC_BaseMonster()
 {
@@ -68,7 +74,7 @@ void AC_BaseMonster::BeginPlay()
 
 		monsterASC->OnMonsterDeath.AddLambda([this](UC_MonsterASC* ASC)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("%s died (OnMonsterDeath)"), *GetName());
+			ExecuteDeathSequence();
 		});
 	}
 
@@ -120,6 +126,87 @@ int32 AC_BaseMonster::GetMonsterID() const
 FName AC_BaseMonster::GetRowName() const
 {
 	return dataComponent ? dataComponent->GetRowName() : NAME_None;
+}
+
+void AC_BaseMonster::ExecuteDeathSequence()
+{
+	// 1. AI 영구 정지
+	if (AAIController* AIC = Cast<AAIController>(GetController()))
+	{
+		AIC->StopMovement();
+		if (UBrainComponent* Brain = AIC->GetBrainComponent())
+			Brain->StopLogic(TEXT("Dead"));
+	}
+
+	// 2. 캐릭터 이동 비활성화
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	// 3. 콜리전 비활성화 (플레이어 통과, 추가 피격 방지)
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// 4. HP 위젯 숨김
+	if (HpWidgetComponent)
+		HpWidgetComponent->SetVisibility(false);
+
+	// 5. Death 몽타주 재생
+	if (deathMontage)
+	{
+		PlayAnimMontage(deathMontage);
+
+		// 몽타주 종료 시 VFX+소멸 폴백 — ANC_DeathVFX notify가 없는 경우 대비
+		if (UAnimInstance* animInst = GetMesh()->GetAnimInstance())
+		{
+			FOnMontageEnded endDelegate;
+			endDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
+			{
+				OnDeathMontageVFXPoint();
+			});
+			animInst->Montage_SetEndDelegate(endDelegate, deathMontage);
+		}
+	}
+	else
+	{
+		OnDeathMontageVFXPoint();
+	}
+}
+
+void AC_BaseMonster::OnDeathMontageVFXPoint()
+{
+	// AnimNotify + 몽타주 종료 폴백 모두 이 함수를 호출할 수 있으므로 중복 방지
+	if (bDeathVFXTriggered) return;
+	bDeathVFXTriggered = true;
+
+	// 1. 검은 안개 VFX 스폰 (fire-and-forget)
+	if (deathFogVFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			deathFogVFX,
+			GetActorLocation(),
+			GetActorRotation(),
+			FVector(1.0f),
+			true,   // bAutoDestroy
+			true    // bAutoActivate
+		);
+	}
+
+	// 2. 메시 숨김 (안개가 시체를 가리는 동안)
+	GetMesh()->SetVisibility(false);
+
+	// 3. deathDestroyDelay 후 액터 소멸
+	GetWorld()->GetTimerManager().SetTimer(
+		deathDestroyTimerHandle,
+		this,
+		&AC_BaseMonster::DestroyAfterDeath,
+		deathDestroyDelay,
+		false
+	);
+}
+
+void AC_BaseMonster::DestroyAfterDeath()
+{
+	Destroy();
 }
 
 void AC_BaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

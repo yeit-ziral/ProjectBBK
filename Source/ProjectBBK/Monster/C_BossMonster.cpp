@@ -49,18 +49,24 @@ void AC_BossMonster::BeginPlay()
         });
     }
 
-    // TODO: 테스트용 무적 토글 — 확인 후 삭제
-    GetWorldTimerManager().SetTimer(invincibleTestTimerHandle, this, &AC_BossMonster::ToggleInvincible, 10.0f, true);
-
-    // TODO: 테스트용 데미지 — 확인 후 삭제
-    GetWorldTimerManager().SetTimer(testDamageTimerHandle, this, &AC_BossMonster::ApplyTestDamage, 4.0f, true);
-
+    // Phase 2 GA는 gamePlayAbilities 배열과 별개이므로 여기서 명시적으로 등록
+    if (monsterASC && bossGridLaserPatternGA)
+        monsterASC->GiveAbility(FGameplayAbilitySpec(bossGridLaserPatternGA, 1, 0));
 
     // 테스트: BaseMonster에서 이미 GiveAbility 한 GA 확인
     if (monsterASC && bossStormPatternGA && bossBeamPatternGA)
     {
         monsterASC->TryActivateAbilityByClass(bossStormPatternGA);
         //monsterASC->TryActivateAbilityByClass(bossBeamPatternGA);
+    }
+
+    // TODO: 테스트용 — Phase2 발동 확인 후 삭제
+    if (monsterAttributeSet)
+    {
+        const float startHP = monsterAttributeSet->GetmaxHP() * 0.55f;
+        monsterAttributeSet->SetcurHP(startHP);
+        if (bossHpWidget)
+            bossHpWidget->SetCurrentHp(startHP);
     }
 }
 
@@ -89,37 +95,27 @@ void AC_BossMonster::InitializeBossHpWidget()
     bossHpWidget->SetMonsterName(FText::FromName(GetRowName()));
 }
 
-void AC_BossMonster::ApplyTestDamage()
-{
-    if (!monsterASC || !testTrueDamageGE)
-        return;
-
-    FGameplayEffectContextHandle context = monsterASC->MakeEffectContext();
-    FGameplayEffectSpecHandle spec = monsterASC->MakeOutgoingSpec(testTrueDamageGE, 1.0f, context);
-    if (!spec.IsValid()) return;
-
-    spec.Data->SetSetByCallerMagnitude(
-        FGameplayTag::RequestGameplayTag(FName("Data.Damage")), 300.0f);
-
-    monsterASC->ApplyGameplayEffectSpecToSelf(*spec.Data);
-}
-
-void AC_BossMonster::ToggleInvincible()
-{
-    if (!monsterASC) return;
-
-    FGameplayTag invincibleTag = FGameplayTag::RequestGameplayTag(FName("State.Invincible"));
-
-    if (monsterASC->HasMatchingGameplayTag(invincibleTag))
-        monsterASC->RemoveLooseGameplayTag(invincibleTag);
-    else
-        monsterASC->AddLooseGameplayTag(invincibleTag);
-}
-
 void AC_BossMonster::OnBossHpChanged(const FOnAttributeChangeData& ChangeData)
 {
-    if (!bossHpWidget) return;
-    bossHpWidget->SetCurrentHp(ChangeData.NewValue);
+    if (bossHpWidget)
+        bossHpWidget->SetCurrentHp(ChangeData.NewValue);
+
+    if (!bPhase2Triggered && monsterASC && bossGridLaserPatternGA)
+    {
+        const float maxHp = GetmaxHP();
+        const float ratio = maxHp > 0.f ? ChangeData.NewValue / maxHp : 1.f;
+
+        UE_LOG(LogTemp, Warning, TEXT("[BossPhase2] HP=%.0f/%.0f (%.1f%%) threshold=%.0f%%"),
+            ChangeData.NewValue, maxHp, ratio * 100.f, phase2HpRatio * 100.f);
+
+        if (maxHp > 0.f && ratio < phase2HpRatio && ratio > 0.1f)
+        {
+            bPhase2Triggered = true;
+            UE_LOG(LogTemp, Warning, TEXT("[BossPhase2] Triggering GridLaser pattern"));
+            const bool bActivated = monsterASC->TryActivateAbilityByClass(bossGridLaserPatternGA);
+            UE_LOG(LogTemp, Warning, TEXT("[BossPhase2] TryActivate result: %s"), bActivated ? TEXT("SUCCESS") : TEXT("FAILED"));
+        }
+    }
 }
 
 void AC_BossMonster::OnBossGroggyChanged(const FOnAttributeChangeData& ChangeData)

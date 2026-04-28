@@ -8,7 +8,7 @@
 #include "C_MonsterAttributeSet.generated.h"
 
 /**
- * 
+ *
  */
 
 #ifndef ATTRIBUTE_ACCESSORS
@@ -23,8 +23,8 @@ UCLASS()
 class PROJECTBBK_API UC_MonsterAttributeSet : public UAttributeSet
 {
 	GENERATED_BODY()
-	
-public:    
+
+public:
 
     UC_MonsterAttributeSet();
 
@@ -75,6 +75,7 @@ public:
 protected:
 
 	void ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage);
+	void CheckAndHandleDeath(float NewHP);
 	TSubclassOf<UGameplayEffect> GE_ChargeMana;
 	float ManaChargeRate = 0.05f;
 	float MinManaCharge = 0.0f;
@@ -106,11 +107,12 @@ public:
     FGameplayAttributeData ReceivedTrueDamage;
     ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet, ReceivedTrueDamage)
 
-#pragma endregion   
+#pragma endregion
 
 public:
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+    virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
     virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
 
