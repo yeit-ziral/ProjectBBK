@@ -32,7 +32,10 @@ struct FAbilityInputBinding
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	ProjectBBKAbilityID abilityInputID = ProjectBBKAbilityID::None;
+	FGameplayTag abilityTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FGameplayTag releaseEventTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction *inputAction = nullptr;
@@ -243,7 +246,8 @@ protected:
 	TSubclassOf<UGameplayEffect> GE_ManaRegen;
 
 private:
-	TMap<const UInputAction*, int32> abilityInputIDMap;
+	TMap<const UInputAction*, FGameplayTag> abilityTagMap;
+	TMap<const UInputAction*, FGameplayTag> releaseEventTagMap;
 
 	void OnAbilityInputPressed(const FInputActionInstance& Instance);
 	void OnAbilityInputReleased(const FInputActionInstance& Instance);

@@ -202,16 +202,19 @@ void AC_BasePlayerCharactor::OnAbilityInputPressed(const FInputActionInstance& I
 {
 	if (!abilitySystemComponent.IsValid()) return;
 
-	if (const int32* ID = abilityInputIDMap.Find(Instance.GetSourceAction()))
-		abilitySystemComponent->AbilityLocalInputPressed(*ID);
+	const FGameplayTag* Tag = abilityTagMap.Find(Instance.GetSourceAction());
+	if (!Tag || !Tag->IsValid()) return;
+	abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(*Tag));
 }
 
 void AC_BasePlayerCharactor::OnAbilityInputReleased(const FInputActionInstance& Instance)
 {
 	if (!abilitySystemComponent.IsValid()) return;
 
-	if (const int32* ID = abilityInputIDMap.Find(Instance.GetSourceAction()))
-		abilitySystemComponent->AbilityLocalInputReleased(*ID);
+	const FGameplayTag* Tag = releaseEventTagMap.Find(Instance.GetSourceAction());
+	if (!Tag || !Tag->IsValid()) return;
+	FGameplayEventData EventData;
+	abilitySystemComponent->HandleGameplayEvent(*Tag, &EventData);
 }
 
 // Called to bind functionality to input
@@ -235,11 +238,14 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent *PlayerIn
 		// EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
 
 		// Ability input → GAS 연결
-		abilityInputIDMap.Empty();
+		abilityTagMap.Empty();
+		releaseEventTagMap.Empty();
 		for (const FAbilityInputBinding& Binding : abilityInputBindings)
 		{
 			if (!Binding.inputAction) continue;
-			abilityInputIDMap.Add(Binding.inputAction, static_cast<int32>(Binding.abilityInputID));
+			abilityTagMap.Add(Binding.inputAction, Binding.abilityTag);
+			if (Binding.releaseEventTag.IsValid())
+				releaseEventTagMap.Add(Binding.inputAction, Binding.releaseEventTag);
 			EnhancedInputComponent->BindAction(Binding.inputAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAbilityInputPressed);
 			EnhancedInputComponent->BindAction(Binding.inputAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::OnAbilityInputReleased);
 		}
@@ -635,12 +641,7 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 
 	for (TSubclassOf<UC_CharacterGA> &StartupAbility : characterAbilities)
 	{
-		abilitySystemComponent->GiveAbility(
-			FGameplayAbilitySpec(
-				StartupAbility,
-				1,
-				static_cast<int32>(StartupAbility.GetDefaultObject()->abilityInputID),
-				this));
+		abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(StartupAbility, 1, INDEX_NONE, this));
 	}
 
 	// for checking test gameplay ability
