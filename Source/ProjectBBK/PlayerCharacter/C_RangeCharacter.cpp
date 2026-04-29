@@ -37,7 +37,7 @@ void AC_RangeCharacter::UpdateAimOffset()
 		aimPitch = FMath::ClampAngle(FRotator::NormalizeAxis(aimRot.Pitch), -90.0f, 90.0f);
 
 		// Yaw
-		const FRotator delta = (aimRot - GetActorRotation()).GetNormalized();
+		const FRotator delta = (GetActorRotation() - aimRot).GetNormalized();
 		aimYaw = FMath::ClampAngle(delta.Yaw, -90.0f, 90.0f);
 	}
 }

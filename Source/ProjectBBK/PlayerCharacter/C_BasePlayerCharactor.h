@@ -18,31 +18,42 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
+struct FInputActionInstance;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBasePlayerCharacter, Log, All);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCharacterDiedDelegate, AC_BasePlayerCharactor*, Character);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCharacterDiedDelegate, AC_BasePlayerCharactor *, Character);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedDelegate, float, Percent);
 
+USTRUCT(BlueprintType)
+struct FAbilityInputBinding
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	ProjectBBKAbilityID abilityInputID = ProjectBBKAbilityID::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UInputAction *inputAction = nullptr;
+};
 
 UCLASS(Blueprintable, config = Game)
 class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
-
 public:
 	// Sets default values for this character's properties
-	AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitalizer); // replace this if i want to make movement system with GAS "AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer)"
+	AC_BasePlayerCharactor(const class FObjectInitializer &ObjectInitalizer); // replace this if i want to make movement system with GAS "AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer)"
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
 
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
 	UPROPERTY(BlueprintAssignable, Category = "ProjectBBK|Character")
 	FCharacterDiedDelegate onCharacterDied;
@@ -53,10 +64,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character")
 	virtual bool IsAlive() const;
 
-	//this will get the ability level for any ability
-	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character")
-	virtual int32 GetAbilityLevel(ProjectBBKAbilityID AbilityID) const;
-
 	virtual void RemoveCharacterAbilities();
 
 	virtual void Die();
@@ -66,7 +73,6 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
 	void OnASCInitialized();
-
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetCharacterLevel() const;
@@ -93,39 +99,36 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Camera")
 	void SetTopDownCamera(bool bTopDown, float BlendTime = 0.75f,
-		float TopDownArmLength = 1600.f, float TopDownPitch = -85.f);
+						  float TopDownArmLength = 1600.f, float TopDownPitch = -85.f);
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	virtual void PossessedBy(AController* NewController) override;
+	virtual void PossessedBy(AController *NewController) override;
 
 	virtual void UnPossessed() override;
 
 	virtual void OnRep_PlayerState() override;
 
-	// Binding Input with GAS
-	virtual void BindASCInput();
-
 	// MappingContext 등록 (BeginPlay + PossessedBy 양쪽에서 호출)
 	void SetupMappingContext();
 
-	void InitializeStartingValues(AC_PlayerState* PS);
+	void InitializeStartingValues(AC_PlayerState *PS);
 
 	// Movement
-	void MyMove(const FInputActionValue& Value);
-	void MyLook(const FInputActionValue& Value);
+	void MyMove(const FInputActionValue &Value);
+	void MyLook(const FInputActionValue &Value);
 
 	//// Sprint
-	//void StartSprint();
-	//void EndSprint();
+	// void StartSprint();
+	// void EndSprint();
 
 	////Stamina
-	//void UpdateStamina();
+	// void UpdateStamina();
 
 	// Attack
-	void OnAttack(const FInputActionValue& Value);
+	void OnAttack(const FInputActionValue &Value);
 
 	virtual void AddCharacterAbilities();
 
@@ -139,17 +142,13 @@ protected:
 
 	virtual void SetStamina(float NewStamina);
 
-	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
-	virtual void OnManaChangedInternal(const FOnAttributeChangeData& Data);
-	virtual void OnShieldChanged(const FOnAttributeChangeData& Data);
-	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
-	virtual void OnStaminaChanged(const FOnAttributeChangeData& Data);
+	virtual void OnHealthChanged(const FOnAttributeChangeData &Data);
+	virtual void OnManaChangedInternal(const FOnAttributeChangeData &Data);
+	virtual void OnShieldChanged(const FOnAttributeChangeData &Data);
+	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData &Data);
+	virtual void OnStaminaChanged(const FOnAttributeChangeData &Data);
 
 protected:
-
-	// Protecting from duplication
-	bool bASCInputBound = false;
-
 	// 카메라 블렌딩
 	bool bCameraBlending = false;
 	bool bTopDownActive = false;
@@ -177,40 +176,40 @@ protected:
 	float sprintSpeed = 900.0f;
 
 	//// Moved to Sprinting GAS
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	//float curStamina = 100.0f;
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	//float max_Stamina = 100.0f;
-	//bool bHasStamina = true;
-	//bool bIsSprinting = false;
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	// float curStamina = 100.0f;
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	// float max_Stamina = 100.0f;
+	// bool bHasStamina = true;
+	// bool bIsSprinting = false;
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* springArm;
+	USpringArmComponent *springArm;
 
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* camera;
+	UCameraComponent *camera;
 
 	/** MappingContext */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputMappingContext* playerMappingContext;
+	UInputMappingContext *playerMappingContext;
 
 	/** Move Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* moveAction;
+	class UInputAction *moveAction;
 
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* lookAction;
+	class UInputAction *lookAction;
 
 	///** Sprint Input Action */
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	//class UInputAction* sprintAction;
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	// class UInputAction* sprintAction;
 
 	///** Attack Input Action */
-	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	//class UInputAction* attackAction;
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	// class UInputAction* attackAction;
 
 	// 멀티캐릭터 (Week 1에서 구현 예정)
 	int32 ActiveCharacterIndex = 0;
@@ -226,17 +225,26 @@ protected:
 	FText characterName;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "ProjectBBK|Animation")
-	UAnimMontage* deathMontage;
+	UAnimMontage *deathMontage;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Abilities")
-	TArray<TSubclassOf<class UC_CharacterGA>> characterAbilities; //Abilities to give to character when possessed
+	TArray<TSubclassOf<class UC_CharacterGA>> characterAbilities; // Abilities to give to character when possessed
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ProjectBBK|Abilities")
+	TArray<FAbilityInputBinding> abilityInputBindings;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Abilities")
-	TSubclassOf<class UGameplayEffect> defaultAttributes; //Initialize default values of character's attributes
+	TSubclassOf<class UGameplayEffect> defaultAttributes; // Initialize default values of character's attributes
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Abilities")
 	TArray<TSubclassOf<class UGameplayEffect>> startupEffects; // any other gameplay effects to apply like glowing, etc.
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mana")
 	TSubclassOf<UGameplayEffect> GE_ManaRegen;
+
+private:
+	TMap<const UInputAction*, int32> abilityInputIDMap;
+
+	void OnAbilityInputPressed(const FInputActionInstance& Instance);
+	void OnAbilityInputReleased(const FInputActionInstance& Instance);
 };
