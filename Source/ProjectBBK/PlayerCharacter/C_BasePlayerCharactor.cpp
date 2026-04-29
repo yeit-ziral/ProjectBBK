@@ -16,6 +16,7 @@
 #include "C_PlayerState.h"
 #include "PlayerAI/C_PlayerAIController.h"
 #include "PlayerAI/C_PlayerController.h"
+#include "../Skills/C_SkillManagerComponent.h"
 
 DEFINE_LOG_CATEGORY(LogBasePlayerCharacter);
 
@@ -647,6 +648,11 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 	// abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
 
 	abilitySystemComponent->characterAbilitiesGiven = true;
+
+	if (UC_SkillManagerComponent* SkillManager = FindComponentByClass<UC_SkillManagerComponent>())
+	{
+		SkillManager->InitializeDefaultSkill();
+	}
 }
 
 void AC_BasePlayerCharactor::InitializeAttributes()
