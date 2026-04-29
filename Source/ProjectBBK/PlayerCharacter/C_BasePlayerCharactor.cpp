@@ -1,6 +1,5 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "C_BasePlayerCharactor.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -22,10 +21,10 @@
 DEFINE_LOG_CATEGORY(LogBasePlayerCharacter);
 
 // Sets default values
-AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitalizer)// replace this if i want to make movement system with GAS and Legacy style "AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
-	:Super(ObjectInitalizer)
+AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer &ObjectInitalizer) // replace this if i want to make movement system with GAS and Legacy style "AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+	: Super(ObjectInitalizer)
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	// Set size for collision capsule
@@ -70,9 +69,9 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer& O
 
 void AC_BasePlayerCharactor::SetupMappingContext()
 {
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	if (APlayerController *PlayerController = Cast<APlayerController>(Controller))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		if (UEnhancedInputLocalPlayerSubsystem *Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
 			Subsystem->AddMappingContext(playerMappingContext, 0);
 		}
@@ -89,8 +88,8 @@ void AC_BasePlayerCharactor::BeginPlay()
 	if (abilitySystemComponent.IsValid())
 	{
 		// 초기 Mana 설정
-		if (const UC_ChracterAttributeSetBase* Attributes =
-			abilitySystemComponent->GetSet<UC_ChracterAttributeSetBase>())
+		if (const UC_ChracterAttributeSetBase *Attributes =
+				abilitySystemComponent->GetSet<UC_ChracterAttributeSetBase>())
 		{
 			abilitySystemComponent->SetNumericAttributeBase(
 				Attributes->GetmanaAttribute(), 0.0f);
@@ -108,12 +107,10 @@ void AC_BasePlayerCharactor::BeginPlay()
 				abilitySystemComponent->MakeOutgoingSpec(
 					GE_ManaRegen,
 					1.0f,
-					EffectContext
-				);
+					EffectContext);
 
 			abilitySystemComponent->ApplyGameplayEffectSpecToSelf(
-				*SpecHandle.Data
-			);
+				*SpecHandle.Data);
 
 			UE_LOG(LogTemp, Log, TEXT("[Player] Mana Regen started"));
 		}
@@ -129,7 +126,7 @@ void AC_BasePlayerCharactor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//UpdateStamina();
+	// UpdateStamina();
 
 	if (bCameraBlending && springArm)
 	{
@@ -154,9 +151,10 @@ void AC_BasePlayerCharactor::Tick(float DeltaTime)
 }
 
 void AC_BasePlayerCharactor::SetTopDownCamera(bool bTopDown, float BlendTime,
-	float TopDownArmLength, float TopDownPitch)
+											  float TopDownArmLength, float TopDownPitch)
 {
-	if (!springArm) return;
+	if (!springArm)
+		return;
 
 	bTopDownActive = bTopDown;
 	cameraBlendRemain = FMath::Max(BlendTime, 0.01f);
@@ -165,9 +163,9 @@ void AC_BasePlayerCharactor::SetTopDownCamera(bool bTopDown, float BlendTime,
 	if (bTopDown)
 	{
 		springArm->bUsePawnControlRotation = false;
-		springArm->bInheritYaw   = false;
+		springArm->bInheritYaw = false;
 		springArm->bInheritPitch = false;
-		springArm->bInheritRoll  = false;
+		springArm->bInheritRoll = false;
 		targetArmLength = TopDownArmLength;
 		targetSpringArmRotation = FRotator(TopDownPitch, 0.f, 0.f);
 	}
@@ -188,23 +186,43 @@ void AC_BasePlayerCharactor::SetTopDownCamera(bool bTopDown, float BlendTime,
 
 void AC_BasePlayerCharactor::RestoreCameraAfterBlend()
 {
-	if (!springArm || bTopDownActive) return;
+	if (!springArm || bTopDownActive)
+		return;
 
-	springArm->bInheritYaw   = true;
+	springArm->bInheritYaw = true;
 	springArm->bInheritPitch = true;
-	springArm->bInheritRoll  = true;
+	springArm->bInheritRoll = true;
 	springArm->TargetArmLength = targetArmLength;
 	springArm->SetRelativeRotation(targetSpringArmRotation);
 	springArm->bUsePawnControlRotation = true;
 	bCameraBlending = false;
 }
 
+void AC_BasePlayerCharactor::OnAbilityInputPressed(const FInputActionInstance& Instance)
+{
+	if (!abilitySystemComponent.IsValid()) return;
+
+	const FGameplayTag* Tag = abilityTagMap.Find(Instance.GetSourceAction());
+	if (!Tag || !Tag->IsValid()) return;
+	abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(*Tag));
+}
+
+void AC_BasePlayerCharactor::OnAbilityInputReleased(const FInputActionInstance& Instance)
+{
+	if (!abilitySystemComponent.IsValid()) return;
+
+	const FGameplayTag* Tag = releaseEventTagMap.Find(Instance.GetSourceAction());
+	if (!Tag || !Tag->IsValid()) return;
+	FGameplayEventData EventData;
+	abilitySystemComponent->HandleGameplayEvent(*Tag, &EventData);
+}
+
 // Called to bind functionality to input
-void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) 
+	if (UEnhancedInputComponent *EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		// Moving
 		EnhancedInputComponent->BindAction(moveAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::MyMove);
@@ -213,11 +231,24 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		EnhancedInputComponent->BindAction(lookAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::MyLook);
 
 		//// Sprinting
-		//EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
-		//EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
+		// EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Triggered, this, &AC_BasePlayerCharactor::StartSprint);
+		// EnhancedInputComponent->BindAction(sprintAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::EndSprint);
 
 		////Attacking
-		//EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
+		// EnhancedInputComponent->BindAction(attackAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAttack);
+
+		// Ability input → GAS 연결
+		abilityTagMap.Empty();
+		releaseEventTagMap.Empty();
+		for (const FAbilityInputBinding& Binding : abilityInputBindings)
+		{
+			if (!Binding.inputAction) continue;
+			abilityTagMap.Add(Binding.inputAction, Binding.abilityTag);
+			if (Binding.releaseEventTag.IsValid())
+				releaseEventTagMap.Add(Binding.inputAction, Binding.releaseEventTag);
+			EnhancedInputComponent->BindAction(Binding.inputAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAbilityInputPressed);
+			EnhancedInputComponent->BindAction(Binding.inputAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::OnAbilityInputReleased);
+		}
 	}
 	else
 	{
@@ -225,7 +256,7 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	}
 }
 
-void AC_BasePlayerCharactor::PossessedBy(AController* NewController)
+void AC_BasePlayerCharactor::PossessedBy(AController *NewController)
 {
 	Super::PossessedBy(NewController);
 
@@ -233,7 +264,7 @@ void AC_BasePlayerCharactor::PossessedBy(AController* NewController)
 	// MappingContext가 등록되지 않으므로 여기서 다시 시도
 	SetupMappingContext();
 
-	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+	AC_PlayerState *PS = GetPlayerState<AC_PlayerState>();
 
 	if (PS)
 	{
@@ -248,55 +279,21 @@ void AC_BasePlayerCharactor::PossessedBy(AController* NewController)
 void AC_BasePlayerCharactor::UnPossessed()
 {
 	Super::UnPossessed();
-
-	// 다음 소유 시 ASC 입력 바인딩이 다시 실행되도록 리셋
-	bASCInputBound = false;
 }
 
 void AC_BasePlayerCharactor::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+	AC_PlayerState *PS = GetPlayerState<AC_PlayerState>();
 
 	if (PS)
 	{
 		InitializeStartingValues(PS);
-
-		BindASCInput();
 	}
 }
 
-void AC_BasePlayerCharactor::BindASCInput()
-{
-	if (bASCInputBound || !abilitySystemComponent.IsValid() /* && IsValid(InputComponent)*/) // IsValid(InputComponent) this is for legacy input
-		return;
-
-	/*
-	abilitySystemComponenet->BindAbilityActivationToInputComponent(InputComponent, FGameplayAbilityInputBind(FString("ConfirmTarget"), FString("CancelTarget"), FString("ProjectBBKAbilityID"), static_cast<int32>(ProjectBBKAbilityID::Confirm), static_cast<int32>(ProjectBBKAbilityID::Cancel)));
-	bASCInputBound = true;
-	*/
-
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PC->InputComponent))
-		{
-			// Ability Input Mapping (예: GA_Sprint, GA_Attack 등)
-			const FGameplayAbilityInputBinds Binds(
-				TEXT("Confirm"), 
-				TEXT("Cancel"), 
-				FTopLevelAssetPath(TEXT("/Script/ProjectBBK"), TEXT("ProjectBBKAbilityID")),
-				static_cast<int32>(ProjectBBKAbilityID::Confirm),
-				static_cast<int32>(ProjectBBKAbilityID::Cancel)
-			);
-
-			abilitySystemComponent->BindAbilityActivationToInputComponent(EIC, Binds);
-			bASCInputBound = true;
-		}
-	}
-}
-
-void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
+void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 {
 	check(PS); // this is for debugging
 
@@ -323,31 +320,31 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 	{
 		// Health 변경 감지
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-			attributeSetBase->GethealthAttribute()
-		).AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
+								  attributeSetBase->GethealthAttribute())
+			.AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
 
 		// Mana 변경 감지 (다시!)
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-			attributeSetBase->GetmanaAttribute()
-		).AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
+								  attributeSetBase->GetmanaAttribute())
+			.AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
 
 		// Shield 변경 감지
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-			attributeSetBase->GetshieldAttribute()
-		).AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
+								  attributeSetBase->GetshieldAttribute())
+			.AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
 
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-			attributeSetBase->GetmoveSpeedAttribute()
-		).AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
+								  attributeSetBase->GetmoveSpeedAttribute())
+			.AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
 
 		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-			attributeSetBase->GetstaminaAttribute()
-		).AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
+								  attributeSetBase->GetstaminaAttribute())
+			.AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
 
 		if (attributeSetBase.IsValid())
 		{
 			float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
-			if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+			if (UCharacterMovementComponent *MovementComp = GetCharacterMovement())
 			{
 				MovementComp->MaxWalkSpeed = InitialMoveSpeed;
 
@@ -360,12 +357,9 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState* PS)
 		FGameplayTag CanSprintTag = FGameplayTag::RequestGameplayTag(FName("State.CanSprint"));
 		abilitySystemComponent->AddLooseGameplayTag(CanSprintTag);
 	}
-
-	// Input binding (client)
-	BindASCInput();
 }
 
-UAbilitySystemComponent* AC_BasePlayerCharactor::GetAbilitySystemComponent() const
+UAbilitySystemComponent *AC_BasePlayerCharactor::GetAbilitySystemComponent() const
 {
 	return abilitySystemComponent.Get();
 }
@@ -375,23 +369,18 @@ bool AC_BasePlayerCharactor::IsAlive() const
 	return GetHealth() > 0.0f;
 }
 
-int32 AC_BasePlayerCharactor::GetAbilityLevel(ProjectBBKAbilityID AbilityID) const
-{
-	return 1; //will create sort of system that helps I keep track of all my abilites
-}
-
 void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 {
-	//UC_CharacterASC* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
+	// UC_CharacterASC* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
 
-	if(GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || abilitySystemComponent->characterAbilitiesGiven)
+	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || abilitySystemComponent->characterAbilitiesGiven)
 	{
 		return;
 	}
 
 	TArray<FGameplayAbilitySpecHandle> AbilitiesToRemove;
 
-	for(const FGameplayAbilitySpec& Spec : abilitySystemComponent->GetActivatableAbilities())
+	for (const FGameplayAbilitySpec &Spec : abilitySystemComponent->GetActivatableAbilities())
 	{
 		if (Spec.SourceObject == this && characterAbilities.Contains(Spec.Ability->GetClass()))
 		{
@@ -399,7 +388,7 @@ void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 		}
 	}
 
-	for(int32 i = 0; i < AbilitiesToRemove.Num(); i++)
+	for (int32 i = 0; i < AbilitiesToRemove.Num(); i++)
 	{
 		abilitySystemComponent->ClearAbility(AbilitiesToRemove[i]);
 	}
@@ -418,10 +407,10 @@ void AC_BasePlayerCharactor::Die()
 
 	onCharacterDied.Broadcast(this);
 
-	if(abilitySystemComponent.IsValid())
+	if (abilitySystemComponent.IsValid())
 	{
 		abilitySystemComponent->CancelAbilities();
-		
+
 		FGameplayTagContainer EffectTagsToRemove;
 		EffectTagsToRemove.AddTag(effectRemoveOnDeathTag);
 		int32 NumEffectsRemoved = abilitySystemComponent->RemoveActiveEffectsWithTags(EffectTagsToRemove);
@@ -532,7 +521,7 @@ float AC_BasePlayerCharactor::GetMaxStamina() const
 	return 0.0f;
 }
 
-void AC_BasePlayerCharactor::MyMove(const FInputActionValue& Value)
+void AC_BasePlayerCharactor::MyMove(const FInputActionValue &Value)
 {
 	if (Controller != nullptr)
 	{
@@ -545,23 +534,24 @@ void AC_BasePlayerCharactor::MyMove(const FInputActionValue& Value)
 		{
 			// 탑다운 시점: W=월드+X(위), S=월드-X(아래), D=월드+Y(오른쪽), A=월드-Y(왼쪽)
 			ForwardDirection = FVector::ForwardVector;
-			RightDirection   = FVector::RightVector;
+			RightDirection = FVector::RightVector;
 		}
 		else
 		{
 			const FRotator YawRotation(0, Controller->GetControlRotation().Yaw, 0);
 			ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-			RightDirection   = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+			RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		}
 
 		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection,   MovementVector.X);
+		AddMovementInput(RightDirection, MovementVector.X);
 	}
 }
 
-void AC_BasePlayerCharactor::MyLook(const FInputActionValue& Value)
+void AC_BasePlayerCharactor::MyLook(const FInputActionValue &Value)
 {
-	if (bTopDownActive) return;
+	if (bTopDownActive)
+		return;
 
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
@@ -574,7 +564,7 @@ void AC_BasePlayerCharactor::MyLook(const FInputActionValue& Value)
 }
 
 //// move to GAS
-//void AC_BasePlayerCharactor::StartSprint()
+// void AC_BasePlayerCharactor::StartSprint()
 //{
 //	if (bHasStamina)
 //	{
@@ -589,30 +579,31 @@ void AC_BasePlayerCharactor::MyLook(const FInputActionValue& Value)
 //			bIsSprinting = false;
 //		}
 //	}
-//}
+// }
 //
-//void AC_BasePlayerCharactor::EndSprint()
+// void AC_BasePlayerCharactor::EndSprint()
 //{
 //	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
 //	bIsSprinting = false;
-//}
+// }
 
-void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
+void AC_BasePlayerCharactor::OnAttack(const FInputActionValue &Value)
 {
-	if (!abilitySystemComponent.IsValid()) return;
+	if (!abilitySystemComponent.IsValid())
+		return;
 
-	//const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
+	// const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
 
-	//FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
+	// FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
 
-	//FGameplayTagContainer AbilityTags;
-	//AbilityTags.AddTag(Tag);
+	// FGameplayTagContainer AbilityTags;
+	// AbilityTags.AddTag(Tag);
 
-	//abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
+	// abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
 }
 
 //// moved to GAS
-//void AC_BasePlayerCharactor::UpdateStamina()
+// void AC_BasePlayerCharactor::UpdateStamina()
 //{
 //	if (bIsSprinting)
 //	{
@@ -639,7 +630,7 @@ void AC_BasePlayerCharactor::OnAttack(const FInputActionValue& Value)
 //	{
 //		bHasStamina = true;
 //	}
-//}
+// }
 
 void AC_BasePlayerCharactor::AddCharacterAbilities()
 {
@@ -648,22 +639,14 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 		return;
 	}
 
-	for(TSubclassOf<UC_CharacterGA>& StartupAbility : characterAbilities)
+	for (TSubclassOf<UC_CharacterGA> &StartupAbility : characterAbilities)
 	{
-		abilitySystemComponent->GiveAbility(
-			FGameplayAbilitySpec(
-				StartupAbility,
-				GetAbilityLevel(StartupAbility.GetDefaultObject()->abilityID),
-				static_cast<int32>(StartupAbility.GetDefaultObject()->abilityInputID),
-				this
-			)
-		);
-
+		abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(StartupAbility, 1, INDEX_NONE, this));
 	}
 
-	//for checking test gameplay ability
+	// for checking test gameplay ability
 
-	//abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
+	// abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
 
 	abilitySystemComponent->characterAbilitiesGiven = true;
 
@@ -675,7 +658,7 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 
 void AC_BasePlayerCharactor::InitializeAttributes()
 {
-	if(!abilitySystemComponent.IsValid())
+	if (!abilitySystemComponent.IsValid())
 	{
 		return;
 	}
@@ -691,7 +674,7 @@ void AC_BasePlayerCharactor::InitializeAttributes()
 
 	FGameplayEffectSpecHandle NewHandle = abilitySystemComponent->MakeOutgoingSpec(defaultAttributes, GetCharacterLevel(), EffectContext);
 
-	if(NewHandle.IsValid())
+	if (NewHandle.IsValid())
 	{
 		FActiveGameplayEffectHandle ActiveGEHandle = abilitySystemComponent->ApplyGameplayEffectSpecToTarget(*NewHandle.Data.Get(), abilitySystemComponent.Get());
 	}
@@ -707,10 +690,10 @@ void AC_BasePlayerCharactor::AddStartupEffects()
 	FGameplayEffectContextHandle EffectContext = abilitySystemComponent->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 
-	for(TSubclassOf<UGameplayEffect>& GameplayEffect : startupEffects)
+	for (TSubclassOf<UGameplayEffect> &GameplayEffect : startupEffects)
 	{
 		FGameplayEffectSpecHandle NewHandle = abilitySystemComponent->MakeOutgoingSpec(GameplayEffect, GetCharacterLevel(), EffectContext);
-		if(NewHandle.IsValid())
+		if (NewHandle.IsValid())
 		{
 			FActiveGameplayEffectHandle ActiveGEHandle = abilitySystemComponent->ApplyGameplayEffectSpecToTarget(*NewHandle.Data.Get(), abilitySystemComponent.Get());
 		}
@@ -721,11 +704,11 @@ void AC_BasePlayerCharactor::AddStartupEffects()
 
 void AC_BasePlayerCharactor::SetHealth(float NewHealth)
 {
-	if(attributeSetBase.IsValid())
+	if (attributeSetBase.IsValid())
 	{
 		attributeSetBase->Sethealth(NewHealth); // this code is dangerous cuz it directly sets the health value, bypassing any gameplay effects or modifiers
 
-		//ApplyModToAttribute(C_CharacterAttributeSetBase::GetHealthAttribute(), EGameplayModOp::Additive, NewHealth); 
+		// ApplyModToAttribute(C_CharacterAttributeSetBase::GetHealthAttribute(), EGameplayModOp::Additive, NewHealth);
 	}
 }
 
@@ -745,12 +728,12 @@ void AC_BasePlayerCharactor::SetStamina(float NewStamina)
 	}
 }
 
-void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
+void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 {
 	float Health = Data.NewValue;
 	float MaxHealth = GetMaxHealth();
 
-	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
+	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
 
 	// 사망 처리
 	if (Health <= 0.0f && IsAlive())
@@ -759,7 +742,7 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData& Data)
 	}
 }
 
-void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData& Data)
+void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData &Data)
 {
 	float Mana = Data.NewValue;
 	float MaxMana = GetMaxMana();
@@ -768,23 +751,23 @@ void AC_BasePlayerCharactor::OnManaChangedInternal(const FOnAttributeChangeData&
 	// UI 업데이트 브로드캐스트
 	OnManaChanged.Broadcast(Percent);
 
-	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"), Mana, MaxMana, Percent * 100.0f);
+	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Mana Changed: %.2f / %.2f (%.1f%%)"), Mana, MaxMana, Percent * 100.0f);
 
-	//if (Percent >= 1.0f)
+	// if (Percent >= 1.0f)
 	//{
 	//	UE_LOG(LogBasePlayerCharacter, Warning, TEXT("=== MANA FULL! ULTIMATE READY! ==="));
-	//}
+	// }
 }
 
-void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData& Data)
+void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData &Data)
 {
 	float Shield = Data.NewValue;
 	float MaxShield = GetMaxShield();
 
-	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
+	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
 }
 
-void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
+void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData &Data)
 {
 	float NewMoveSpeed = Data.NewValue;
 	float OldMoveSpeed = Data.OldValue;
@@ -792,27 +775,27 @@ void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData& Da
 	/*UE_LOG(LogBasePlayerCharacter, Log, TEXT("MoveSpeed Changed: %.2f -> %.2f"),
 		OldMoveSpeed, NewMoveSpeed);*/
 
-	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+	if (UCharacterMovementComponent *MovementComp = GetCharacterMovement())
 	{
 		MovementComp->MaxWalkSpeed = NewMoveSpeed;
 
-		//UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
+		// UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
 	}
 }
 
-void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData& Data)
+void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data)
 {
 	float Stamina = Data.NewValue;
 	float MaxStamina = GetMaxStamina();
 
-	//UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
+	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
 
-	//if (Data.NewValue <= 0.f)
+	// if (Data.NewValue <= 0.f)
 	//{
 	//	abilitySystemComponent->CancelAbilities(
 	//		nullptr,   // WithTags
 	//		nullptr,   // WithoutTags
 	//		SprintAbilityClass
 	//	);
-	//}
+	// }
 }
