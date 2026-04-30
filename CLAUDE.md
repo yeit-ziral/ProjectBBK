@@ -222,8 +222,8 @@ Skills/
 | GA_SpeedBuff | F (Skill Wheel) | ✅ 완료 | GE_GenericCooldown 공유, GE_SpeedBuff |
 | GA_Ablaze | F (Skill Wheel) | ✅ 완료 | 지면 AOE, GE_Ablaze(DoT), AC_FireZone, ReceivedTrueDamage |
 | GA_RockSpear | F (Skill Wheel) | ✅ 완료 | 2단계 입력, C_StoneSpearProjectile, GE_BasicDamage, GE_Slowed |
-| Skill Wheel 추가 스킬 x1~3 | F (Skill Wheel) | 📋 계획 중 | Skill Wheel 구현 전 선행 작업 (GA_RockSpear 포함 1개 완료) |
-| Skill Wheel (F키 슬롯 교체) | F | 📋 계획 중 | GA_SpeedBuff 포함 3~5개 스킬 순환 |
+| Skill Wheel 추가 스킬 x1~3 | F (Skill Wheel) | 📋 계획 중 | GA_RockSpear 포함 1개 완료, 나머지 미구현 |
+| Skill Wheel (F키 슬롯 교체) | F | ✅ 완료 | Z키 토글, WBP_SkillWheel, UC_SkillManagerComponent, DynamicAbilityTags → TryActivateAbilityByClass 방식 |
 
 ### Monster Abilities
 | Ability | 상태 | 비고 |
@@ -242,6 +242,7 @@ Skills/
 | BPC_NormalMonsterHPWidget | ✅ 완료 | 3D 위젯, UC_MonsterAttributeSet 바인딩 |
 | BPC_BossMonsterHPWidget | ✅ 완료 | 3D 위젯, UC_MonsterAttributeSet 바인딩 |
 | WBP_RockSpearAim | ✅ 완료 | 조준선 위젯, GA_RockSpear 생명주기 직접 관리, 마우스 위치 추적 |
+| WBP_SkillWheel | ✅ 완료 | Z키 토글, 마우스 각도 기반 섹터 판정, 호버 강조, 클릭 시 스킬 교체 |
 
 ### Effects
 | Effect | 상태 | 비고 |
@@ -303,6 +304,8 @@ Skills/
 11. **Duration GE가 attribute 변경 시 외부 컴포넌트에 반영 안 될 때** — `PostGameplayEffectExecute`는 Instant GE에만 호출됨. Duration GE의 Modifier는 `PostAttributeChange`에서 처리해야 함. 예: `GE_Slowed`로 `moveSpeed`를 바꿔도 `MaxWalkSpeed`가 갱신되지 않는 경우 → `PostAttributeChange` 오버라이드로 해결
 12. **Instant GE의 `FActiveGameplayEffectHandle.IsValid()`가 항상 false** — Instant GE는 즉시 실행 후 사라지므로 Active Handle이 존재하지 않음. `IsValid() = false`가 실패를 의미하지 않음 — 실제 적용 여부는 `PostGameplayEffectExecute` 로그로 확인
 13. **몬스터에게 데미지가 0으로 들어올 때** — `PostGameplayEffectExecute`의 방어력 감산 로직 확인: `Mitigated = Max(0, RawDamage - defense)`. defense 값이 데미지보다 크면 실제 HP 변화 없음
+14. **`TryActivateAbilitiesByTag`로 DynamicAbilityTags 태그가 있는 GA가 발동 안 될 때** — `TryActivateAbilitiesByTag`는 `DynamicAbilityTags`를 조회하지 않음. `UC_SkillManagerComponent::GetActiveSkillClass()`로 클래스를 직접 가져와 `TryActivateAbilityByClass` 사용
+15. **GA Blueprint 내부에서 `GetAbilitySystemComponent`가 None 반환** — GA Blueprint에서 Character 경유로 ASC를 가져오면 PIE 종료 시 또는 타이밍에 따라 None 반환 가능 → GA 내부에서는 반드시 `GetAbilitySystemComponentFromActorInfo` 사용 (IsValid 체크 불필요, 어빌리티 활성 중 항상 유효)
 
 ---
 
@@ -459,6 +462,44 @@ CheckCancelInput (Custom Event)
 - `IA_CommonSkill` 트리거 타입은 반드시 `Pressed`로 설정 (`Triggered`면 매 프레임 발동)
 - `OnInputPressed` BlueprintImplementableEvent: `UC_CharacterGA`에서 `InputPressed` C++ override → Blueprint 노출. 어빌리티 활성 중 동일 입력 감지 필요 시 활용 가능 (단, `TryActivateAbilityByTag` 방식에서는 `AbilityLocalInputPressed` 미호출로 동작 안 함)
 
+### SkillWheel + 입력 차단 패턴 (UC_SkillManagerComponent / WBP_SkillWheel 참고)
+Z키 토글로 SkillWheel을 열고, 마우스 각도 기반으로 스킬을 선택해 F키 슬롯을 교체.
+```
+// 입력 차단 — ActivationBlockedTags에 State.SkillWheelOpen 추가 (차단할 GA 전부)
+OpenSkillWheel()
+  → ASC->AddLooseGameplayTag(State.SkillWheelOpen)   // 등록된 GA 자동 차단
+  → bIsSkillWheelOpen = true
+
+CloseSkillWheel()
+  → ASC->RemoveLooseGameplayTag(State.SkillWheelOpen)
+  → bIsSkillWheelOpen = false
+
+// Z키 Blueprint 핸들러
+Branch: bIsSkillWheelOpen
+  False → SetShowMouseCursor(true) → SetMouseLocation(Center)
+          → SetIgnoreLookInput(true) → OpenSkillWheel
+          → Create WBP_SkillWheel → Add to Viewport
+          → Set Input Mode Game and UI   ← 첫 번째 클릭 정상 인식에 필수
+  True  → CloseSkillWheel → Remove from Parent
+          → SetShowMouseCursor(false) → SetIgnoreLookInput(false)
+          → Set Input Mode Game Only
+
+// WBP_SkillWheel Event Tick — 섹터 판정
+GetMousePosition (PlayerController) → DeltaX, DeltaY (화면 중심 기준)
+Vector2D Length(Delta) → Branch: < 휠 반지름
+  False → HoveredIndex = -1 (데드존)
+  True  → Atan2(DeltaY, DeltaX) + 180 → / 90 → Floor → HoveredIndex
+          → 해당 슬롯 Border 강조
+
+// WBP_SkillWheel OnMouseButtonDown
+Branch: HoveredIndex == -1 → 아무것도 안 함
+  False → SkillManagerComp → SwitchCommonSkill(HoveredIndex) → CloseSkillWheel
+          → Remove from Parent → SetShowMouseCursor(false) → SetIgnoreLookInput(false)
+          → Set Input Mode Game Only
+```
+- `TryActivateAbilitiesByTag`는 DynamicAbilityTags 미조회 → `GetActiveSkillClass + TryActivateAbilityByClass` 사용 (Debugging Checklist 14번 참고)
+- 조준 중인 GA(GA_StoneSpear 등) 취소: CheckCancelInput 폴링 루프에 `HasMatchingGameplayTag(State.SkillWheelOpen)` 조건 추가 + `GetAbilitySystemComponentFromActorInfo` 사용 (Debugging Checklist 15번 참고)
+
 ### 3인칭 카메라 기반 Projectile 조준 패턴 (GA_RockSpear 참고)
 조준선(커서 대체 위젯)과 발사 방향을 완전히 일치시키는 방법.
 ```
@@ -507,6 +548,12 @@ SetPositionInViewport(MouseX - DesiredSize.X / 2, MouseY - DesiredSize.Y / 2)
 - **대안:** 캐릭터 위치 + ForwardVector offset
 - **선택 이유:** 캐릭터-카메라 시차(Parallax)로 인해 캐릭터 기준 발사 시 크로스헤어 방향과 실제 발사 방향이 어긋남. 카메라 기준 발사 시 크로스헤어와 완전 일치
 - **트레이드오프:** 투사체가 캐릭터 모델이 아닌 카메라 앞 허공에서 시작하는 것처럼 보일 수 있음 (VFX로 커버 가능)
+
+### SkillWheel 스킬 교체 — TryActivateAbilityByClass vs TryActivateAbilitiesByTag
+- **선택:** `UC_SkillManagerComponent::GetActiveSkillClass()`로 현재 활성 GA 클래스를 가져와 `TryActivateAbilityByClass` 호출
+- **대안:** 활성 스킬에 `DynamicAbilityTags`로 `Ability.Skill.Common` 태그를 추가하고 `TryActivateAbilitiesByTag`로 발동
+- **선택 이유:** `TryActivateAbilitiesByTag`는 `DynamicAbilityTags`를 조회하지 않아 발동되지 않음이 실험으로 확인됨
+- **트레이드오프:** F키 Blueprint에서 SkillManagerComponent 참조가 필요해짐. DynamicAbilityTags 조작 코드는 불필요해져 `SwitchCommonSkill`이 단순히 `activeSkillIndex`만 갱신하는 구조로 단순화됨
 
 ### Mana Charge — C++ SetByCaller vs MMC
 - **선택:** C++ SetByCaller로 마나 충전량 전달
