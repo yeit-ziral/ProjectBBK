@@ -306,6 +306,7 @@ Skills/
 13. **몬스터에게 데미지가 0으로 들어올 때** — `PostGameplayEffectExecute`의 방어력 감산 로직 확인: `Mitigated = Max(0, RawDamage - defense)`. defense 값이 데미지보다 크면 실제 HP 변화 없음
 14. **`TryActivateAbilitiesByTag`로 DynamicAbilityTags 태그가 있는 GA가 발동 안 될 때** — `TryActivateAbilitiesByTag`는 `DynamicAbilityTags`를 조회하지 않음. `UC_SkillManagerComponent::GetActiveSkillClass()`로 클래스를 직접 가져와 `TryActivateAbilityByClass` 사용
 15. **GA Blueprint 내부에서 `GetAbilitySystemComponent`가 None 반환** — GA Blueprint에서 Character 경유로 ASC를 가져오면 PIE 종료 시 또는 타이밍에 따라 None 반환 가능 → GA 내부에서는 반드시 `GetAbilitySystemComponentFromActorInfo` 사용 (IsValid 체크 불필요, 어빌리티 활성 중 항상 유효)
+16. **Duration GE 기반 GameplayCue 이펙트가 두 번째 시전부터 안 나올 때** — GC Manager가 Actor를 재활용(Recycle)하므로 두 번째 시전 시 `BeginPlay`가 호출되지 않음. `Auto Activate`만으로는 재시작 불가 → `HandleGameplayCue` 이벤트 override → `Switch on EGameplayCueEvent Type` → OnActive 브랜치에서 Niagara `Activate(Reset=true)` 명시 호출. `Reset=true` 없이 `Activate()`만 하면 이미 완료된 Niagara가 재시작되지 않음
 
 ---
 
@@ -384,6 +385,23 @@ GA ActivateAbility
 ```
 - CT_SkillData 하나로 모든 스킬의 레벨별 수치를 통합 관리
 - 레벨별 수치는 CSV Import로 일괄 입력 가능 (첫 행: 레벨, 첫 열: RowName)
+
+### Duration GE 기반 GameplayCue Actor 패턴 (GC_Haste 참고)
+GC Manager의 Actor 재활용에 대응하기 위해 `BeginPlay`의 Auto Activate 대신 `HandleGameplayCue`에서 명시적으로 Niagara를 재시작.
+```
+GameplayCueNotify_Actor 설정
+  → Class Defaults: Auto Attach to Owner = true
+  → Niagara Component: Local Space = true (캐릭터 추적 시)
+  → Niagara Component: Location Z = -(캡슐 Half Height) (바닥 정렬 시)
+
+HandleGameplayCue (EventType)
+  → Switch on EGameplayCueEvent Type
+      OnActive → Niagara Component들 Activate(Reset=true)   ← Reset=true 필수
+GE 설정
+  → Gameplay Cues 섹션에 태그 추가   ← Granted Tags 섹션 아님
+```
+- `Auto Attach to Owner`는 캡슐 중심에 부착 → 바닥 이펙트는 Z 오프셋 필요
+- Local Space = true로 캐릭터 추적 가능하지만, World Space 파티클은 Actor 이동과 무관하게 동작
 
 ### 지속 VFX GameplayCue 패턴 (GC_Heal / GC_Ablaze 참고)
 GA가 EndAbility한 이후에도 GE 생명주기 동안 VFX가 자동 유지됨.
