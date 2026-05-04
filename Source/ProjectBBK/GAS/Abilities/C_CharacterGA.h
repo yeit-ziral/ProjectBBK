@@ -25,9 +25,6 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Ability")
 	void OnInputPressed();
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Ability")
-	ProjectBBKAbilityID abilityInputID = ProjectBBKAbilityID::None; // To bind ability to input so this will active whenever input is pressed
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ability")
 	bool activateOnGranted = false; // if true, ability will activate as soon as it's granted to ability system component
 

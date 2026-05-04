@@ -1,10 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "C_CharacterGA.h"
 #include "C_CharacterASC.h"
 #include "AbilitySystemComponent.h"
-
 
 UC_CharacterGA::UC_CharacterGA()
 {
@@ -12,10 +10,9 @@ UC_CharacterGA::UC_CharacterGA()
 
 	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")));
 	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Debuff.Stun")));
-	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag("Input.Attack"));
 }
 
-void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo *ActorInfo, const FGameplayAbilitySpec &Spec)
 {
 	Super::OnAvatarSet(ActorInfo, Spec);
 
@@ -25,17 +22,17 @@ void UC_CharacterGA::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, con
 	}
 }
 
-void UC_CharacterGA::InputPressed(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
+void UC_CharacterGA::InputPressed(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo *ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
 {
 	Super::InputPressed(Handle, ActorInfo, ActivationInfo);
 	OnInputPressed();
 }
 
-void UC_CharacterGA::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+void UC_CharacterGA::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo *ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	if (CooldownGameplayEffectClass)
 	{
-		UGameplayEffect* CooldownGE = CooldownGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
+		UGameplayEffect *CooldownGE = CooldownGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
 		if (CooldownGE)
 		{
 			FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
@@ -47,11 +44,11 @@ void UC_CharacterGA::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, cons
 	}
 }
 
-void UC_CharacterGA::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+void UC_CharacterGA::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo *ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	if (CostGameplayEffectClass)
 	{
-		UGameplayEffect* CostGE = CostGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
+		UGameplayEffect *CostGE = CostGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
 		if (CostGE)
 		{
 			FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CostGameplayEffectClass, GetAbilityLevel());
@@ -62,4 +59,3 @@ void UC_CharacterGA::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FG
 		}
 	}
 }
-
