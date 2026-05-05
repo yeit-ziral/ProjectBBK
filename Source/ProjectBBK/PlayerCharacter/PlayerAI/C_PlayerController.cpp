@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "C_PlayerController.h"
 #include "../C_PlayerState.h"
 #include "../C_BasePlayerCharactor.h"
@@ -15,7 +14,8 @@ void AC_PlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	// 서버(싱글플레이어 포함)에서만 스폰
-	if (!HasAuthority()) return;
+	if (!HasAuthority())
+		return;
 
 	// 스폰 위치: 레벨에 배치된 첫 번째 PlayerStart 기준
 	FTransform SpawnTransform = FTransform::Identity;
@@ -25,16 +25,18 @@ void AC_PlayerController::BeginPlay()
 		break;
 	}
 
-	if (characterRosterClasses.Num() == 0) return;
+	if (characterRosterClasses.Num() == 0)
+		return;
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	for (TSubclassOf<AC_BasePlayerCharactor>& CharClass : characterRosterClasses)
+	for (TSubclassOf<AC_BasePlayerCharactor> &CharClass : characterRosterClasses)
 	{
-		if (!CharClass) continue;
+		if (!CharClass)
+			continue;
 
-		AC_BasePlayerCharactor* Char = GetWorld()->SpawnActor<AC_BasePlayerCharactor>(
+		AC_BasePlayerCharactor *Char = GetWorld()->SpawnActor<AC_BasePlayerCharactor>(
 			CharClass, SpawnTransform, SpawnParams);
 
 		if (Char)
@@ -56,11 +58,11 @@ void AC_PlayerController::BeginPlay()
 	}
 }
 
-void AC_PlayerController::OnPossess(APawn* InPawn)
+void AC_PlayerController::OnPossess(APawn *InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+	AC_PlayerState *PS = GetPlayerState<AC_PlayerState>();
 	if (PS)
 	{
 		PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, InPawn);
@@ -71,7 +73,7 @@ void AC_PlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(InputComponent))
+	if (UEnhancedInputComponent *EIC = Cast<UEnhancedInputComponent>(InputComponent))
 	{
 		if (IA_SwitchChar0)
 			EIC->BindAction(IA_SwitchChar0, ETriggerEvent::Started, this, &AC_PlayerController::OnSwitchChar0Input);
@@ -96,22 +98,25 @@ void AC_PlayerController::OnSwitchChar1Input()
 
 void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 {
-	if (bIsSwitching) return;
-	if (NextIndex == currentCharacterIndex) return;
-	if (!characterRoster.IsValidIndex(NextIndex)) return;
+	if (bIsSwitching)
+		return;
+	if (NextIndex == currentCharacterIndex)
+		return;
+	if (!characterRoster.IsValidIndex(NextIndex))
+		return;
 
-	AC_BasePlayerCharactor* OldChar = characterRoster[currentCharacterIndex];
-	AC_BasePlayerCharactor* NewChar = characterRoster[NextIndex];
+	AC_BasePlayerCharactor *OldChar = characterRoster[currentCharacterIndex];
+	AC_BasePlayerCharactor *NewChar = characterRoster[NextIndex];
 
-	if (!OldChar || !NewChar) return;
+	if (!OldChar || !NewChar)
+		return;
 
 	bIsSwitching = true;
 
 	// 새 캐릭터를 현재 위치/회전으로 이동
 	NewChar->SetActorLocationAndRotation(
 		OldChar->GetActorLocation(),
-		OldChar->GetActorRotation()
-	);
+		OldChar->GetActorRotation());
 
 	// 속도 이어받기 (공중에서 교체 시 자연스러운 낙하)
 	NewChar->GetCharacterMovement()->Velocity = OldChar->GetCharacterMovement()->Velocity;
@@ -119,6 +124,9 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	// 새 캐릭터 활성화
 	NewChar->SetActorHiddenInGame(false);
 	NewChar->SetActorEnableCollision(true);
+
+	// 이전 캐릭터의 어빌리티를 ASC에서 제거 (characterAbilitiesGiven = false로 리셋됨)
+	OldChar->RemoveCharacterAbilities();
 
 	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
 	Possess(NewChar);
@@ -133,7 +141,8 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 
 void AC_PlayerController::SwitchToNextCharacter()
 {
-	if (characterRoster.Num() == 0) return;
+	if (characterRoster.Num() == 0)
+		return;
 	const int32 NextIndex = (currentCharacterIndex + 1) % characterRoster.Num();
 	SwitchToCharacter(NextIndex);
 }

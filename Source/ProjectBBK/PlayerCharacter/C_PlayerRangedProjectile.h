@@ -13,7 +13,7 @@ class UGameplayEffect;
 /**
  * 플레이어 원거리 투사체.
  * AC_RangedProjectile(이동 담당)을 상속받아 피격 시 GAS로 데미지를 적용한다.
- * GA_RangeAttack에서 Initialize()를 호출해 필요한 정보를 주입할 것.
+ * C_RangeAttackGA에서 Initialize()를 호출해 필요한 정보를 주입할 것.
  */
 UCLASS()
 class PROJECTBBK_API AC_PlayerRangedProjectile : public AC_RangedProjectile

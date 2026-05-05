@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ProjectBBK/GAS/Abilities/C_CharacterGA.h"
-#include "GA_RangeAttack.generated.h"
+#include "C_RangeAttackGA.generated.h"
 
 class AC_PlayerRangedProjectile;
 class UGameplayEffect;
@@ -26,12 +26,12 @@ class UGameplayEffect;
  *  - ProjectileSocketName : 발사 위치로 사용할 스켈레탈 메시 소켓 이름
  */
 UCLASS()
-class PROJECTBBK_API UGA_RangeAttack : public UC_CharacterGA
+class PROJECTBBK_API UC_RangeAttackGA : public UC_CharacterGA
 {
 	GENERATED_BODY()
 
 public:
-	UGA_RangeAttack();
+	UC_RangeAttackGA();
 
 protected:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle,
