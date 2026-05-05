@@ -1,3 +1,8 @@
 ,1,2,3,4,5
+MeleeUlitmate,600,800,1000,1200,1500
+MeleeUnique,300,400,500,600,700
 HealPerTick,20,30,45,65,90
 AblazePerTick,2,5,8,11,15
+StoneSpear,280,360,440,500,560
+RangedUnique,300,380,460,540,620
+RangedUlitmate,450,600,750,800,1000
