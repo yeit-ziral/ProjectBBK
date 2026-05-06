@@ -243,6 +243,7 @@ Skills/
 | BPC_BossMonsterHPWidget | ✅ 완료 | 3D 위젯, UC_MonsterAttributeSet 바인딩 |
 | WBP_RockSpearAim | ✅ 완료 | 조준선 위젯, GA_RockSpear 생명주기 직접 관리, 마우스 위치 추적 |
 | WBP_SkillWheel | ✅ 완료 | Z키 토글, 마우스 각도 기반 섹터 판정, 호버 강조, 클릭 시 스킬 교체 |
+| WBP_HUD (캐릭터 교체 연동) | ✅ 완료 | OnCharacterSwitched 델리게이트로 교체 시 SkillIcon·UltimateGauge 재초기화 |
 
 ### Effects
 | Effect | 상태 | 비고 |
@@ -307,6 +308,9 @@ Skills/
 14. **`TryActivateAbilitiesByTag`로 DynamicAbilityTags 태그가 있는 GA가 발동 안 될 때** — `TryActivateAbilitiesByTag`는 `DynamicAbilityTags`를 조회하지 않음. `UC_SkillManagerComponent::GetActiveSkillClass()`로 클래스를 직접 가져와 `TryActivateAbilityByClass` 사용
 15. **GA Blueprint 내부에서 `GetAbilitySystemComponent`가 None 반환** — GA Blueprint에서 Character 경유로 ASC를 가져오면 PIE 종료 시 또는 타이밍에 따라 None 반환 가능 → GA 내부에서는 반드시 `GetAbilitySystemComponentFromActorInfo` 사용 (IsValid 체크 불필요, 어빌리티 활성 중 항상 유효)
 16. **Duration GE 기반 GameplayCue 이펙트가 두 번째 시전부터 안 나올 때** — GC Manager가 Actor를 재활용(Recycle)하므로 두 번째 시전 시 `BeginPlay`가 호출되지 않음. `Auto Activate`만으로는 재시작 불가 → `HandleGameplayCue` 이벤트 override → `Switch on EGameplayCueEvent Type` → OnActive 브랜치에서 Niagara `Activate(Reset=true)` 명시 호출. `Reset=true` 없이 `Activate()`만 하면 이미 완료된 Niagara가 재시작되지 않음
+17. **캐릭터 교체 후 HUD(스킬 아이콘·궁극기 게이지)가 기본값만 표시될 때** — `RemoveCharacterAbilities`의 early-return 조건 확인: `!abilitySystemComponent->characterAbilitiesGiven` 이어야 함. `!` 누락 시 어빌리티가 등록된 상태(`true`)에서 early return → 제거도, 신규 추가도 모두 안 됨
+18. **캐릭터 로스터 시스템에서 최초 실행 시 HUD가 기본값만 표시될 때** — `OnASCInitialized`는 `PossessedBy` 내 `AddCharacterAbilities` **이전**에 호출됨. HUD가 `OnASCInitialized`에서 생성되면 `NativeConstruct` 시점에 ASC에 어빌리티가 없어 `InitializeSkillIcon`이 아무것도 못 찾음 → 초기 `Possess` 완료 후 `OnCharacterSwitched.Broadcast(0)` 호출로 해결 (이 시점엔 HUD 생성·델리게이트 바인딩·어빌리티 등록이 모두 완료된 상태)
+19. **캐릭터 교체 후 `C_SkillIconWidget` 쿨다운이 반응 없을 때** — `InitializeSkillIcon` 재호출 전 기존 `OnCooldownStarted` 델리게이트를 `RemoveDynamic`으로 해제해야 함. 누락 시 이미 제거된 어빌리티 인스턴스에 바인딩이 남아 이벤트를 수신하지 못함. `C_UltimateGaugeWidget::InitializeGauge`도 동일하게 기존 `ManaChangedHandle`을 `Remove` 후 재바인딩
 
 ---
 
@@ -535,6 +539,35 @@ SetPositionInViewport(MouseX - DesiredSize.X / 2, MouseY - DesiredSize.Y / 2)
 - `(TargetPoint - SpawnLocation).Normalize()` 방식은 카메라-스폰 시차(Parallax)로 근거리 오차 발생
 - WorldDir 직접 사용 시 LineTrace 불필요 — `bBlockingHit` 폴백 처리도 생략 가능
 - 조준 모드 진입 시 `SetIgnoreLookInput(true)`로 카메라 회전 차단 → 마우스 위치가 의미 있어짐
+
+### 캐릭터 교체 후 HUD 재초기화 패턴 (OnCharacterSwitched 참고)
+캐릭터 로스터 시스템에서 교체 시마다 HUD 위젯을 새 어빌리티 인스턴스로 재바인딩.
+```
+// C_PlayerController
+OnCharacterSwitched (BlueprintAssignable, FOnCharacterSwitched)
+
+SwitchToCharacter(NextIndex)
+  → Possess(NewChar)                          // PossessedBy → AddCharacterAbilities 완료
+  → OnCharacterSwitched.Broadcast(NextIndex)  // 어빌리티 등록 후 브로드캐스트
+
+BeginPlay() 초기 Possess 직후
+  → OnCharacterSwitched.Broadcast(0)
+  // Possess 내부: OnASCInitialized → HUD 생성 → 델리게이트 바인딩
+  // Possess 반환 후 브로드캐스트 → HUD 초기화 가능
+
+// 위젯 재초기화 공통 원칙
+InitializeSkillIcon(ASC) / InitializeGauge()
+  → 기존 델리게이트/핸들 먼저 해제 (RemoveDynamic / FDelegateHandle.Remove)
+  → 새 어빌리티 탐색 및 바인딩, 현재 값으로 초기 표시 갱신
+
+// WBP_HUD Event Construct
+→ Bind Event to OnCharacterSwitched (PlayerController 경유)
+→ 핸들러: GetControlledPawn → GetASC
+    → WBP_SkillIcon Common/Unique: InitializeSkillIcon(ASC)
+    → WBP_UltimateGauge: InitializeGauge()
+```
+- 재초기화 함수에서 기존 바인딩 해제를 빠트리면 제거된 인스턴스에 델리게이트가 남아 쿨다운·게이지 이벤트 미수신
+- `OnASCInitialized`는 `AddCharacterAbilities` 이전에 호출되므로 위젯 초기화 트리거로 사용 불가
 
 ---
 

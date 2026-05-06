@@ -55,6 +55,10 @@ void AC_PlayerController::BeginPlay()
 		characterRoster[0]->SetActorEnableCollision(true);
 		Possess(characterRoster[0]);
 		currentCharacterIndex = 0;
+
+		// Possess → PossessedBy → AddCharacterAbilities 완료 후 HUD 초기화 트리거
+		// (OnASCInitialized에서 HUD가 생성되고 델리게이트가 바인딩되므로 Possess 반환 후 브로드캐스트)
+		OnCharacterSwitched.Broadcast(0);
 	}
 }
 
@@ -135,6 +139,9 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	// 이전 캐릭터 비활성화
 	OldChar->SetActorHiddenInGame(true);
 	OldChar->SetActorEnableCollision(false);
+
+	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
+	OnCharacterSwitched.Broadcast(NextIndex);
 
 	bIsSwitching = false;
 }

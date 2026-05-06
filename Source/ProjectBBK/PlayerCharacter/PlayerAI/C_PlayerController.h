@@ -9,12 +9,18 @@
 class AC_BasePlayerCharactor;
 class UInputAction;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterSwitched, int32, NewCharacterIndex);
+
 UCLASS()
 class PROJECTBBK_API AC_PlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
 public:
+	// 캐릭터 교체 완료 시 브로드캐스트 — WBP_HUD에서 바인딩해 위젯 재초기화에 사용
+	UPROPERTY(BlueprintAssignable, Category = "ProjectBBK|CharacterRoster")
+	FOnCharacterSwitched OnCharacterSwitched;
+
 	// 캐릭터 교체 (0-based index). Blueprint에서도 호출 가능.
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
 	void SwitchToCharacter(int32 NextIndex);

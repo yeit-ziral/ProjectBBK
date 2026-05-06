@@ -251,6 +251,14 @@ void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 		return;
 	}
 
+	// 재초기화 시 기존 델리게이트 해제
+	if (SkillAbility && SkillAbility->OnCooldownStarted.IsAlreadyBound(this, &UC_SkillIconWidget::OnCooldownStarted))
+	{
+		SkillAbility->OnCooldownStarted.RemoveDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
+	}
+	SkillAbility = nullptr;
+	SetCooldownVisible(false);
+
 	CachedASC = ASC;
 
 	// SkillTag로 Ability 찾기
