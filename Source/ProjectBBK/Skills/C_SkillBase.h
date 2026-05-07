@@ -171,6 +171,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	float GetCooldownDuration() const;
 
+	/** ASC에서 현재 남은 쿨다운 시간과 전체 지속시간을 조회. 쿨다운 중이면 true 반환 */
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	bool QuerySkillCooldown(UAbilitySystemComponent* ASC, float& OutRemaining, float& OutDuration) const;
+
 	/** EffectsToTarget 배열에서 Index번째 GE 클래스 반환 (FireZone 등 존 기반 스킬용) */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	TSubclassOf<UGameplayEffect> GetTargetEffectClass(int32 Index = 0) const;

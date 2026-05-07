@@ -56,8 +56,9 @@ void AC_PlayerController::BeginPlay()
 		Possess(characterRoster[0]);
 		currentCharacterIndex = 0;
 
-		// Possess → PossessedBy → AddCharacterAbilities 완료 후 HUD 초기화 트리거
-		// (OnASCInitialized에서 HUD가 생성되고 델리게이트가 바인딩되므로 Possess 반환 후 브로드캐스트)
+		// WBP_HUD는 각 캐릭터의 BeginPlay(Possess 전)에서 생성되므로
+		// NativeConstruct 시점엔 어빌리티가 아직 없음.
+		// Possess 완료(= AddCharacterAbilities 완료) 후 브로드캐스트해야 HUD 초기화 가능.
 		OnCharacterSwitched.Broadcast(0);
 	}
 }

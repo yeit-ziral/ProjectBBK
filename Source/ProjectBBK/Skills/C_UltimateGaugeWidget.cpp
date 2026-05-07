@@ -46,7 +46,6 @@ void UC_UltimateGaugeWidget::NativeConstruct()
 	// Initial state
 	UpdateGauge(0.0f);
 	SetGaugeReady(false);
-	InitializeGauge();
 
 	UE_LOG(LogTemp, Log, TEXT("UltimateGaugeWidget constructed"));
 }

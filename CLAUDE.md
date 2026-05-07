@@ -309,7 +309,7 @@ Skills/
 15. **GA Blueprint 내부에서 `GetAbilitySystemComponent`가 None 반환** — GA Blueprint에서 Character 경유로 ASC를 가져오면 PIE 종료 시 또는 타이밍에 따라 None 반환 가능 → GA 내부에서는 반드시 `GetAbilitySystemComponentFromActorInfo` 사용 (IsValid 체크 불필요, 어빌리티 활성 중 항상 유효)
 16. **Duration GE 기반 GameplayCue 이펙트가 두 번째 시전부터 안 나올 때** — GC Manager가 Actor를 재활용(Recycle)하므로 두 번째 시전 시 `BeginPlay`가 호출되지 않음. `Auto Activate`만으로는 재시작 불가 → `HandleGameplayCue` 이벤트 override → `Switch on EGameplayCueEvent Type` → OnActive 브랜치에서 Niagara `Activate(Reset=true)` 명시 호출. `Reset=true` 없이 `Activate()`만 하면 이미 완료된 Niagara가 재시작되지 않음
 17. **캐릭터 교체 후 HUD(스킬 아이콘·궁극기 게이지)가 기본값만 표시될 때** — `RemoveCharacterAbilities`의 early-return 조건 확인: `!abilitySystemComponent->characterAbilitiesGiven` 이어야 함. `!` 누락 시 어빌리티가 등록된 상태(`true`)에서 early return → 제거도, 신규 추가도 모두 안 됨
-18. **캐릭터 로스터 시스템에서 최초 실행 시 HUD가 기본값만 표시될 때** — `OnASCInitialized`는 `PossessedBy` 내 `AddCharacterAbilities` **이전**에 호출됨. HUD가 `OnASCInitialized`에서 생성되면 `NativeConstruct` 시점에 ASC에 어빌리티가 없어 `InitializeSkillIcon`이 아무것도 못 찾음 → 초기 `Possess` 완료 후 `OnCharacterSwitched.Broadcast(0)` 호출로 해결 (이 시점엔 HUD 생성·델리게이트 바인딩·어빌리티 등록이 모두 완료된 상태)
+18. **캐릭터 로스터 시스템에서 최초 실행 시 HUD가 기본값만 표시될 때** — 캐릭터의 `BeginPlay`에서 WBP_HUD를 생성하는 경우, 컨트롤러가 캐릭터들을 일괄 스폰한 뒤 `Possess`를 호출하는 구조에서는 `BeginPlay` 시점이 `Possess` 이전임. `NativeConstruct`가 실행될 때 아직 `AddCharacterAbilities`가 호출되지 않아 ASC에 어빌리티가 없음 → 초기 `Possess` 완료 후 `OnCharacterSwitched.Broadcast(0)` 호출로 해결 (이 시점엔 델리게이트 바인딩·어빌리티 등록이 모두 완료된 상태)
 19. **캐릭터 교체 후 `C_SkillIconWidget` 쿨다운이 반응 없을 때** — `InitializeSkillIcon` 재호출 전 기존 `OnCooldownStarted` 델리게이트를 `RemoveDynamic`으로 해제해야 함. 누락 시 이미 제거된 어빌리티 인스턴스에 바인딩이 남아 이벤트를 수신하지 못함. `C_UltimateGaugeWidget::InitializeGauge`도 동일하게 기존 `ManaChangedHandle`을 `Remove` 후 재바인딩
 
 ---
@@ -552,8 +552,8 @@ SwitchToCharacter(NextIndex)
 
 BeginPlay() 초기 Possess 직후
   → OnCharacterSwitched.Broadcast(0)
-  // Possess 내부: OnASCInitialized → HUD 생성 → 델리게이트 바인딩
-  // Possess 반환 후 브로드캐스트 → HUD 초기화 가능
+  // WBP_HUD는 각 캐릭터 BeginPlay(Possess 전)에서 생성 → NativeConstruct에서 델리게이트 바인딩
+  // Possess 완료(= AddCharacterAbilities 완료) 후 브로드캐스트 → 어빌리티가 ASC에 있는 상태에서 초기화
 
 // 위젯 재초기화 공통 원칙
 InitializeSkillIcon(ASC) / InitializeGauge()
@@ -563,11 +563,46 @@ InitializeSkillIcon(ASC) / InitializeGauge()
 // WBP_HUD Event Construct
 → Bind Event to OnCharacterSwitched (PlayerController 경유)
 → 핸들러: GetControlledPawn → GetASC
-    → WBP_SkillIcon Common/Unique: InitializeSkillIcon(ASC)
+    → WBP_SkillIcon Unique: InitializeSkillIcon(ASC)
+    → WBP_SkillIcon Common: SwitchCommonSkill(activeSkillIndex) 경유 (아래 패턴 참고)
     → WBP_UltimateGauge: InitializeGauge()
 ```
 - 재초기화 함수에서 기존 바인딩 해제를 빠트리면 제거된 인스턴스에 델리게이트가 남아 쿨다운·게이지 이벤트 미수신
 - `OnASCInitialized`는 `AddCharacterAbilities` 이전에 호출되므로 위젯 초기화 트리거로 사용 불가
+
+### CommonSkill 아이콘 동적 갱신 패턴 (SkillWheel + 캐릭터 교체 연동)
+UniqueSkill(고정)과 달리 CommonSkill은 SkillWheel로 독립 변경되므로 별도 델리게이트로 관리.
+```
+// C_SkillManagerComponent
+OnCommonSkillSwitched (BlueprintAssignable, FOnCommonSkillSwitched)
+
+SwitchCommonSkill(NewIndex)
+  → activeSkillIndex 갱신
+  → ASC에서 클래스로 어빌리티 탐색 (FindAbilityByTag 아님)
+  → OnCommonSkillSwitched.Broadcast(FoundAbility)
+
+// C_SkillIconWidget
+InitializeFromCommonSkill(NewSkill)
+  → 기존 OnCooldownStarted 해제
+  → 아이콘 설정 + SkillTag 동적 업데이트 (FSkillData.skillTag 값으로)
+  → OnCooldownStarted 재바인딩
+
+// WBP_HUD OnCharacterSwitched 핸들러
+IsValid(CurrentSkillManager)
+  True  → UnbindEvent OnCommonSkillSwitched ──┐
+  False ──────────────────────────────────────┘
+    → Get Component by Class → Set CurrentSkillManager
+    → BindEvent OnCommonSkillSwitched → OnCommonSkillSwitchedHandler
+    → SwitchCommonSkill(activeSkillIndex)   ← 초기화 트리거 겸용
+    → InitializeSkillIcon(ASC)              ← UniqueSkill
+    → InitializeGauge()
+
+// OnCommonSkillSwitchedHandler (Custom Event, 파라미터: UC_SkillBase* NewSkillAbility)
+→ SkillIcon Common → InitializeFromCommonSkill(NewSkillAbility)
+```
+- `SwitchCommonSkill`은 SkillWheel 교체와 캐릭터 교체 초기화 양쪽의 단일 진입점
+- CommonSkill 위젯의 `SkillTag`는 에디터에서 설정하지 않고 `InitializeFromCommonSkill` 내부에서 동적 설정
+- WBP_HUD는 캐릭터 교체 시마다 이전 `OnCommonSkillSwitched` 바인딩을 해제하고 새 캐릭터의 컴포넌트에 재등록
 
 ---
 
@@ -605,6 +640,12 @@ InitializeSkillIcon(ASC) / InitializeGauge()
 - **대안:** 활성 스킬에 `DynamicAbilityTags`로 `Ability.Skill.Common` 태그를 추가하고 `TryActivateAbilitiesByTag`로 발동
 - **선택 이유:** `TryActivateAbilitiesByTag`는 `DynamicAbilityTags`를 조회하지 않아 발동되지 않음이 실험으로 확인됨
 - **트레이드오프:** F키 Blueprint에서 SkillManagerComponent 참조가 필요해짐. DynamicAbilityTags 조작 코드는 불필요해져 `SwitchCommonSkill`이 단순히 `activeSkillIndex`만 갱신하는 구조로 단순화됨
+
+### CommonSkill 아이콘 갱신 — OnCommonSkillSwitched 델리게이트 vs OnCharacterSwitched + FindAbilityByTag
+- **선택:** `SkillManagerComponent`에 `OnCommonSkillSwitched` 델리게이트 추가, `SwitchCommonSkill()` 호출 시 브로드캐스트
+- **대안:** `OnCharacterSwitched` 시 `FindAbilityByTag`로 CommonSkill 탐색
+- **선택 이유:** CommonSkill은 캐릭터 교체와 무관하게 SkillWheel로 독립 변경됨. tag-based 탐색은 고정 태그가 필요한데 CommonSkill은 SkillWheel 리팩토링 후 고정 GAS 태그 없음. `SwitchCommonSkill`을 단일 진입점으로 사용하면 교체·초기화 두 경우를 동일 코드로 처리 가능
+- **트레이드오프:** WBP_HUD가 캐릭터 교체 시마다 `OnCommonSkillSwitched` 바인딩을 해제·재등록해야 함
 
 ### Mana Charge — C++ SetByCaller vs MMC
 - **선택:** C++ SetByCaller로 마나 충전량 전달
