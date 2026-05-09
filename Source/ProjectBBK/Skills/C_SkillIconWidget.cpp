@@ -7,8 +7,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/Texture2D.h"
 #include "AbilitySystemComponent.h"
-#include "C_SkillBase.h"
 #include "AbilitySystemGlobals.h"
+#include "C_SkillBase.h"
 #include "SkillData.h"
 
 UC_SkillIconWidget::UC_SkillIconWidget(const FObjectInitializer& ObjectInitializer)
@@ -58,29 +58,6 @@ void UC_SkillIconWidget::NativeConstruct()
 	}
 
 	SetCooldownVisible(false);
-
-	if (SkillTag.IsValid())
-	{
-		// Owner로부터 ASC 가져오기
-		APawn* OwnerPawn = GetOwningPlayerPawn();
-		if (OwnerPawn)
-		{
-			UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwnerPawn);
-			if (ASC)
-			{
-				InitializeSkillIcon(ASC);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] ASC not found on owner pawn!"));
-			}
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] SkillTag not set!"));
-	}
-
 }
 
 void UC_SkillIconWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -121,7 +98,7 @@ void UC_SkillIconWidget::UpdateCooldown(float CurrentCooldown, float MaxCooldown
 	maxCooldownTime = MaxCooldown;
 
 	// 진행률 계산 (0.0 ~ 1.0)
-	float Progress = 1.0f - (CurrentCooldown / MaxCooldown);
+	float Progress = CurrentCooldown / MaxCooldown;
 
 	// 원형 머티리얼 업데이트
 	if (cooldownMaterial)
@@ -251,6 +228,14 @@ void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 		return;
 	}
 
+	// 재초기화 시 기존 델리게이트 해제
+	if (SkillAbility && SkillAbility->OnCooldownStarted.IsAlreadyBound(this, &UC_SkillIconWidget::OnCooldownStarted))
+	{
+		SkillAbility->OnCooldownStarted.RemoveDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
+	}
+	SkillAbility = nullptr;
+	SetCooldownVisible(false);
+
 	CachedASC = ASC;
 
 	// SkillTag로 Ability 찾기
@@ -278,6 +263,45 @@ void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 	// 쿨다운 델리게이트 바인딩 ⭐
 	SkillAbility->OnCooldownStarted.AddDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
 	UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] ✅ Cooldown delegate BOUND to: %p"), SkillAbility);
+}
+
+void UC_SkillIconWidget::InitializeFromCommonSkill(UC_SkillBase* NewSkill)
+{
+	if (!NewSkill) return;
+
+	// 기존 쿨다운 델리게이트 해제
+	if (SkillAbility && SkillAbility->OnCooldownStarted.IsAlreadyBound(this, &UC_SkillIconWidget::OnCooldownStarted))
+	{
+		SkillAbility->OnCooldownStarted.RemoveDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
+	}
+
+	SkillAbility = NewSkill;
+	currentCooldownTime = 0.f;
+	maxCooldownTime = 0.f;
+	SetCooldownVisible(false);
+
+	FSkillData SkillData;
+	if (SkillAbility->GetSkillData(SkillData))
+	{
+		SetSkillIcon(SkillData.skillIcon);
+		SkillTag = SkillData.skillTag;
+	}
+
+	// 교체 시점의 쿨다운 상태 복원
+	APawn* OwnerPawn = GetOwningPlayerPawn();
+	if (OwnerPawn)
+	{
+		UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwnerPawn);
+		float Remaining = 0.f, Duration = 0.f;
+		if (ASC && SkillAbility->QuerySkillCooldown(ASC, Remaining, Duration))
+		{
+			UpdateCooldown(Remaining, Duration);
+		}
+	}
+
+	SkillAbility->OnCooldownStarted.AddDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
+
+	UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] CommonSkill initialized: %s"), *SkillAbility->GetName());
 }
 
 void UC_SkillIconWidget::OnCooldownStarted(float CooldownDuration, FGameplayTag InSkillTag, FGameplayTag CooldownTag)

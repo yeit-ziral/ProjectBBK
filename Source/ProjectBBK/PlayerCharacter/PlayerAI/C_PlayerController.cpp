@@ -55,7 +55,11 @@ void AC_PlayerController::BeginPlay()
 		characterRoster[0]->SetActorEnableCollision(true);
 		Possess(characterRoster[0]);
 		currentCharacterIndex = 0;
-		OnCharacterSwitched(characterRoster[0]);
+
+		// WBP_HUD는 각 캐릭터의 BeginPlay(Possess 전)에서 생성되므로
+		// NativeConstruct 시점엔 어빌리티가 아직 없음.
+		// Possess 완료(= AddCharacterAbilities 완료) 후 브로드캐스트해야 HUD 초기화 가능.
+		OnCharacterSwitched.Broadcast(0);
 	}
 }
 
@@ -132,11 +136,13 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
-	OnCharacterSwitched(NewChar);
 
 	// 이전 캐릭터 비활성화
 	OldChar->SetActorHiddenInGame(true);
 	OldChar->SetActorEnableCollision(false);
+
+	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
+	OnCharacterSwitched.Broadcast(NextIndex);
 
 	bIsSwitching = false;
 }

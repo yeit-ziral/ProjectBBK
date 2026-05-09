@@ -47,17 +47,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Ultimate Gauge")
 	void PlayReadyAnimation();
 
-private:
-	void InitializeGauge(); 
+public:
+	UFUNCTION(BlueprintCallable, Category = "Ultimate Gauge")
+	void InitializeGauge();
 
-	// Mana º¯°æ ÄÝ¹é
+	// Mana ï¿½ï¿½ï¿½ï¿½ ï¿½Ý¹ï¿½
 	void OnManaChanged(const FOnAttributeChangeData& Data);
 
-	// ASC Ä³½Ì
+	// ASC Ä³ï¿½ï¿½
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
 
-	// Delegate Handle (¾ð¹ÙÀÎµù¿ë)
+	// Delegate Handle (ï¿½ï¿½ï¿½ï¿½Îµï¿½ï¿½ï¿½)
 	FDelegateHandle ManaChangedHandle;
 
 protected:

@@ -46,7 +46,6 @@ void UC_UltimateGaugeWidget::NativeConstruct()
 	// Initial state
 	UpdateGauge(0.0f);
 	SetGaugeReady(false);
-	InitializeGauge();
 
 	UE_LOG(LogTemp, Log, TEXT("UltimateGaugeWidget constructed"));
 }
@@ -166,12 +165,12 @@ void UC_UltimateGaugeWidget::SetGaugeReady(bool bReady)
 
 void UC_UltimateGaugeWidget::PlayReadyAnimation()
 {
-	// Blueprint¿¡¼­ ¾Ö´Ï¸ÞÀÌ¼Ç Àç»ý
-	// ¶Ç´Â ¿©±â¼­ UWidgetAnimation »ç¿ë
+	// Blueprintï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½
+	// ï¿½Ç´ï¿½ ï¿½ï¿½ï¿½â¼­ UWidgetAnimation ï¿½ï¿½ï¿½
 
 	UE_LOG(LogTemp, Log, TEXT("PlayReadyAnimation called"));
 
-	// TODO: UWidgetAnimation Àç»ý
+	// TODO: UWidgetAnimation ï¿½ï¿½ï¿½
 	// if (ReadyAnimation)
 	// {
 	//     PlayAnimation(ReadyAnimation);
@@ -180,7 +179,19 @@ void UC_UltimateGaugeWidget::PlayReadyAnimation()
 
 void UC_UltimateGaugeWidget::InitializeGauge()
 {
-	// Owner Pawn °¡Á®¿À±â
+	// ìž¬ì´ˆê¸°í™” ì‹œ ê¸°ì¡´ í•¸ë“¤ í•´ì œ
+	if (CachedASC.IsValid() && ManaChangedHandle.IsValid())
+	{
+		const UC_ChracterAttributeSetBase* OldSet = CachedASC->GetSet<UC_ChracterAttributeSetBase>();
+		if (OldSet)
+		{
+			CachedASC->GetGameplayAttributeValueChangeDelegate(OldSet->GetmanaAttribute()).Remove(ManaChangedHandle);
+		}
+		ManaChangedHandle.Reset();
+	}
+	CachedASC = nullptr;
+
+	// Owner Pawn ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	APawn* OwnerPawn = GetOwningPlayerPawn();
 	if (!OwnerPawn)
 	{
@@ -188,7 +199,7 @@ void UC_UltimateGaugeWidget::InitializeGauge()
 		return;
 	}
 
-	// ASC °¡Á®¿À±â
+	// ASC ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwnerPawn);
 	if (!ASC)
 	{
@@ -198,7 +209,7 @@ void UC_UltimateGaugeWidget::InitializeGauge()
 
 	CachedASC = ASC;
 
-	// AttributeSet °¡Á®¿À±â
+	// AttributeSet ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	const  UC_ChracterAttributeSetBase* AttributeSet = ASC->GetSet< UC_ChracterAttributeSetBase>();
 	if (!AttributeSet)
 	{
@@ -206,12 +217,12 @@ void UC_UltimateGaugeWidget::InitializeGauge()
 		return;
 	}
 
-	// Mana º¯°æ µ¨¸®°ÔÀÌÆ® ¹ÙÀÎµù
+	// Mana ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½Îµï¿½
 	ManaChangedHandle = ASC->GetGameplayAttributeValueChangeDelegate(
 		AttributeSet->GetmanaAttribute()
 	).AddUObject(this, &UC_UltimateGaugeWidget::OnManaChanged);
 
-	// ÃÊ±â°ª ¼³Á¤
+	// ï¿½Ê±â°ª ï¿½ï¿½ï¿½ï¿½
 	float CurrentMana = ASC->GetNumericAttribute(AttributeSet->GetmanaAttribute());
 	float MaxMana = ASC->GetNumericAttribute(AttributeSet->GetmaxManaAttribute());
 
@@ -237,7 +248,7 @@ void UC_UltimateGaugeWidget::OnManaChanged(const FOnAttributeChangeData& Data)
 		return;
 	}
 
-	// MaxMana °¡Á®¿À±â
+	// MaxMana ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	const UC_ChracterAttributeSetBase* AttributeSet = CachedASC->GetSet<UC_ChracterAttributeSetBase>();
 	if (!AttributeSet)
 	{
@@ -254,11 +265,11 @@ void UC_UltimateGaugeWidget::OnManaChanged(const FOnAttributeChangeData& Data)
 		return;
 	}
 
-	// Percent °è»ê
+	// Percent ï¿½ï¿½ï¿½
 	float Percent = Data.NewValue / MaxMana;
 
-	// ±âÁ¸ UpdateGauge È£Ãâ
+	// ï¿½ï¿½ï¿½ï¿½ UpdateGauge È£ï¿½ï¿½
 	UpdateGauge(Percent);
 
-	//UE_LOG(LogTemp, Log, TEXT("[UltimateGauge] Mana Changed: %.1f ¡æ %.1f / %.1f (%.0f%%)"), Data.OldValue, Data.NewValue, MaxMana, Percent * 100.0f);
+	//UE_LOG(LogTemp, Log, TEXT("[UltimateGauge] Mana Changed: %.1f ï¿½ï¿½ %.1f / %.1f (%.0f%%)"), Data.OldValue, Data.NewValue, MaxMana, Percent * 100.0f);
 }

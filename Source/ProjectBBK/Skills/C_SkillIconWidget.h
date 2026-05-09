@@ -19,18 +19,18 @@ class PROJECTBBK_API UC_SkillIconWidget : public UUserWidget
 	GENERATED_BODY()
 	
 public:
-	// »ı¼ºÀÚ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	UC_SkillIconWidget(const FObjectInitializer& ObjectInitializer);
 
 protected:
-	// ÃÊ±âÈ­ (BeginPlay °°Àº °Í)
+	// ï¿½Ê±ï¿½È­ (BeginPlay ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½)
 	virtual void NativeConstruct() override;
 
-	// ¸Å ÇÁ·¹ÀÓ ¾÷µ¥ÀÌÆ®
+	// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 public:
-	// ===== UI À§Á¬µé (ºí·çÇÁ¸°Æ®¿¡¼­ ¹ÙÀÎµù) =====
+	// ===== UI ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½) =====
 	UPROPERTY(meta = (BindWidget))
 	UImage* img_SkillIcon;
 
@@ -57,6 +57,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Skill Icon")
 	void InitializeSkillIcon(UAbilitySystemComponent* ASC);
+
+	// CommonSkill ì „ìš© â€” SkillWheel êµì²´ ë° ìºë¦­í„° êµì²´ ì‹œ ì§ì ‘ ì–´ë¹Œë¦¬í‹° ì¸ìŠ¤í„´ìŠ¤ë¡œ ì´ˆê¸°í™”
+	UFUNCTION(BlueprintCallable, Category = "Skill Icon")
+	void InitializeFromCommonSkill(UC_SkillBase* NewSkill);
 
 protected:
 	UPROPERTY()

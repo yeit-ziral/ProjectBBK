@@ -33,6 +33,27 @@ void UC_SkillManagerComponent::SwitchCommonSkill(int32 NewIndex)
 {
 	if (!registeredCommonSkills.IsValidIndex(NewIndex)) return;
 	activeSkillIndex = NewIndex;
+
+	UAbilitySystemComponent* ASC = GetASC();
+	if (!ASC) return;
+
+	TSubclassOf<UC_SkillBase> SkillClass = registeredCommonSkills[NewIndex];
+	if (!SkillClass) return;
+
+	UC_SkillBase* FoundAbility = nullptr;
+	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+	{
+		if (!Spec.Ability || !Spec.Ability->IsA(SkillClass)) continue;
+
+		UGameplayAbility* Instance = Spec.GetPrimaryInstance();
+		FoundAbility = Instance ? Cast<UC_SkillBase>(Instance) : Cast<UC_SkillBase>(Spec.Ability);
+		break;
+	}
+
+	if (FoundAbility)
+	{
+		OnCommonSkillSwitched.Broadcast(FoundAbility);
+	}
 }
 
 void UC_SkillManagerComponent::OpenSkillWheel()

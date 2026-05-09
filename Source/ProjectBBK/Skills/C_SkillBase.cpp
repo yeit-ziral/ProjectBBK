@@ -205,6 +205,27 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 	}
 }
 
+bool UC_SkillBase::QuerySkillCooldown(UAbilitySystemComponent* ASC, float& OutRemaining, float& OutDuration) const
+{
+	OutRemaining = 0.f;
+	OutDuration = 0.f;
+
+	if (!ASC || !CooldownTag.IsValid()) return false;
+
+	FGameplayTagContainer CooldownTagContainer;
+	CooldownTagContainer.AddTag(CooldownTag);
+
+	FGameplayEffectQuery Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(CooldownTagContainer);
+	TArray<TPair<float, float>> Results = ASC->GetActiveEffectsTimeRemainingAndDuration(Query);
+
+	if (Results.Num() == 0) return false;
+
+	OutRemaining = Results[0].Key;
+	OutDuration = Results[0].Value;
+
+	return OutRemaining > 0.f;
+}
+
 bool UC_SkillBase::IsOnCooldown() const
 {
 	if (!CooldownTag.IsValid())

@@ -11,6 +11,8 @@
 class UC_SkillBase;
 class UAbilitySystemComponent;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCommonSkillSwitched, UC_SkillBase*, NewSkillAbility);
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PROJECTBBK_API UC_SkillManagerComponent : public UActorComponent
 {
@@ -54,6 +56,10 @@ public:
 	// WBP_SkillWheel 아이콘 로드용 — CDO에서 스킬 데이터 반환
 	UFUNCTION(BlueprintCallable, Category = "SkillManager")
 	bool GetSkillDataAtIndex(int32 Index, FSkillData& OutData);
+
+	// SkillWheel 또는 캐릭터 교체 시 발생 — CommonSkill SkillIcon이 이 델리게이트로 갱신
+	UPROPERTY(BlueprintAssignable, Category = "SkillManager")
+	FOnCommonSkillSwitched OnCommonSkillSwitched;
 
 private:
 	UAbilitySystemComponent* GetASC() const;
