@@ -311,51 +311,57 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 	abilitySystemComponent->SetTagMapCount(deadTag, 0);
 
-	InitializeAttributes();
 
-	SetHealth(GetMaxHealth());
-	SetShield(GetMaxShield());
-
-	if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
+	if (!bCharacterInitiailized)
 	{
-		// Health 변경 감지
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GethealthAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
+		bCharacterInitiailized = true;
 
-		// Mana 변경 감지 (다시!)
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetmanaAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
+		InitializeAttributes();
 
-		// Shield 변경 감지
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetshieldAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
+		SetHealth(GetMaxHealth());
+		SetShield(GetMaxShield());
 
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetmoveSpeedAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
-
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetstaminaAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
-
-		if (attributeSetBase.IsValid())
+		if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
 		{
-			float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
-			if (UCharacterMovementComponent *MovementComp = GetCharacterMovement())
-			{
-				MovementComp->MaxWalkSpeed = InitialMoveSpeed;
+			// Health 변경 감지
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GethealthAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
 
-				UE_LOG(LogBasePlayerCharacter, Log, TEXT("Initial MoveSpeed Set: %.2f"), InitialMoveSpeed);
+			// Mana 변경 감지 (다시!)
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetmanaAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
+
+			// Shield 변경 감지
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetshieldAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
+
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetmoveSpeedAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
+
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetstaminaAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
+
+			if (attributeSetBase.IsValid())
+			{
+				float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
+				if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+				{
+					MovementComp->MaxWalkSpeed = InitialMoveSpeed;
+
+					UE_LOG(LogBasePlayerCharacter, Log, TEXT("Initial MoveSpeed Set: %.2f"), InitialMoveSpeed);
+				}
+
+				UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
 			}
 
-			UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
+			FGameplayTag CanSprintTag = FGameplayTag::RequestGameplayTag(FName("State.CanSprint"));
+			abilitySystemComponent->AddLooseGameplayTag(CanSprintTag);
 		}
-
-		FGameplayTag CanSprintTag = FGameplayTag::RequestGameplayTag(FName("State.CanSprint"));
-		abilitySystemComponent->AddLooseGameplayTag(CanSprintTag);
 	}
 }
 
@@ -373,7 +379,7 @@ void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 {
 	// UC_CharacterASC* ASC = abilitySystemComponent.Get(); if abilitySystemComponent cause errors because it's a TWeakObjectPtr, we need to call .Get() to get the actual pointer
 
-	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || abilitySystemComponent->characterAbilitiesGiven)
+	if (GetLocalRole() != ROLE_Authority || !abilitySystemComponent.IsValid() || !abilitySystemComponent->characterAbilitiesGiven)
 	{
 		return;
 	}

@@ -246,9 +246,11 @@ protected:
 	TSubclassOf<UGameplayEffect> GE_ManaRegen;
 
 private:
-	TMap<const UInputAction*, FGameplayTag> abilityTagMap;
-	TMap<const UInputAction*, FGameplayTag> releaseEventTagMap;
+	TMap<const UInputAction *, FGameplayTag> abilityTagMap;
+	TMap<const UInputAction *, FGameplayTag> releaseEventTagMap;
 
-	void OnAbilityInputPressed(const FInputActionInstance& Instance);
-	void OnAbilityInputReleased(const FInputActionInstance& Instance);
+	void OnAbilityInputPressed(const FInputActionInstance &Instance);
+	void OnAbilityInputReleased(const FInputActionInstance &Instance);
+
+	bool bCharacterInitiailized = false;
 };

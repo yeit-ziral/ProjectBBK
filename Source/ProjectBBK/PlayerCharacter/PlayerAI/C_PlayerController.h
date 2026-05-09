@@ -19,6 +19,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
 	void SwitchToCharacter(int32 NextIndex);
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "ProjectBBK|CharacterRoster")
+	void OnCharacterSwitched(AC_BasePlayerCharactor* NewCharacter);
+
 	// Tab키: 다음 캐릭터로 순환
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
 	void SwitchToNextCharacter();

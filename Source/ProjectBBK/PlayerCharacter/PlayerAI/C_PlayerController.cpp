@@ -55,6 +55,7 @@ void AC_PlayerController::BeginPlay()
 		characterRoster[0]->SetActorEnableCollision(true);
 		Possess(characterRoster[0]);
 		currentCharacterIndex = 0;
+		OnCharacterSwitched(characterRoster[0]);
 	}
 }
 
@@ -131,6 +132,7 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
+	OnCharacterSwitched(NewChar);
 
 	// 이전 캐릭터 비활성화
 	OldChar->SetActorHiddenInGame(true);
