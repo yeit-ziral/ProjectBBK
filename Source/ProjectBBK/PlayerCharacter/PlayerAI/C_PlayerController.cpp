@@ -130,6 +130,8 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	NewChar->SetActorHiddenInGame(false);
 	NewChar->SetActorEnableCollision(true);
 
+	OldChar->SaveCharacterState();
+
 	// 이전 캐릭터의 어빌리티를 ASC에서 제거 (characterAbilitiesGiven = false로 리셋됨)
 	OldChar->RemoveCharacterAbilities();
 
