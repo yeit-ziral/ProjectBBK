@@ -41,6 +41,17 @@ struct FAbilityInputBinding
 	UInputAction *inputAction = nullptr;
 };
 
+USTRUCT()
+struct FCharacterSavedState
+{
+	GENERATED_BODY()
+
+	float health	=  -1.f;
+	float stamina	=  -1.f;
+	float shield	=	0.f;
+	float mana		=	0.f;
+};
+
 UCLASS(Blueprintable, config = Game)
 class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter, public IAbilitySystemInterface
 {
@@ -79,6 +90,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetCharacterLevel() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetExp() const; 
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
+	float GetMaxExp() const;
+
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetHealth() const;
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
@@ -103,6 +120,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Camera")
 	void SetTopDownCamera(bool bTopDown, float BlendTime = 0.75f,
 						  float TopDownArmLength = 1600.f, float TopDownPitch = -85.f);
+
+	void SaveCharacterState();		// 교체 직전에 캐릭터 상태 저장
+	void RestoreCharacterState(); 	// 교체 후 저장된 캐릭터 상태 복원 (Health, Stamina, Shield, Mana 등)
 
 protected:
 	// Called when the game starts or when spawned
@@ -144,6 +164,8 @@ protected:
 	virtual void SetShield(float NewShield);
 
 	virtual void SetStamina(float NewStamina);
+
+	virtual void SetMana(float NewMana);
 
 	virtual void OnHealthChanged(const FOnAttributeChangeData &Data);
 	virtual void OnManaChangedInternal(const FOnAttributeChangeData &Data);
@@ -253,4 +275,6 @@ private:
 	void OnAbilityInputReleased(const FInputActionInstance &Instance);
 
 	bool bCharacterInitiailized = false;
+
+	FCharacterSavedState savedState;
 };

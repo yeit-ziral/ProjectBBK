@@ -311,15 +311,13 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 	abilitySystemComponent->SetTagMapCount(deadTag, 0);
 
+	InitializeAttributes();
+
+	RestoreCharacterState();
 
 	if (!bCharacterInitiailized)
 	{
 		bCharacterInitiailized = true;
-
-		InitializeAttributes();
-
-		SetHealth(GetMaxHealth());
-		SetShield(GetMaxShield());
 
 		if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
 		{
@@ -445,6 +443,24 @@ float AC_BasePlayerCharactor::GetCharacterLevel() const
 		return attributeSetBase->Getlevel(); // In C_ChracterAttributeSetBase, we defined Gethealth() to return the health attribute value. if you confused, check "ATTRIBUTE_ACCESSORS" in C_ChracterAttributeSetBase.h
 	}
 
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetExp() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->Getexperience(); // In C_ChracterAttributeSetBase, we defined Gethealth() to return the health attribute value. if you confused, check "ATTRIBUTE_ACCESSORS" in C_ChracterAttributeSetBase.h
+	}
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetMaxExp() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->GetmaxExperience(); // In C_ChracterAttributeSetBase, we defined Gethealth() to return the health attribute value. if you confused, check "ATTRIBUTE_ACCESSORS" in C_ChracterAttributeSetBase.h
+	}
 	return 0.0f;
 }
 
@@ -734,6 +750,14 @@ void AC_BasePlayerCharactor::SetStamina(float NewStamina)
 	}
 }
 
+void AC_BasePlayerCharactor::SetMana(float NewMana)
+{
+	if (attributeSetBase.IsValid())
+	{
+		attributeSetBase->Setmana(NewMana);
+	}
+}
+
 void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 {
 	float Health = Data.NewValue;
@@ -804,4 +828,36 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data
 	//		SprintAbilityClass
 	//	);
 	// }
+}
+
+void AC_BasePlayerCharactor::SaveCharacterState()
+{
+	if (!attributeSetBase.IsValid())
+		return;
+
+	savedState.health = GetHealth();
+	savedState.shield = GetShield();
+	savedState.stamina = GetStamina();
+	savedState.mana = GetMana();
+}
+
+void AC_BasePlayerCharactor::RestoreCharacterState()
+{
+	if(!attributeSetBase.IsValid())
+		return;
+
+	if(savedState.health < 0.f)  // 첫 소유 -> 최대값으로
+	{
+		SetHealth(GetMaxHealth());
+		SetShield(0.f);
+		SetStamina(GetMaxStamina());
+		SetMana(0.f);
+	}
+	else						// 저장된 상태로 복원
+	{
+		SetHealth(savedState.health);
+		SetShield(savedState.shield);
+		SetStamina(savedState.stamina);
+		SetMana(savedState.mana);
+	}
 }
