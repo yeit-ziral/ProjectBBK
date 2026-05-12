@@ -27,6 +27,14 @@ public:
 	FGameplayAttributeData level;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, level)
 
+	UPROPERTY(BlueprintReadOnly, Category = "experience", ReplicatedUsing = OnRep_experience)
+	FGameplayAttributeData experience;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, experience)
+
+	UPROPERTY(BlueprintReadOnly, Category = "experience", ReplicatedUsing = OnRep_maxExperience)
+	FGameplayAttributeData maxExperience;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxExperience)
+
 	UPROPERTY(BlueprintReadOnly, Category = "health", ReplicatedUsing = OnRep_health)
 	FGameplayAttributeData health;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, health)
@@ -74,6 +82,11 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_level(const FGameplayAttributeData& OldLevel);
+
+	UFUNCTION()
+	virtual void OnRep_experience(const FGameplayAttributeData& OldExperience);
+	UFUNCTION()
+	virtual void OnRep_maxExperience(const FGameplayAttributeData& OldMaxExperience);
 
 	UFUNCTION()
 	virtual void OnRep_health(const FGameplayAttributeData& OldHealth);

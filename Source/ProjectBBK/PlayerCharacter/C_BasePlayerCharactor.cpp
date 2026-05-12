@@ -313,49 +313,53 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 	InitializeAttributes();
 
-	SetHealth(GetMaxHealth());
-	SetShield(GetMaxShield());
+	RestoreCharacterState();
 
-	if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
+	if (!bCharacterInitiailized)
 	{
-		// Health 변경 감지
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GethealthAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
+		bCharacterInitiailized = true;
 
-		// Mana 변경 감지 (다시!)
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetmanaAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
-
-		// Shield 변경 감지
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetshieldAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
-
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetmoveSpeedAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
-
-		abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-								  attributeSetBase->GetstaminaAttribute())
-			.AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
-
-		if (attributeSetBase.IsValid())
+		if (abilitySystemComponent.IsValid() && attributeSetBase.IsValid())
 		{
-			float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
-			if (UCharacterMovementComponent *MovementComp = GetCharacterMovement())
-			{
-				MovementComp->MaxWalkSpeed = InitialMoveSpeed;
+			// Health 변경 감지
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GethealthAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
 
-				UE_LOG(LogBasePlayerCharacter, Log, TEXT("Initial MoveSpeed Set: %.2f"), InitialMoveSpeed);
+			// Mana 변경 감지 (다시!)
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetmanaAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
+
+			// Shield 변경 감지
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetshieldAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
+
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetmoveSpeedAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
+
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				attributeSetBase->GetstaminaAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
+
+			if (attributeSetBase.IsValid())
+			{
+				float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
+				if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+				{
+					MovementComp->MaxWalkSpeed = InitialMoveSpeed;
+
+					UE_LOG(LogBasePlayerCharacter, Log, TEXT("Initial MoveSpeed Set: %.2f"), InitialMoveSpeed);
+				}
+
+				UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
 			}
 
-			UE_LOG(LogBasePlayerCharacter, Log, TEXT("Attribute change delegates registered"));
+			FGameplayTag CanSprintTag = FGameplayTag::RequestGameplayTag(FName("State.CanSprint"));
+			abilitySystemComponent->AddLooseGameplayTag(CanSprintTag);
 		}
-
-		FGameplayTag CanSprintTag = FGameplayTag::RequestGameplayTag(FName("State.CanSprint"));
-		abilitySystemComponent->AddLooseGameplayTag(CanSprintTag);
 	}
 }
 
@@ -439,6 +443,24 @@ float AC_BasePlayerCharactor::GetCharacterLevel() const
 		return attributeSetBase->Getlevel(); // In C_ChracterAttributeSetBase, we defined Gethealth() to return the health attribute value. if you confused, check "ATTRIBUTE_ACCESSORS" in C_ChracterAttributeSetBase.h
 	}
 
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetExp() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->Getexperience(); // In C_ChracterAttributeSetBase, we defined Gethealth() to return the health attribute value. if you confused, check "ATTRIBUTE_ACCESSORS" in C_ChracterAttributeSetBase.h
+	}
+	return 0.0f;
+}
+
+float AC_BasePlayerCharactor::GetMaxExp() const
+{
+	if (attributeSetBase.IsValid())
+	{
+		return attributeSetBase->GetmaxExperience(); // In C_ChracterAttributeSetBase, we defined Gethealth() to return the health attribute value. if you confused, check "ATTRIBUTE_ACCESSORS" in C_ChracterAttributeSetBase.h
+	}
 	return 0.0f;
 }
 
@@ -728,6 +750,14 @@ void AC_BasePlayerCharactor::SetStamina(float NewStamina)
 	}
 }
 
+void AC_BasePlayerCharactor::SetMana(float NewMana)
+{
+	if (attributeSetBase.IsValid())
+	{
+		attributeSetBase->Setmana(NewMana);
+	}
+}
+
 void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 {
 	float Health = Data.NewValue;
@@ -798,4 +828,36 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data
 	//		SprintAbilityClass
 	//	);
 	// }
+}
+
+void AC_BasePlayerCharactor::SaveCharacterState()
+{
+	if (!attributeSetBase.IsValid())
+		return;
+
+	savedState.health = GetHealth();
+	savedState.shield = GetShield();
+	savedState.stamina = GetStamina();
+	savedState.mana = GetMana();
+}
+
+void AC_BasePlayerCharactor::RestoreCharacterState()
+{
+	if(!attributeSetBase.IsValid())
+		return;
+
+	if(savedState.health < 0.f)  // 첫 소유 -> 최대값으로
+	{
+		SetHealth(GetMaxHealth());
+		SetShield(0.f);
+		SetStamina(GetMaxStamina());
+		SetMana(0.f);
+	}
+	else						// 저장된 상태로 복원
+	{
+		SetHealth(savedState.health);
+		SetShield(savedState.shield);
+		SetStamina(savedState.stamina);
+		SetMana(savedState.mana);
+	}
 }

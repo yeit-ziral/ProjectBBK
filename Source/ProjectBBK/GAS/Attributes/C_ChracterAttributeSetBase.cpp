@@ -13,6 +13,16 @@ void UC_ChracterAttributeSetBase::OnRep_level(const FGameplayAttributeData& OldL
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, level, OldLevel);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_experience(const FGameplayAttributeData& OldExperience)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, experience, OldExperience);
+}
+
+void UC_ChracterAttributeSetBase::OnRep_maxExperience(const FGameplayAttributeData& OldMaxExperience)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, maxExperience, OldMaxExperience);
+}
+
 void UC_ChracterAttributeSetBase::OnRep_health(const FGameplayAttributeData& OldHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, health, OldHealth);
@@ -91,6 +101,10 @@ void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& A
 	else if (Attribute == GetshieldAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxShield());
+	}
+	else if (Attribute == GetexperienceAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxExperience());
 	}
 }
 
@@ -338,6 +352,39 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 		// 데미지 처리 완료 후 초기화
 		SetreceivedDamage(0.0f);
 		}
+
+	if (Data.EvaluatedData.Attribute == GetexperienceAttribute())
+	{
+		Setexperience(FMath::Clamp(Getexperience(), 0.0f, GetmaxExperience()));
+
+		float currentExp = Getexperience();
+
+		float currentMaxExp = GetmaxExperience();
+
+		// 레벨업 처리
+		if (currentMaxExp > 0.f && currentExp >= currentMaxExp)
+		{
+			// 레벨 증가
+			Setlevel(Getlevel() + 1);
+
+			// 초과 경험치 이월
+			Setexperience(currentExp - currentMaxExp);
+
+			// 다음 레벨의 최대 경험치 증가 (예시: 10% 증가)
+			SetmaxExperience(FMath::RoundToFloat(currentMaxExp * 1.1f));
+
+			// maxHealth +50, health +50
+			float newMaxHealth = GetmaxHealth() + 50.f;
+			float newHealth = Gethealth() + 50.f;
+
+			SetmaxHealth(newMaxHealth);
+			Sethealth(newHealth);
+
+			// maxStamina +20
+			float newMaxStamina = GetmaxStamina() + 20.f;
+			SetmaxStamina(newMaxStamina);
+		}
+	}
 }
 
 void UC_ChracterAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -345,6 +392,8 @@ void UC_ChracterAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimePro
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, level, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, experience, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxExperience, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, health, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxHealth, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, shield, COND_None, REPNOTIFY_Always);
