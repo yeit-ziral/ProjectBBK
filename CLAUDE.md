@@ -311,6 +311,7 @@ Skills/
 17. **캐릭터 교체 후 HUD(스킬 아이콘·궁극기 게이지)가 기본값만 표시될 때** — `RemoveCharacterAbilities`의 early-return 조건 확인: `!abilitySystemComponent->characterAbilitiesGiven` 이어야 함. `!` 누락 시 어빌리티가 등록된 상태(`true`)에서 early return → 제거도, 신규 추가도 모두 안 됨
 18. **캐릭터 로스터 시스템에서 최초 실행 시 HUD가 기본값만 표시될 때** — 캐릭터의 `BeginPlay`에서 WBP_HUD를 생성하는 경우, 컨트롤러가 캐릭터들을 일괄 스폰한 뒤 `Possess`를 호출하는 구조에서는 `BeginPlay` 시점이 `Possess` 이전임. `NativeConstruct`가 실행될 때 아직 `AddCharacterAbilities`가 호출되지 않아 ASC에 어빌리티가 없음 → 초기 `Possess` 완료 후 `OnCharacterSwitched.Broadcast(0)` 호출로 해결 (이 시점엔 델리게이트 바인딩·어빌리티 등록이 모두 완료된 상태)
 19. **캐릭터 교체 후 `C_SkillIconWidget` 쿨다운이 반응 없을 때** — `InitializeSkillIcon` 재호출 전 기존 `OnCooldownStarted` 델리게이트를 `RemoveDynamic`으로 해제해야 함. 누락 시 이미 제거된 어빌리티 인스턴스에 바인딩이 남아 이벤트를 수신하지 못함. `C_UltimateGaugeWidget::InitializeGauge`도 동일하게 기존 `ManaChangedHandle`을 `Remove` 후 재바인딩
+20. **UFUNCTION 이름이 부모 클래스와 충돌 시 UHT 에러** — `Override of UFUNCTION 'X' in parent 'Y' cannot have a UFUNCTION() declaration` 에러 발생. `UGameplayAbility`에 이미 `GetCooldownTimeRemaining`이 존재하는 것처럼, 부모 클래스의 UFUNCTION과 동일한 이름으로 선언 불가. 함수 추가 전 부모 클래스 API를 먼저 확인할 것 (예: `GetCooldownTimeRemaining` → `QuerySkillCooldown`으로 변경)
 
 ---
 
@@ -585,6 +586,9 @@ SwitchCommonSkill(NewIndex)
 InitializeFromCommonSkill(NewSkill)
   → 기존 OnCooldownStarted 해제
   → 아이콘 설정 + SkillTag 동적 업데이트 (FSkillData.skillTag 값으로)
+  → QuerySkillCooldown(ASC, Remaining, Duration)  ← 교체 시점 쿨다운 상태 복원
+      쿨다운 중: UpdateCooldown(Remaining, Duration)
+      아닌 경우: SetCooldownVisible(false) 유지
   → OnCooldownStarted 재바인딩
 
 // WBP_HUD OnCharacterSwitched 핸들러
@@ -646,6 +650,12 @@ IsValid(CurrentSkillManager)
 - **대안:** `OnCharacterSwitched` 시 `FindAbilityByTag`로 CommonSkill 탐색
 - **선택 이유:** CommonSkill은 캐릭터 교체와 무관하게 SkillWheel로 독립 변경됨. tag-based 탐색은 고정 태그가 필요한데 CommonSkill은 SkillWheel 리팩토링 후 고정 GAS 태그 없음. `SwitchCommonSkill`을 단일 진입점으로 사용하면 교체·초기화 두 경우를 동일 코드로 처리 가능
 - **트레이드오프:** WBP_HUD가 캐릭터 교체 시마다 `OnCommonSkillSwitched` 바인딩을 해제·재등록해야 함
+
+### 쿨다운 오버레이 방향 — 줄어드는 방향 vs 차오르는 방향
+- **선택:** `Progress = CurrentCooldown / MaxCooldown` — 쿨다운 시작 시 꽉 찬 상태에서 시간이 지날수록 줄어듦
+- **대안:** `Progress = 1.0f - (CurrentCooldown / MaxCooldown)` — 빈 상태에서 차오르다가 완료
+- **선택 이유:** 줄어드는 방향이 "남은 시간이 소진된다"는 시각적 직관에 부합
+- **트레이드오프:** 머티리얼의 Progress 파라미터가 1→0 방향으로 동작해야 하므로 머티리얼 설계 방향과 맞춰야 함
 
 ### Mana Charge — C++ SetByCaller vs MMC
 - **선택:** C++ SetByCaller로 마나 충전량 전달

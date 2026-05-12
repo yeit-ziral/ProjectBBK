@@ -110,6 +110,14 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	if (!characterRoster.IsValidIndex(NextIndex))
 		return;
 
+	// SkillWheel이 열려 있으면 캐릭터 교체 차단
+	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+	{
+		static const FGameplayTag SkillWheelTag = FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen"));
+		if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(SkillWheelTag))
+			return;
+	}
+
 	AC_BasePlayerCharactor *OldChar = characterRoster[currentCharacterIndex];
 	AC_BasePlayerCharactor *NewChar = characterRoster[NextIndex];
 
