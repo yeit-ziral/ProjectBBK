@@ -7,6 +7,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "DrawDebugHelpers.h"
 #include "TimerManager.h"
+#include "AbilitySystemComponent.h"
 #include "../../C_BossMonster.h"
 
 UC_BossStormPatternGA::UC_BossStormPatternGA()
@@ -38,9 +39,14 @@ void UC_BossStormPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
     }
 
 
+    UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo();
+    if (asc)
+        asc->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Invincible"));
+
     FTimerHandle StormTimer;
 
     GetWorld()->GetTimerManager().SetTimer(StormTimer, this, &UC_BossStormPatternGA::SpawnStorms, stormDelay, false);
+    UE_LOG(LogTemp, Warning, TEXT("StormPattern: Timer set, delay=%.1f, points=%d"), stormDelay, cachedSpawnPoints.Num());
 }
 
 
@@ -94,6 +100,10 @@ void UC_BossStormPatternGA::GenerateStormTriangle(const FVector& Center, float R
 
 void UC_BossStormPatternGA::SpawnStorms()
 {
+    UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo();
+    if (asc)
+        asc->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Invincible"));
+
     for (const FVector& Point : cachedSpawnPoints)
     {
         GetWorld()->SpawnActor<AActor>(stormActorClass, Point, FRotator::ZeroRotator);
