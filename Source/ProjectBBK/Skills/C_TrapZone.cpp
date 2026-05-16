@@ -54,7 +54,7 @@ void AC_TrapZone::InitTrap(
 
 	if (IsValid(DecalMaterial))
 	{
-		DecalComp->SetMaterial(0, DecalMaterial);
+		DecalComp->SetDecalMaterial(DecalMaterial);
 	}
 
 	GetWorldTimerManager().SetTimer(
@@ -70,8 +70,8 @@ void AC_TrapZone::InitTrap(
 		TriggerCapsuleRadius,
 		FQuat::Identity,
 		FColor::Green,
-		false,
-		LifeTime,
+		true,
+		-1.f,
 		0,
 		2.0f);
 #endif
@@ -98,6 +98,10 @@ void AC_TrapZone::OnTriggerOverlap(
 	bTriggered = true;
 
 	GetWorldTimerManager().ClearTimer(LifeTimerHandle);
+
+#if !UE_BUILD_SHIPPING
+	FlushPersistentDebugLines(GetWorld());
+#endif
 
 	DecalComp->SetVisibility(false);
 	PointLightComp->SetVisibility(false);
@@ -198,5 +202,8 @@ void AC_TrapZone::OnLifeTimeExpired()
 void AC_TrapZone::DestroyTrap()
 {
 	GetWorldTimerManager().ClearTimer(LifeTimerHandle);
+#if !UE_BUILD_SHIPPING
+	FlushPersistentDebugLines(GetWorld());
+#endif
 	Destroy();
 }

@@ -224,6 +224,7 @@ Skills/
 | GA_RockSpear | F (Skill Wheel) | ✅ 완료 | 2단계 입력, C_StoneSpearProjectile, GE_BasicDamage, GE_Slowed |
 | Skill Wheel 추가 스킬 x1~3 | F (Skill Wheel) | 📋 계획 중 | GA_RockSpear 포함 1개 완료, 나머지 미구현 |
 | Skill Wheel (F키 슬롯 교체) | F | ✅ 완료 | Z키 토글, WBP_SkillWheel, UC_SkillManagerComponent, DynamicAbilityTags → TryActivateAbilityByClass 방식 |
+| GA_RanagedUnique | E | ✅ 완료 | C_TrapZone + BP_TrapZone, TriggerCapsule 감지 → CapsuleOverlap 데미지, GE_BasicDamage |
 
 ### Monster Abilities
 | Ability | 상태 | 비고 |
@@ -312,6 +313,9 @@ Skills/
 18. **캐릭터 로스터 시스템에서 최초 실행 시 HUD가 기본값만 표시될 때** — 캐릭터의 `BeginPlay`에서 WBP_HUD를 생성하는 경우, 컨트롤러가 캐릭터들을 일괄 스폰한 뒤 `Possess`를 호출하는 구조에서는 `BeginPlay` 시점이 `Possess` 이전임. `NativeConstruct`가 실행될 때 아직 `AddCharacterAbilities`가 호출되지 않아 ASC에 어빌리티가 없음 → 초기 `Possess` 완료 후 `OnCharacterSwitched.Broadcast(0)` 호출로 해결 (이 시점엔 델리게이트 바인딩·어빌리티 등록이 모두 완료된 상태)
 19. **캐릭터 교체 후 `C_SkillIconWidget` 쿨다운이 반응 없을 때** — `InitializeSkillIcon` 재호출 전 기존 `OnCooldownStarted` 델리게이트를 `RemoveDynamic`으로 해제해야 함. 누락 시 이미 제거된 어빌리티 인스턴스에 바인딩이 남아 이벤트를 수신하지 못함. `C_UltimateGaugeWidget::InitializeGauge`도 동일하게 기존 `ManaChangedHandle`을 `Remove` 후 재바인딩
 20. **UFUNCTION 이름이 부모 클래스와 충돌 시 UHT 에러** — `Override of UFUNCTION 'X' in parent 'Y' cannot have a UFUNCTION() declaration` 에러 발생. `UGameplayAbility`에 이미 `GetCooldownTimeRemaining`이 존재하는 것처럼, 부모 클래스의 UFUNCTION과 동일한 이름으로 선언 불가. 함수 추가 전 부모 클래스 API를 먼저 확인할 것 (예: `GetCooldownTimeRemaining` → `QuerySkillCooldown`으로 변경)
+21. **DecalComponent가 원형이 아닌 사각형으로 투영될 때** — Decal은 로컬 **-X 방향**으로 투영. 바닥 수직 투영을 위해 Pitch -90도 필요. BP 컴포넌트 Transform에서 **Y = -90** 설정 (Y가 Pitch). DecalSize Y ≠ Z이면 직사각형으로 나오므로 Y = Z도 함께 확인.
+22. **LineTrace `bBlockingHit == false` 시 `ImpactPoint` 값** — Hit 없을 때 `ImpactPoint = FVector(0, 0, 0)` (월드 원점). 체크 없이 사용하면 액터가 원점에 스폰됨. `bBlockingHit == false` 시 스폰하지 않고 `EndAbility`로 처리할 것.
+23. **Persistent Debug Line이 Actor 소멸 후에도 남아있을 때** — `DrawDebugCapsule(bPersistentLines=true)`는 Actor `Destroy()` 시 자동 클리어되지 않음. `DestroyTrap` 등 소멸 함수 내에서 `FlushPersistentDebugLines(GetWorld())`를 명시적으로 호출해야 함. 단, 월드 전체 Persistent 라인을 일괄 클리어하므로 다른 Persistent 드로우와 충돌 가능.
 
 ---
 
@@ -431,6 +435,35 @@ LineTraceByChannel
   TraceChannel: Visibility
 → ImpactPoint → 스폰 위치로 사용
 ```
+
+### 설치형 트랩 존 패턴 (C_TrapZone / BP_TrapZone 참고)
+GA가 트랩을 스폰하고 즉시 EndAbility. 동시 1개 제한은 GA가 `CurrentTrap` 레퍼런스로 관리.
+트리거 판정(`UCapsuleComponent` Overlap)과 데미지 판정(`CapsuleOverlapActors`)을 별도 크기로 분리해 감지 범위와 피해 범위를 독립 조정.
+```
+GA ActivateAbility
+  → IsValid(CurrentTrap) → DestroyTrap()        // 기존 트랩 제거
+  → LineTrace 아래 방향 → bBlockingHit false → EndAbility (원점 스폰 방지)
+  → SpawnActor(TrapZoneClass, ImpactPoint + Z*TriggerHalfHeight)
+      Owner: AvatarActor
+  → InitTrap(ASC, DamageMagnitude, LifeTime, TriggerRadius, TriggerHalfHeight, DamageRadius, DamageHalfHeight)
+  → ApplySkillCooldown → EndAbility
+
+AC_TrapZone::InitTrap()
+  → TriggerCapsule 크기 설정 + DecalMaterial 적용(SetDecalMaterial) + LifeTimer 시작
+  → LifeTimer는 반드시 InitTrap에서 시작 (BeginPlay 시점엔 수치 미주입)
+
+AC_TrapZone::OnTriggerOverlap (TriggerCapsule)
+  → bTriggered 플래그로 중복 방지
+  → ClearTimer(LifeTimer) + DecalComp/PointLightComp 숨김 + ImpactNiagara 스폰
+  → CapsuleOverlapActors(DamageCapsule 크기, AC_BaseMonster 필터) → GE_BasicDamage 적용
+  → 4.5초 후 DestroyTrap
+
+DestroyTrap()
+  → ClearTimer + FlushPersistentDebugLines + Destroy
+```
+- `DamageEffectClass`는 BP에서 지정 (C++ 하드코딩 금지) → BP_TrapZone에서 GE_BasicDamage 지정
+- DecalComponent 바닥 투영: BP에서 컴포넌트 Transform Y = -90 (Pitch -90도)
+- `CapsuleOverlapActors`의 `ActorsToIgnore`: AC_BaseMonster 클래스 필터로 플레이어 자동 제외 → 빈 배열로 충분
 
 ### 플레이어 Projectile 스킬 패턴 (C_StoneSpearProjectile 참고)
 GA가 Projectile을 스폰하고 즉시 EndAbility. Projectile이 자체적으로 GE 관리.
@@ -650,6 +683,18 @@ IsValid(CurrentSkillManager)
 - **대안:** `OnCharacterSwitched` 시 `FindAbilityByTag`로 CommonSkill 탐색
 - **선택 이유:** CommonSkill은 캐릭터 교체와 무관하게 SkillWheel로 독립 변경됨. tag-based 탐색은 고정 태그가 필요한데 CommonSkill은 SkillWheel 리팩토링 후 고정 GAS 태그 없음. `SwitchCommonSkill`을 단일 진입점으로 사용하면 교체·초기화 두 경우를 동일 코드로 처리 가능
 - **트레이드오프:** WBP_HUD가 캐릭터 교체 시마다 `OnCommonSkillSwitched` 바인딩을 해제·재등록해야 함
+
+### TrapZone 스폰 위치 — LineTrace vs 수동 계산
+- **선택:** 캐릭터 발 위치 아래로 `LineTraceByChannel`, `ImpactPoint + TriggerHalfHeight`를 스폰 위치로 사용
+- **대안:** `ActorLocation.Z - CapsuleHalfHeight + TriggerHalfHeight` 수동 계산
+- **선택 이유:** 경사면·계단에서 수동 계산은 실제 지면과 Z값이 어긋남. LineTrace는 지형에 무관하게 정확한 지면 좌표 반환
+- **트레이드오프:** `bBlockingHit == false` 엣지 케이스 처리 필요 → EndAbility로 처리 (Debugging Checklist 22번 참고)
+
+### TriggerCapsule / DamageCapsule 분리 — 단일 컴포넌트 vs 분리
+- **선택:** 트리거 판정(`UCapsuleComponent` Overlap)과 데미지 판정(`CapsuleOverlapActors`)을 별도 크기 파라미터로 분리
+- **대안:** 동일 컴포넌트·동일 크기로 감지와 피해 범위를 통일
+- **선택 이유:** 발동 감지 범위(좁게)와 실제 피해 범위(넓게)를 독립적으로 조정 가능. GA Blueprint 변수로 각각 노출해 디자인 조정 용이
+- **트레이드오프:** InitTrap 파라미터가 늘어남 (반경 2개 + 반높이 2개)
 
 ### 쿨다운 오버레이 방향 — 줄어드는 방향 vs 차오르는 방향
 - **선택:** `Progress = CurrentCooldown / MaxCooldown` — 쿨다운 시작 시 꽉 찬 상태에서 시간이 지날수록 줄어듦
