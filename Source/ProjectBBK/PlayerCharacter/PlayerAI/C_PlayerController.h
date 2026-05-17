@@ -10,7 +10,7 @@ class AC_BasePlayerCharactor;
 class UInputAction;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterSwitched, int32, NewCharacterIndex);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSwitchCooldownStarted, float, Duration, int32, CharacterIndex);
 UCLASS()
 class PROJECTBBK_API AC_PlayerController : public APlayerController
 {
@@ -31,6 +31,20 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|CharacterRoster")
 	int32 GetCurrentCharacterIndex() const { return currentCharacterIndex; }
+
+	///// 캐릭터 교체 쿨타임 시작 시 브로드캐스트 (Duration: 쿨타임 지속 시간, CharacterIndex: 교체된 캐릭터 인덱스)
+	UPROPERTY(BlueprintAssignable, Category = "ProjectBBK|CharacterRoster")
+	FOnSwitchCooldownStarted OnSwitchCooldownStarted;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|CharacterRoster")
+	float switchCooldownDuration = 2.0f; // 캐릭터 교체 쿨타임 (초)
+
+	UFUNCTION(BlueprintPure, Category = "ProjectBBK|CharacterRoster")
+	bool IsSwitchOnCooldown() const { return bSwitchOnCooldown; }
+
+	UFUNCTION(BlueprintPure, Category = "ProjectBBK|CharacterRoster")
+	float GetSwitchCooldownRemaining() const;
+	//////////////
 
 protected:
 	virtual void BeginPlay() override;
@@ -65,4 +79,9 @@ private:
 	void OnSwitchChar1Input();
 
 	bool bIsSwitching = false;
+
+	// <교체 쿨타임 관리>
+	bool bSwitchOnCooldown = false;
+	FTimerHandle switchCooldownTimerHandle;
+	float switchCooldownStartTime = 0.0f;
 };

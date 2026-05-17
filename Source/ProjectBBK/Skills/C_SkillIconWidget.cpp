@@ -263,6 +263,13 @@ void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 	// 쿨다운 델리게이트 바인딩 ⭐
 	SkillAbility->OnCooldownStarted.AddDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
 	UE_LOG(LogTemp, Warning, TEXT("[C_SkillIconWidget] ✅ Cooldown delegate BOUND to: %p"), SkillAbility);
+
+	// RestoreActiveEffects로 복원된 쿨다운 상태 반영
+	float Remaining = 0.f, Duration = 0.f;
+	if (SkillAbility->QuerySkillCooldown(ASC, Remaining, Duration))
+	{
+		UpdateCooldown(Remaining, Duration);
+	}
 }
 
 void UC_SkillIconWidget::InitializeFromCommonSkill(UC_SkillBase* NewSkill)

@@ -9,6 +9,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EngineUtils.h"
 
+float AC_PlayerController::GetSwitchCooldownRemaining() const
+{
+	if(!bSwitchOnCooldown)
+		return 0.0f;
+	float elapsed = GetWorld()->GetTimeSeconds() - switchCooldownStartTime;
+	return FMath::Max(0.f, switchCooldownDuration - elapsed);
+}
+
 void AC_PlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -105,10 +113,20 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 {
 	if (bIsSwitching)
 		return;
+	if (bIsSwitching)
+		return;
 	if (NextIndex == currentCharacterIndex)
 		return;
 	if (!characterRoster.IsValidIndex(NextIndex))
 		return;
+
+	// SkillWheel이 열려 있으면 캐릭터 교체 차단
+	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+	{
+		static const FGameplayTag SkillWheelTag = FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen"));
+		if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(SkillWheelTag))
+			return;
+	}
 
 	AC_BasePlayerCharactor *OldChar = characterRoster[currentCharacterIndex];
 	AC_BasePlayerCharactor *NewChar = characterRoster[NextIndex];
@@ -131,6 +149,23 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	NewChar->SetActorEnableCollision(true);
 
 	OldChar->SaveCharacterState();
+	UAbilitySystemComponent* ASC = nullptr;
+
+	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+	{
+		ASC = PS->GetAbilitySystemComponent();
+	}
+
+	if (ASC)
+	{
+		OldChar->SaveActiveEffects(ASC);
+
+		//2. State 태그를 부여하는 Duration GE 제거
+		FGameplayTagContainer tagsToRemove;
+		tagsToRemove.AddTag(FGameplayTag::RequestGameplayTag(FName("State")));
+		tagsToRemove.AddTag(FGameplayTag::RequestGameplayTag(FName("Effect.Cooldown")));
+		ASC->RemoveActiveEffectsWithGrantedTags(tagsToRemove);
+	}
 
 	// 이전 캐릭터의 어빌리티를 ASC에서 제거 (characterAbilitiesGiven = false로 리셋됨)
 	OldChar->RemoveCharacterAbilities();
@@ -139,14 +174,30 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
 
+	if (ASC)
+		NewChar->RestoreActiveEffects(ASC);
+
+
+
 	// 이전 캐릭터 비활성화
 	OldChar->SetActorHiddenInGame(true);
 	OldChar->SetActorEnableCollision(false);
 
 	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
 	OnCharacterSwitched.Broadcast(NextIndex);
-
 	bIsSwitching = false;
+
+	// 교체 완료 후 쿨타임 시작
+	bSwitchOnCooldown = true;
+	switchCooldownStartTime = GetWorld()->GetTimeSeconds();
+	OnSwitchCooldownStarted.Broadcast(switchCooldownDuration, NextIndex);
+
+	GetWorldTimerManager().SetTimer(
+		switchCooldownTimerHandle,
+		[this]() {bSwitchOnCooldown = false; },
+		switchCooldownDuration,
+		false
+	);
 }
 
 void AC_PlayerController::SwitchToNextCharacter()

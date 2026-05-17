@@ -102,10 +102,6 @@ void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& A
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxShield());
 	}
-	else if (Attribute == GetexperienceAttribute())
-	{
-		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxExperience());
-	}
 }
 
 void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -362,28 +358,17 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 		float currentMaxExp = GetmaxExperience();
 
 		// 레벨업 처리
-		if (currentMaxExp > 0.f && currentExp >= currentMaxExp)
+		while (GetmaxExperience() > 0.f && currentExp >= currentMaxExp)
 		{
-			// 레벨 증가
+			currentExp -= currentMaxExp;
 			Setlevel(Getlevel() + 1);
-
-			// 초과 경험치 이월
-			Setexperience(currentExp - currentMaxExp);
-
-			// 다음 레벨의 최대 경험치 증가 (예시: 10% 증가)
-			SetmaxExperience(FMath::RoundToFloat(currentMaxExp * 1.1f));
-
-			// maxHealth +50, health +50
-			float newMaxHealth = GetmaxHealth() + 50.f;
-			float newHealth = Gethealth() + 50.f;
-
-			SetmaxHealth(newMaxHealth);
-			Sethealth(newHealth);
-
-			// maxStamina +20
-			float newMaxStamina = GetmaxStamina() + 20.f;
-			SetmaxStamina(newMaxStamina);
+			SetmaxExperience(FMath::RoundToFloat(GetmaxExperience() * 1.1f));
+			SetmaxHealth(GetmaxHealth() + 50.f);
+			Sethealth(FMath::Min(Gethealth() + 50.f, GetmaxHealth()));
+			SetmaxStamina(GetmaxStamina() + 20.f);
 		}
+
+		Setexperience(FMath::Max(currentExp, 0.f)); // 최종값 저장
 	}
 }
 
