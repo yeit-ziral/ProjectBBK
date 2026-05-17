@@ -52,6 +52,12 @@ struct FCharacterSavedState
 	float mana		=	0.f;
 };
 
+struct FSavedGEState
+{
+	FGameplayEffectSpec Spec; // Set by Caller 포함한 전체 스펙
+	float RemainingDuration = 0.f; // 남은 지속 시간
+};
+
 UCLASS(Blueprintable, config = Game)
 class PROJECTBBK_API AC_BasePlayerCharactor : public ACharacter, public IAbilitySystemInterface
 {
@@ -123,6 +129,9 @@ public:
 
 	void SaveCharacterState();		// 교체 직전에 캐릭터 상태 저장
 	void RestoreCharacterState(); 	// 교체 후 저장된 캐릭터 상태 복원 (Health, Stamina, Shield, Mana 등)
+
+	void SaveActiveEffects(UAbilitySystemComponent* ASC); // 캐릭터 교체 시 활성화 된 GE 저장
+	void RestoreActiveEffects(UAbilitySystemComponent* ASC); // 캐릭터 교체 후 저장된 GE 복원
 
 protected:
 	// Called when the game starts or when spawned
@@ -266,6 +275,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mana")
 	TSubclassOf<UGameplayEffect> GE_ManaRegen;
+
+	// 캐릭터 교체 시 활성화 된 GE 저장
+	TArray<FSavedGEState> savedActiveEffects;
 
 private:
 	TMap<const UInputAction *, FGameplayTag> abilityTagMap;
