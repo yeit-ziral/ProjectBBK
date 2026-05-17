@@ -110,7 +110,7 @@ void AC_BaseMonster::Tick(float DeltaTime)
 	if (hpDisplayComponent)
 		hpDisplayComponent->UpdateWidgetRotation();
 
-	if (groggyComponent)
+	if (groggyComponent && bAutoAccumulateGroggy)
 		groggyComponent->TickGroggy(DeltaTime);
 }
 

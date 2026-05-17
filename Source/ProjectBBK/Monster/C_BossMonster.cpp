@@ -1,5 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BossMonster.h"
 #include "M_Gas/C_MonsterASC.h"
@@ -10,12 +9,13 @@
 
 AC_BossMonster::AC_BossMonster()
 {
-
 }
 
 void AC_BossMonster::BeginPlay()
 {
     Super::BeginPlay();
+
+    bAutoAccumulateGroggy = false;
 
     monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Boss"));
 
@@ -49,26 +49,70 @@ void AC_BossMonster::BeginPlay()
         });
     }
 
-    // Phase 2 GA는 gamePlayAbilities 배열과 별개이므로 여기서 명시적으로 등록
-    if (monsterASC && bossGridLaserPatternGA)
-        monsterASC->GiveAbility(FGameplayAbilitySpec(bossGridLaserPatternGA, 1, 0));
-
-    // 테스트: BaseMonster에서 이미 GiveAbility 한 GA 확인
-    if (monsterASC && bossStormPatternGA && bossBeamPatternGA)
+    // GA 등록 — BT Task에서 활성화
+    if (monsterASC)
     {
-        monsterASC->TryActivateAbilityByClass(bossStormPatternGA);
-        //monsterASC->TryActivateAbilityByClass(bossBeamPatternGA);
-    }
-
-    // TODO: 테스트용 — Phase2 발동 확인 후 삭제
-    if (monsterAttributeSet)
-    {
-        const float startHP = monsterAttributeSet->GetmaxHP() * 0.55f;
-        monsterAttributeSet->SetcurHP(startHP);
-        if (bossHpWidget)
-            bossHpWidget->SetCurrentHp(startHP);
+        if (bossNormalAttackGA)
+            monsterASC->GiveAbility(FGameplayAbilitySpec(bossNormalAttackGA, 1, 0));
+        if (bossStormPatternGA)
+            monsterASC->GiveAbility(FGameplayAbilitySpec(bossStormPatternGA, 1, 0));
+        if (bossBeamPatternGA)
+            monsterASC->GiveAbility(FGameplayAbilitySpec(bossBeamPatternGA, 1, 0));
+        if (bossGridLaserPatternGA)
+            monsterASC->GiveAbility(FGameplayAbilitySpec(bossGridLaserPatternGA, 1, 0));
     }
 }
+
+// ─── 공격 쿨다운 체크 ─────────────────────────────────────────────────────────
+
+bool AC_BossMonster::CanNormalAttack() const
+{
+    return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= normalAttackInterval;
+}
+
+bool AC_BossMonster::CanPatternAttack() const
+{
+    return GetWorld()->GetTimeSeconds() - lastPatternAttackTime >= patternAttackInterval;
+}
+
+// ─── BT Task 호출 진입점 ──────────────────────────────────────────────────────
+
+void AC_BossMonster::BossNormalAttack()
+{
+    if (!monsterASC || !bossNormalAttackGA) return;
+    if (!CanNormalAttack()) return;
+
+    lastNormalAttackTime = GetWorld()->GetTimeSeconds();
+    monsterASC->TryActivateAbilityByClass(bossNormalAttackGA);
+}
+
+void AC_BossMonster::BossPatternAttack()
+{
+    if (!monsterASC) return;
+    if (!CanPatternAttack()) return;
+
+    lastPatternAttackTime = GetWorld()->GetTimeSeconds();
+
+    // Storm → Beam → Storm 교대
+    if (bNextPatternIsStorm)
+    {
+        if (bossStormPatternGA)
+        {
+            bNextPatternIsStorm = false;
+            monsterASC->TryActivateAbilityByClass(bossStormPatternGA);
+        }
+    }
+    else
+    {
+        if (bossBeamPatternGA)
+        {
+            bNextPatternIsStorm = true;
+            monsterASC->TryActivateAbilityByClass(bossBeamPatternGA);
+        }
+    }
+}
+
+// ─── HP 위젯 ─────────────────────────────────────────────────────────────────
 
 void AC_BossMonster::InitializeBossHpWidget()
 {
@@ -84,16 +128,24 @@ void AC_BossMonster::InitializeBossHpWidget()
         return;
 
     bossHpWidget->AddToViewport();
-
     bossHpWidget->SetMaxHp(GetmaxHP());
     bossHpWidget->SetCurrentHp(GetcurHP());
-
     bossHpWidget->SetMaxGroggy(GetmaxGroggy());
     bossHpWidget->SetCurrentGroggy(GetcurGroggy());
-
     bossHpWidget->SetMonsterLevel(50);
     bossHpWidget->SetMonsterName(FText::FromName(GetRowName()));
 }
+
+void AC_BossMonster::RemoveBossHpWidget()
+{
+    if (!bossHpWidget)
+        return;
+
+    bossHpWidget->RemoveFromParent();
+    bossHpWidget = nullptr;
+}
+
+// ─── 이벤트 콜백 ─────────────────────────────────────────────────────────────
 
 void AC_BossMonster::OnBossHpChanged(const FOnAttributeChangeData& ChangeData)
 {
@@ -105,15 +157,10 @@ void AC_BossMonster::OnBossHpChanged(const FOnAttributeChangeData& ChangeData)
         const float maxHp = GetmaxHP();
         const float ratio = maxHp > 0.f ? ChangeData.NewValue / maxHp : 1.f;
 
-        UE_LOG(LogTemp, Warning, TEXT("[BossPhase2] HP=%.0f/%.0f (%.1f%%) threshold=%.0f%%"),
-            ChangeData.NewValue, maxHp, ratio * 100.f, phase2HpRatio * 100.f);
-
         if (maxHp > 0.f && ratio < phase2HpRatio && ratio > 0.1f)
         {
             bPhase2Triggered = true;
-            UE_LOG(LogTemp, Warning, TEXT("[BossPhase2] Triggering GridLaser pattern"));
-            const bool bActivated = monsterASC->TryActivateAbilityByClass(bossGridLaserPatternGA);
-            UE_LOG(LogTemp, Warning, TEXT("[BossPhase2] TryActivate result: %s"), bActivated ? TEXT("SUCCESS") : TEXT("FAILED"));
+            monsterASC->TryActivateAbilityByClass(bossGridLaserPatternGA);
         }
     }
 }
@@ -129,13 +176,3 @@ void AC_BossMonster::OnInvincibleTagChanged(const FGameplayTag& Tag, int32 NewCo
     if (!bossHpWidget) return;
     bossHpWidget->SetInvincible(NewCount > 0);
 }
-
-void AC_BossMonster::RemoveBossHpWidget()
-{
-    if (!bossHpWidget)
-        return;
-
-    bossHpWidget->RemoveFromParent();
-    bossHpWidget = nullptr;
-}
-
