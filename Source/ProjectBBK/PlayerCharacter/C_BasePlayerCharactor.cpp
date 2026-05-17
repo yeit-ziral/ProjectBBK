@@ -680,15 +680,21 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 
 void AC_BasePlayerCharactor::InitializeAttributes()
 {
-	if (!abilitySystemComponent.IsValid())
-	{
-		return;
-	}
-
-	if (!defaultAttributes)
+	if (!abilitySystemComponent.IsValid() || !defaultAttributes)
 	{
 		UE_LOG(LogTemp, Error, TEXT("%s() Missing DefaultAttributes for %s. Please fill in the character's blueprint"), *FString(__FUNCTION__), *GetName());
 		return;
+	}
+
+	// 이미 초기화 된 상태라면 공유 진행도 보존
+	bool bPreserveProgression = abilitySystemComponent->startupEffectsApplied && attributeSetBase.IsValid();
+	float savedLevel = 0.f, savedExp = 0.f, savedMaxExp = 0.f;
+
+	if (bPreserveProgression)
+	{
+		savedLevel = attributeSetBase->Getlevel();
+		savedExp = attributeSetBase->Getexperience();
+		savedMaxExp = attributeSetBase->GetmaxExperience();
 	}
 
 	FGameplayEffectContextHandle EffectContext = abilitySystemComponent->MakeEffectContext();
@@ -699,6 +705,23 @@ void AC_BasePlayerCharactor::InitializeAttributes()
 	if (NewHandle.IsValid())
 	{
 		FActiveGameplayEffectHandle ActiveGEHandle = abilitySystemComponent->ApplyGameplayEffectSpecToTarget(*NewHandle.Data.Get(), abilitySystemComponent.Get());
+	}
+
+	//GE가 리셋한 level/exp을 보존된 값으로 복원 + 레벨업 스탯 보너스 재적용
+	if (bPreserveProgression)
+	{
+		attributeSetBase->Setlevel(savedLevel);
+		attributeSetBase->Setexperience(savedExp);
+		attributeSetBase->SetmaxExperience(savedMaxExp);
+
+		// 레벨 1이 기본이므로 (레벨 - 1) 만큼 보너스 재적용
+		float bonusLevel = savedLevel - 1;
+
+		if (savedLevel > 0.f)
+		{
+			attributeSetBase->SetmaxHealth(attributeSetBase->GetmaxHealth() + bonusLevel * 50.f);
+			attributeSetBase->SetmaxStamina(attributeSetBase->GetmaxStamina() + bonusLevel * 20.f);
+		}
 	}
 }
 
@@ -860,4 +883,52 @@ void AC_BasePlayerCharactor::RestoreCharacterState()
 		SetStamina(savedState.stamina);
 		SetMana(savedState.mana);
 	}
+}
+
+void AC_BasePlayerCharactor::SaveActiveEffects(UAbilitySystemComponent* ASC)
+{
+	savedActiveEffects.Empty();
+
+	FGameplayTagContainer tagsToMatch;
+	tagsToMatch.AddTag(FGameplayTag::RequestGameplayTag(FName("State")));
+	tagsToMatch.AddTag(FGameplayTag::RequestGameplayTag(FName("Effect.Cooldown")));
+
+	//State 태그를 부여하는 GE 핸들 목록
+	TArray<FActiveGameplayEffectHandle> handles = ASC->GetActiveEffects(
+		FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(tagsToMatch));
+
+	float worldTime = GetWorld()->GetTimeSeconds();
+
+	for(const FActiveGameplayEffectHandle& Handle : handles)
+	{
+		const FActiveGameplayEffect* activeGE = ASC->GetActiveGameplayEffect(Handle);
+		if (!activeGE)
+			continue;
+
+		float remaining = activeGE->GetTimeRemaining(worldTime);
+		if(remaining <= 0.f)
+			continue; // 이미 만료된 효과는 저장하지 않음
+
+		FSavedGEState saved;
+		saved.Spec = activeGE->Spec;
+		saved.RemainingDuration = remaining;
+
+		savedActiveEffects.Add(saved);
+	}
+}
+
+void AC_BasePlayerCharactor::RestoreActiveEffects(UAbilitySystemComponent* ASC)
+{
+	for (const FSavedGEState& saved : savedActiveEffects)
+	{
+		if( saved.RemainingDuration <= 0.f )
+			continue; // 만료된 효과는 복원하지 않음
+
+		FGameplayEffectSpec specCopy = saved.Spec;
+		specCopy.Duration = saved.RemainingDuration;
+
+		ASC->ApplyGameplayEffectSpecToSelf(specCopy);
+	}
+
+	savedActiveEffects.Empty();
 }
