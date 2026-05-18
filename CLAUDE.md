@@ -225,6 +225,7 @@ Skills/
 | Skill Wheel 추가 스킬 x1~3 | F (Skill Wheel) | 📋 계획 중 | GA_RockSpear 포함 1개 완료, 나머지 미구현 |
 | Skill Wheel (F키 슬롯 교체) | F | ✅ 완료 | Z키 토글, WBP_SkillWheel, UC_SkillManagerComponent, DynamicAbilityTags → TryActivateAbilityByClass 방식 |
 | GA_RanagedUnique | E | ✅ 완료 | C_TrapZone + BP_TrapZone, TriggerCapsule 감지 → CapsuleOverlap 데미지, GE_BasicDamage |
+| GA_RangedUltimate | Q | ✅ 완료 | C_RangedUltimate, BoxOverlapActors 판정, LaunchCharacter(C++ 직접), GE_BasicDamage(BP CurveTable), State.UsingUltimate 입력 차단 |
 
 ### Monster Abilities
 | Ability | 상태 | 비고 |
@@ -316,6 +317,7 @@ Skills/
 21. **DecalComponent가 원형이 아닌 사각형으로 투영될 때** — Decal은 로컬 **-X 방향**으로 투영. 바닥 수직 투영을 위해 Pitch -90도 필요. BP 컴포넌트 Transform에서 **Y = -90** 설정 (Y가 Pitch). DecalSize Y ≠ Z이면 직사각형으로 나오므로 Y = Z도 함께 확인.
 22. **LineTrace `bBlockingHit == false` 시 `ImpactPoint` 값** — Hit 없을 때 `ImpactPoint = FVector(0, 0, 0)` (월드 원점). 체크 없이 사용하면 액터가 원점에 스폰됨. `bBlockingHit == false` 시 스폰하지 않고 `EndAbility`로 처리할 것.
 23. **Persistent Debug Line이 Actor 소멸 후에도 남아있을 때** — `DrawDebugCapsule(bPersistentLines=true)`는 Actor `Destroy()` 시 자동 클리어되지 않음. `DestroyTrap` 등 소멸 함수 내에서 `FlushPersistentDebugLines(GetWorld())`를 명시적으로 호출해야 함. 단, 월드 전체 Persistent 라인을 일괄 클리어하므로 다른 Persistent 드로우와 충돌 가능.
+24. **GameplayCueNotify_Static에서 Instigator가 None일 때** — Instant GE의 GC Parameters에서 `Instigator`가 None으로 전달되는 경우가 있음. 방향 계산처럼 Instigator에 의존하는 로직은 GC에 두지 말고 C++ GA의 HandleNotifyEvent 등에서 직접 처리할 것. 면역은 ASC 태그(`State.KnockbackImmune` 등) 수동 체크로 구현.
 
 ---
 
@@ -464,6 +466,46 @@ DestroyTrap()
 - `DamageEffectClass`는 BP에서 지정 (C++ 하드코딩 금지) → BP_TrapZone에서 GE_BasicDamage 지정
 - DecalComponent 바닥 투영: BP에서 컴포넌트 Transform Y = -90 (Pitch -90도)
 - `CapsuleOverlapActors`의 `ActorsToIgnore`: AC_BaseMonster 클래스 필터로 플레이어 자동 제외 → 빈 배열로 충분
+
+### 몽타주 + AnimNotify 기반 궁극기 패턴 (C_RangedUltimate 참고)
+GA가 몽타주를 재생하고, AnimNotify 수신 시점에 Box 판정·넉백을 실행. 데미지는 Blueprint(CurveTable 레벨 조회), 넉백은 C++ 직접 처리.
+```
+ActivateAbility
+  → CommitAbility 실패 시 EndAbility(bWasCancelled=true) → return
+  → PlayMontageAndWait: OnCompleted/Interrupted/Cancelled → OnMontageEnded → EndAbility
+  → WaitGameplayEvent(NotifyEventTag) → HandleNotifyEvent
+  → SetIgnoreMoveInput(true)
+
+HandleNotifyEvent (C++)
+  → BoxCenter = AvatarLocation + ForwardVector * BoxOriginOffsetX
+  → BoxOverlapActors(ObjectTypeQuery3, AC_BaseMonster 필터, ActorsToIgnore: AvatarActor)
+  → ForEach HitActor:
+      HasMatchingGameplayTag(State.KnockbackImmune) → skip
+      LaunchCharacter(Direction(수평 정규화) * KnockbackForce, XYOverride=true, ZOverride=false)
+  → OnNotifyReceived_BP(HitActors, BoxCenter, BoxExtent)   ← 데미지·DrawDebugBox는 BP
+
+OnNotifyReceived_BP (Blueprint)
+  → Level 조회 → EvaluateCurveTableRow(CT_SkillData) → Damage
+  → ForEach HitActors: MakeOutgoingSpec(DamageEffect) → SetByCallerMagnitude(Data.Damage) → Apply
+  → DrawDebugBox(BoxCenter, BoxExtent, Red, LifeTime=5)
+
+EndAbility
+  → ResetIgnoreMoveInput → ApplySkillCooldown → Super::EndAbility
+```
+- BoxStart = BoxCenter - ForwardVector * BoxExtent.X → Niagara 스폰 위치 (캐릭터 바로 앞, 박스 전체 커버)
+- AnimNotify(AN_UltimateFire)의 SendGameplayEventToActor Target: 반드시 `Try Get Pawn Owner` 사용
+
+### 어빌리티 사용 중 입력 전체 차단 패턴
+이동은 C++, 어빌리티 발동은 GAS 태그로 각각 차단. 카메라는 영향 없음.
+```
+// C++: 이동 차단
+ActivateAbility → PlayerController → SetIgnoreMoveInput(true)
+EndAbility      → PlayerController → ResetIgnoreMoveInput()
+
+// Blueprint Details: 어빌리티 발동 차단
+GA_Ultimate   → Tags → Activation Owned Tags  : State.UsingUltimate  ← 활성 중 자동 부여
+다른 어빌리티 → Tags → Activation Blocked Tags: State.UsingUltimate  ← 태그 있으면 발동 불가
+```
 
 ### 플레이어 Projectile 스킬 패턴 (C_StoneSpearProjectile 참고)
 GA가 Projectile을 스폰하고 즉시 EndAbility. Projectile이 자체적으로 GE 관리.
@@ -707,3 +749,15 @@ IsValid(CurrentSkillManager)
 - **대안:** MMC(Modifier Magnitude Calculation)로 계산 로직 캡슐화
 - **선택 이유:** 충전량이 전투 상황(피격, 공격 등)에 따라 호출 시점마다 달라지므로 런타임에 값을 직접 주입하는 SetByCaller가 적합. MMC는 AttributeSet 기반 정적 계산에 더 어울림
 - **트레이드오프:** SetByCaller는 호출부에서 태그와 값을 직접 관리해야 하므로 태그 불일치 오류에 취약 (Debugging Checklist 7번 참고)
+
+### LaunchCharacter — GC 경유 vs C++ 직접 호출
+- **선택:** C++ HandleNotifyEvent에서 `LaunchCharacter` 직접 호출, 면역은 `State.KnockbackImmune` ASC 태그 수동 체크
+- **대안:** GE_Knockback → GC_Knockback(GameplayCueNotify_Static) On Execute에서 LaunchCharacter, Instigator로 방향 계산
+- **선택 이유:** Instant GE의 GC Parameters에서 Instigator가 None으로 전달되어 방향 계산 불가 확인(Debugging Checklist 24번). C++에서 AvatarActor·Target을 직접 참조하면 방향 계산이 확실하고 GE/GC 에셋 불필요
+- **트레이드오프:** GAS 내장 Immunity GE 시스템 우회 → `State.KnockbackImmune` 태그 수동 체크로 대체. 넉백 면역 몬스터 추가 시 해당 태그를 GE로 부여하면 됨
+
+### Niagara 이펙트 스폰 위치 — BoxStart vs BoxCenter
+- **선택:** `BoxStart = BoxCenter - ForwardVector * BoxExtent.X` (박스 시작점, 캐릭터 바로 앞)에서 스폰
+- **대안:** BoxCenter(박스 중심)에서 스폰
+- **선택 이유:** BoxCenter 스폰 시 캐릭터에서 너무 멀고, 이펙트 크기가 박스와 같을 때 절반만 박스 안에 위치. BoxStart에서 스폰하면 캐릭터 바로 앞에서 시작해 박스 전체를 커버
+- **트레이드오프:** Blueprint에서 `ForwardVector * BoxExtent.X`를 빼는 계산이 추가 필요. C++ 파라미터 추가 없이 BP에서 처리 가능

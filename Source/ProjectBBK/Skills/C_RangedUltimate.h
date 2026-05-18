@@ -58,10 +58,6 @@ protected:
 	// GE 설정
 	// ────────────────────────────────────────
 
-	/** 넉백 GameplayEffect (GE_Knockback 할당) */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "RangedUltimate|Effects")
-	TSubclassOf<UGameplayEffect> KnockbackEffect;
-
 	/** 넉백 강도 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "RangedUltimate|Effects")
 	float KnockbackForce = 1200.f;
