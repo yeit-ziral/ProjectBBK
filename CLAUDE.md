@@ -272,6 +272,12 @@ Skills/
 | GE_Recover_Health | ✅ 완료 | |
 | GE_Recover_Stamina | ✅ 완료 | |
 | GE_Slowed | ✅ 완료 | 상태이상: 감속 — State.Slowed 태그 부여 + MoveSpeed × 0.2, Duration 5초, GA_RockSpear 사용 |
+| GE_GainExperience | ✅ 완료 | Set by Caller, Data.Exp 태그, experience 어트리뷰트 가산 |
+
+### Objects
+| Object | 상태 | 비고 |
+|--------|------|------|
+| C_ExpOrb / BP_ExpOrb | ✅ 완료 (C++ 구현) | Overlap → GE_GainExperience 적용 후 Destroy, 스폰 주체 미구현 |
 
 ---
 
@@ -683,6 +689,31 @@ IsValid(CurrentSkillManager)
 - CommonSkill 위젯의 `SkillTag`는 에디터에서 설정하지 않고 `InitializeFromCommonSkill` 내부에서 동적 설정
 - WBP_HUD는 캐릭터 교체 시마다 이전 `OnCommonSkillSwitched` 바인딩을 해제하고 새 캐릭터의 컴포넌트에 재등록
 
+### 스폰형 픽업 아이템 패턴 (C_ExpOrb 참고)
+GA 없이 AActor 단독으로 Overlap → GE 적용 → Destroy하는 픽업 구조.
+```
+AC_ExpOrb (AActor)
+  생성자
+    → CollisionSphere: QueryOnly, 모두 Ignore, ECC_Pawn만 Overlap
+    → NiagaraEffect: SetupAttachment
+
+  BeginPlay
+    → OnComponentBeginOverlap 바인딩
+
+  OnOrbOverlap
+    → bConsumed 체크 → true 시 return        // 중복 수집 방지
+    → Cast<AC_BasePlayerCharactor> 실패 → return
+    → GetAbilitySystemComponent() → nullptr 체크
+    → bConsumed = true
+    → MakeOutgoingSpec → SetSetByCallerMagnitude(Data.Exp, ExpAmount)
+    → ApplyGameplayEffectSpecToSelf
+    → Destroy()
+```
+- Collision Profile 대신 Cast 필터로 수집 대상 제한 → 커스텀 프로파일 불필요 (Design Decisions 참고)
+- `bConsumed = true`는 GE 적용 직전에 설정 — Destroy 지연 프레임 대비
+- `ExpAmount`와 `GE_GainExperience`는 BP에서 할당 (C++ 하드코딩 금지)
+- 스폰 주체(몬스터 Die 등)는 C_ExpOrb 외부에서 처리
+
 ---
 
 ## Design Decisions
@@ -761,3 +792,9 @@ IsValid(CurrentSkillManager)
 - **대안:** BoxCenter(박스 중심)에서 스폰
 - **선택 이유:** BoxCenter 스폰 시 캐릭터에서 너무 멀고, 이펙트 크기가 박스와 같을 때 절반만 박스 안에 위치. BoxStart에서 스폰하면 캐릭터 바로 앞에서 시작해 박스 전체를 커버
 - **트레이드오프:** Blueprint에서 `ForwardVector * BoxExtent.X`를 빼는 계산이 추가 필요. C++ 파라미터 추가 없이 BP에서 처리 가능
+
+### 픽업 아이템 Collision — Collision Profile vs Cast 필터
+- **선택:** `QueryOnly` + `SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap)` + `OnOrbOverlap`에서 `Cast<AC_BasePlayerCharactor>` 필터
+- **대안:** 커스텀 Collision Profile `"OverlapOnlyPawn"` 정의
+- **선택 이유:** 어차피 콜백에서 Cast 필터를 사용하므로 커스텀 프로파일은 중복 관리. 기본 채널 설정만으로 동일한 결과 달성 가능
+- **트레이드오프:** Pawn 채널 전체가 Overlap 대상이 되므로 몬스터 Pawn도 콜백 진입하나, Cast 실패로 즉시 return되므로 실질적 영향 없음

@@ -351,16 +351,11 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 
 	if (Data.EvaluatedData.Attribute == GetexperienceAttribute())
 	{
-		Setexperience(FMath::Clamp(Getexperience(), 0.0f, GetmaxExperience()));
-
 		float currentExp = Getexperience();
 
-		float currentMaxExp = GetmaxExperience();
-
-		// 레벨업 처리
-		while (GetmaxExperience() > 0.f && currentExp >= currentMaxExp)
+		while (GetmaxExperience() > 0.f && currentExp >= GetmaxExperience())
 		{
-			currentExp -= currentMaxExp;
+			currentExp -= GetmaxExperience();
 			Setlevel(Getlevel() + 1);
 			SetmaxExperience(FMath::RoundToFloat(GetmaxExperience() * 1.1f));
 			SetmaxHealth(GetmaxHealth() + 50.f);
@@ -368,7 +363,7 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 			SetmaxStamina(GetmaxStamina() + 20.f);
 		}
 
-		Setexperience(FMath::Max(currentExp, 0.f)); // 최종값 저장
+		Setexperience(FMath::Max(currentExp, 0.f));
 	}
 }
 
