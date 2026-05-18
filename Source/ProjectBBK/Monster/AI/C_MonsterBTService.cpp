@@ -44,6 +44,9 @@ void UC_MonsterBTService::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 
     for (AActor* Player : Players)
     {
+        APawn* PlayerPawn = Cast<APawn>(Player);
+        if (!PlayerPawn || !PlayerPawn->IsPlayerControlled()) continue;
+
         const float Dist = FVector::Dist(Player->GetActorLocation(), MyPawn->GetActorLocation());
         if (Dist < BestDist)
         {

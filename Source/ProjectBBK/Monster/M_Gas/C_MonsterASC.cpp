@@ -52,7 +52,22 @@ void UC_MonsterASC::HandleDeath()
 
 void UC_MonsterASC::InterruptCurrentAbilities()
 {
-    CancelAllAbilities();
+    const FGameplayTag nonInterruptTag =
+        FGameplayTag::RequestGameplayTag("Ability.Pattern.NonInterruptible");
+
+    // NonInterruptible 태그가 없는 GA만 취소 (발동 중 패턴은 그로기에도 완주)
+    TArray<UGameplayAbility*> toCancel;
+    for (const FGameplayAbilitySpec& spec : ActivatableAbilities.Items)
+    {
+        if (!spec.IsActive()) continue;
+        UGameplayAbility* instance = spec.GetPrimaryInstance();
+        if (!instance) continue;
+        if (instance->GetAssetTags().HasTag(nonInterruptTag)) continue;
+        toCancel.Add(instance);
+    }
+
+    for (UGameplayAbility* ability : toCancel)
+        CancelAbility(ability);
 }
 
 bool UC_MonsterASC::CanUseAbilityByTag(FGameplayTag AbilityTag) const

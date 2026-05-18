@@ -99,6 +99,8 @@ void AC_BaseMonster::BeginPlay()
 	// 어택 매니저 초기화
 	if (attackManager)
 		attackManager->Initialize(this);
+
+	GetMesh()->SetReceivesDecals(false);
 }
 
 void AC_BaseMonster::Tick(float DeltaTime)
@@ -108,7 +110,7 @@ void AC_BaseMonster::Tick(float DeltaTime)
 	if (hpDisplayComponent)
 		hpDisplayComponent->UpdateWidgetRotation();
 
-	if (groggyComponent)
+	if (groggyComponent && bAutoAccumulateGroggy)
 		groggyComponent->TickGroggy(DeltaTime);
 }
 

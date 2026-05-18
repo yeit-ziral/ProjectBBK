@@ -119,6 +119,8 @@ void AC_BasePlayerCharactor::BeginPlay()
 			UE_LOG(LogTemp, Warning, TEXT("[Player] GE_ManaRegen not set!"));
 		}
 	}
+
+	GetMesh()->SetReceivesDecals(false);
 }
 
 // Called every frame
