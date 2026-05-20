@@ -6,9 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
-#include "GameplayEffect.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "DrawDebugHelpers.h"
 #include "GameFramework/Character.h"
 #include "../Monster/C_BaseMonster.h"
 
