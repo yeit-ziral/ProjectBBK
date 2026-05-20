@@ -1,11 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "ProjectBBK/PlayerCharacter/C_RangeCharacter.h"
+#include "C_RangeCharacter.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "../Monster/C_BaseMonster.h"
 
 AC_RangeCharacter::AC_RangeCharacter(const class FObjectInitializer &ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 void AC_RangeCharacter::BeginPlay()
@@ -16,8 +18,6 @@ void AC_RangeCharacter::BeginPlay()
 void AC_RangeCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	UpdateAimOffset();
 }
 
 void AC_RangeCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
@@ -25,19 +25,50 @@ void AC_RangeCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputCo
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
-void AC_RangeCharacter::UpdateAimOffset()
+AC_BaseMonster *AC_RangeCharacter::GetHighestPriorityTarget() const
 {
-	if (AController *ctrl = GetController())
+	TArray<AActor *> OverlappedActors;
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+
+	TArray<AActor *> ActorsToIgnore;
+	ActorsToIgnore.Add(const_cast<AC_RangeCharacter *>(this));
+
+	UKismetSystemLibrary::SphereOverlapActors(
+		this,
+		GetActorLocation(),
+		detectionRange,
+		ObjectTypes,
+		AC_BaseMonster::StaticClass(),
+		ActorsToIgnore,
+		OverlappedActors);
+
+	AC_BaseMonster *BestTarget = nullptr;
+	float BestDistSq = FLT_MAX;
+
+	for (AActor *Actor : OverlappedActors)
 	{
-		FRotator aimRot;
-		FVector _;
-		ctrl->GetPlayerViewPoint(_, aimRot);
+		AC_BaseMonster *Monster = Cast<AC_BaseMonster>(Actor);
+		if (!Monster || Monster->GetcurHP() <= 0)
+			continue;
 
-		// Pitch
-		aimPitch = FMath::ClampAngle(FRotator::NormalizeAxis(aimRot.Pitch), -90.0f, 90.0f);
-
-		// Yaw
-		const FRotator delta = (GetActorRotation() - aimRot).GetNormalized();
-		aimYaw = FMath::ClampAngle(delta.Yaw, -90.0f, 90.0f);
+		float DistSq = FVector::DistSquared(GetActorLocation(), Monster->GetActorLocation());
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			BestTarget = Monster;
+		}
 	}
+
+	return BestTarget;
+}
+
+void AC_RangeCharacter::FaceTarget(AActor *Target)
+{
+	if (!Target)
+		return;
+
+	FVector Direction = (Target->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+	if (!Direction.IsNearlyZero())
+		SetActorRotation(Direction.Rotation());
 }
