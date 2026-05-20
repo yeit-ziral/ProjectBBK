@@ -324,6 +324,10 @@ Skills/
 22. **LineTrace `bBlockingHit == false` 시 `ImpactPoint` 값** — Hit 없을 때 `ImpactPoint = FVector(0, 0, 0)` (월드 원점). 체크 없이 사용하면 액터가 원점에 스폰됨. `bBlockingHit == false` 시 스폰하지 않고 `EndAbility`로 처리할 것.
 23. **Persistent Debug Line이 Actor 소멸 후에도 남아있을 때** — `DrawDebugCapsule(bPersistentLines=true)`는 Actor `Destroy()` 시 자동 클리어되지 않음. `DestroyTrap` 등 소멸 함수 내에서 `FlushPersistentDebugLines(GetWorld())`를 명시적으로 호출해야 함. 단, 월드 전체 Persistent 라인을 일괄 클리어하므로 다른 Persistent 드로우와 충돌 가능.
 24. **GameplayCueNotify_Static에서 Instigator가 None일 때** — Instant GE의 GC Parameters에서 `Instigator`가 None으로 전달되는 경우가 있음. 방향 계산처럼 Instigator에 의존하는 로직은 GC에 두지 말고 C++ GA의 HandleNotifyEvent 등에서 직접 처리할 것. 면역은 ASC 태그(`State.KnockbackImmune` 등) 수동 체크로 구현.
+25. **캐릭터 교체 후 이전 캐릭터의 쿨다운 오버레이가 계속 표시될 때** — `InitializeSkillIcon`에서 `currentCooldownTime = 0.f` / `maxCooldownTime = 0.f` 리셋 확인. 누락 시 `NativeTick`이 이전 값으로 계속 `UpdateCooldown`을 호출해 `SetCooldownVisible(true)`가 재호출됨. `InitializeFromCommonSkill`에는 리셋이 있으므로 두 경로 비교할 것.
+26. **`InstancedPerActor` GA의 쿨다운 델리게이트가 캐릭터 교체 후 수신 안 될 때** — `InstancedPerActor` 정책에서 첫 `ActivateAbility` 전에는 인스턴스가 없어 `GetPrimaryInstance()` = null → CDO에 바인딩됨. 실제 쿨다운 브로드캐스트는 인스턴스에서 발생하므로 수신 불가. `ApplyGenericCooldown`에서 `GetClass()->GetDefaultObject<UC_SkillBase>()` 경유로 CDO에도 함께 브로드캐스트해야 함.
+27. **`InitializeSkillIcon` 재호출 후 `OnCooldownStarted`가 SkillTag mismatch로 무시될 때** — `InitializeSkillIcon`에서 찾은 어빌리티의 `skillTag`로 위젯의 `SkillTag`를 업데이트하지 않으면 이전 캐릭터의 태그가 남아 새 어빌리티의 쿨다운 브로드캐스트가 tag check에서 필터링됨. `SkillTag = SkillData.skillTag` 업데이트 필수. `InitializeFromCommonSkill`에는 있으나 `InitializeSkillIcon`에서 누락되기 쉬움.
+28. **`QuerySkillCooldown`의 `OutDuration`이 Remaining과 같은 값으로 반환될 때** — `GetActiveEffectsTimeRemainingAndDuration`의 `Value`(Duration)가 SetByCaller Duration GE에서 올바르지 않은 값을 반환하는 경우가 있음. `OutDuration`을 GE에서 읽지 말고 `CachedSkillData.cooldown`에서 직접 가져올 것.
 
 ---
 
@@ -798,3 +802,9 @@ AC_ExpOrb (AActor)
 - **대안:** 커스텀 Collision Profile `"OverlapOnlyPawn"` 정의
 - **선택 이유:** 어차피 콜백에서 Cast 필터를 사용하므로 커스텀 프로파일은 중복 관리. 기본 채널 설정만으로 동일한 결과 달성 가능
 - **트레이드오프:** Pawn 채널 전체가 Overlap 대상이 되므로 몬스터 Pawn도 콜백 진입하나, Cast 실패로 즉시 return되므로 실질적 영향 없음
+
+### `QuerySkillCooldown`의 `OutDuration` 소스 — GE ActiveEffect vs 스킬 데이터
+- **선택:** `OutDuration = bSkillDataLoaded ? CachedSkillData.cooldown : Results[0].Value` — 스킬 데이터 원본값 우선
+- **대안:** `Results[0].Value` (GE의 Duration)만 사용
+- **선택 이유:** `GetActiveEffectsTimeRemainingAndDuration`이 SetByCaller Duration GE에서 전체 Duration 대신 TimeRemaining과 같은 값을 반환하는 케이스가 확인됨
+- **트레이드오프:** GE Duration과 스킬 데이터 cooldown 값이 다른 경우(런타임 쿨다운 스케일링 등)엔 스킬 데이터 값이 부정확할 수 있음
