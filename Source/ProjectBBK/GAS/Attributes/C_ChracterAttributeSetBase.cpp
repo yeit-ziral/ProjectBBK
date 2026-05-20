@@ -361,6 +361,7 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 			SetmaxHealth(GetmaxHealth() + 50.f);
 			Sethealth(FMath::Min(Gethealth() + 50.f, GetmaxHealth()));
 			SetmaxStamina(GetmaxStamina() + 20.f);
+			Setdamage(Getdamage() + 30.f);
 		}
 
 		Setexperience(FMath::Max(currentExp, 0.f));
