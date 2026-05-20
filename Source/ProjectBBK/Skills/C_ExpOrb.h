@@ -30,10 +30,10 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	UNiagaraComponent* NiagaraEffect;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	float ExpAmount = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TSubclassOf<UGameplayEffect> GE_GainExperience;
 
 private:

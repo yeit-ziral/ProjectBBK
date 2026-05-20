@@ -146,7 +146,7 @@ void AC_TrapZone::ApplyDamageToOverlappingMonsters()
 		GetActorLocation(),
 		DamageCapsuleRadius,
 		DamageCapsuleHalfHeight,
-		TArray<TEnumAsByte<EObjectTypeQuery>>{ ObjectTypeQuery3 },
+		TArray<TEnumAsByte<EObjectTypeQuery>>{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
 		AC_BaseMonster::StaticClass(),
 		TArray<AActor*>{},
 		OverlappedActors);

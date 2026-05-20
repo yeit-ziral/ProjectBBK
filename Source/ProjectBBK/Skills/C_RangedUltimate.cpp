@@ -3,11 +3,12 @@
 #include "C_RangedUltimate.h"
 
 #include "AbilitySystemComponent.h"
+#include "Engine/OverlapResult.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
-#include "Kismet/KismetSystemLibrary.h"
 #include "GameFramework/Character.h"
+#include "AIController.h"
 #include "../Monster/C_BaseMonster.h"
 
 UC_RangedUltimate::UC_RangedUltimate()
@@ -79,16 +80,30 @@ void UC_RangedUltimate::HandleNotifyEvent(FGameplayEventData Payload)
 
 	const FVector BoxExtent(BoxHalfExtentX, BoxHalfExtentY, BoxHalfExtentZ);
 
-	// Box Overlap — Pawn 채널, AC_BaseMonster 필터
-	TArray<AActor*> HitActors;
-	UKismetSystemLibrary::BoxOverlapActors(
-		GetWorld(),
+	// Box Overlap — 캐릭터 회전 반영, Pawn 채널, AC_BaseMonster 필터
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	TArray<FOverlapResult> Overlaps;
+	GetWorld()->OverlapMultiByObjectType(
+		Overlaps,
 		BoxCenter,
-		BoxExtent,
-		TArray<TEnumAsByte<EObjectTypeQuery>>{ ObjectTypeQuery3 },
-		AC_BaseMonster::StaticClass(),
-		TArray<AActor*>{ AvatarActor },
-		HitActors);
+		AvatarActor->GetActorQuat(),
+		ObjectQueryParams,
+		FCollisionShape::MakeBox(BoxExtent),
+		QueryParams);
+
+	TArray<AActor*> HitActors;
+	for (const FOverlapResult& Overlap : Overlaps)
+	{
+		if (Cast<AC_BaseMonster>(Overlap.GetActor()))
+		{
+			HitActors.AddUnique(Overlap.GetActor());
+		}
+	}
 
 	// 넉백 적용 — 방향: 시전자 → 각 타겟 (수평만), LaunchCharacter 직접 호출
 	for (AActor* Target : HitActors)
@@ -111,6 +126,12 @@ void UC_RangedUltimate::HandleNotifyEvent(FGameplayEventData Payload)
 			FGameplayTag::RequestGameplayTag(FName("State.KnockbackImmune"))))
 		{
 			continue;
+		}
+
+		// AI 이동 중단 — BT가 즉시 이동 명령을 재발행해 넉백을 상쇄하지 않도록
+		if (AAIController* AIC = Cast<AAIController>(TargetCharacter->GetController()))
+		{
+			AIC->StopMovement();
 		}
 
 		FVector Direction = Target->GetActorLocation() - AvatarActor->GetActorLocation();
@@ -148,6 +169,5 @@ void UC_RangedUltimate::EndAbility(
 		}
 	}
 
-	ApplySkillCooldown();
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
