@@ -652,15 +652,6 @@ void AC_BasePlayerCharactor::OnAttack(const FInputActionValue &Value)
 {
 	if (!abilitySystemComponent.IsValid())
 		return;
-
-	// const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
-
-	// FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
-
-	// FGameplayTagContainer AbilityTags;
-	// AbilityTags.AddTag(Tag);
-
-	// abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
 }
 
 //// moved to GAS
@@ -706,9 +697,6 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 	}
 
 	// for checking test gameplay ability
-
-	// abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
-
 	abilitySystemComponent->characterAbilitiesGiven = true;
 
 	if (UC_SkillManagerComponent *SkillManager = FindComponentByClass<UC_SkillManagerComponent>())
@@ -791,8 +779,6 @@ void AC_BasePlayerCharactor::SetHealth(float NewHealth)
 	if (attributeSetBase.IsValid())
 	{
 		attributeSetBase->Sethealth(NewHealth); // this code is dangerous cuz it directly sets the health value, bypassing any gameplay effects or modifiers
-
-		// ApplyModToAttribute(C_CharacterAttributeSetBase::GetHealthAttribute(), EGameplayModOp::Additive, NewHealth);
 	}
 }
 
@@ -825,8 +811,6 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 	float Health = Data.NewValue;
 	float MaxHealth = GetMaxHealth();
 
-	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
-
 	// 사망 처리
 	if (Data.NewValue <= 0.0f && Data.OldValue > 0.0f && !bIsDead && !bSuppressDeath)
 	{
@@ -858,8 +842,6 @@ void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData &Data)
 {
 	float Shield = Data.NewValue;
 	float MaxShield = GetMaxShield();
-
-	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
 }
 
 void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData &Data)
@@ -867,14 +849,9 @@ void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData &Da
 	float NewMoveSpeed = Data.NewValue;
 	float OldMoveSpeed = Data.OldValue;
 
-	/*UE_LOG(LogBasePlayerCharacter, Log, TEXT("MoveSpeed Changed: %.2f -> %.2f"),
-		OldMoveSpeed, NewMoveSpeed);*/
-
 	if (UCharacterMovementComponent *MovementComp = GetCharacterMovement())
 	{
 		MovementComp->MaxWalkSpeed = NewMoveSpeed;
-
-		// UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
 	}
 }
 
@@ -882,17 +859,6 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data
 {
 	float Stamina = Data.NewValue;
 	float MaxStamina = GetMaxStamina();
-
-	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
-
-	// if (Data.NewValue <= 0.f)
-	//{
-	//	abilitySystemComponent->CancelAbilities(
-	//		nullptr,   // WithTags
-	//		nullptr,   // WithoutTags
-	//		SprintAbilityClass
-	//	);
-	// }
 }
 
 void AC_BasePlayerCharactor::SaveCharacterState()
