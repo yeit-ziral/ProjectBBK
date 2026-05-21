@@ -123,13 +123,6 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 	if (Data.EvaluatedData.Attribute == GethealthAttribute())
 	{
 		Sethealth(FMath::Clamp(Gethealth(), 0.0f, GetmaxHealth()));
-
-		// 죽음 처리
-		if (Gethealth() <= 0.0f)
-		{
-			// TODO: 죽음 이벤트
-			UE_LOG(LogTemp, Warning, TEXT("Character Dead!"));
-		}
 	}
 
 	// ===== ⭐ Mana 처리 (궁극기 게이지) =====

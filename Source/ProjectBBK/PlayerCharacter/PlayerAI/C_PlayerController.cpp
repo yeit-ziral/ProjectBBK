@@ -5,6 +5,7 @@
 #include "../C_BasePlayerCharactor.h"
 #include "AbilitySystemComponent.h"
 #include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EngineUtils.h"
@@ -24,6 +25,17 @@ void AC_PlayerController::BeginPlay()
 	// 서버(싱글플레이어 포함)에서만 스폰
 	if (!HasAuthority())
 		return;
+
+	//IMC를 컨트롤러에서 한번만 추가 - 캐릭터 교체와 무관하게 유지됨
+	if (ULocalPlayer* LP = GetLocalPlayer())
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LP))
+		{
+			if(playerMappingContext)
+				Subsystem->AddMappingContext(playerMappingContext, 0);
+		}
+	}
 
 	// 스폰 위치: 레벨에 배치된 첫 번째 PlayerStart 기준
 	FTransform SpawnTransform = FTransform::Identity;
@@ -101,6 +113,7 @@ void AC_PlayerController::SetupInputComponent()
 
 void AC_PlayerController::OnSwitchChar0Input()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Input] OnSwitchChar0Input CALLED"));
 	SwitchToCharacter(0);
 }
 
@@ -109,32 +122,65 @@ void AC_PlayerController::OnSwitchChar1Input()
 	SwitchToCharacter(1);
 }
 
-void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
+void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Switch] Called: NextIndex=%d, Current=%d, bForce=%d"), NextIndex, currentCharacterIndex, bForce);
+
 	if (bIsSwitching)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: bIsSwitching"));
 		return;
-	if (bIsSwitching)
-		return;
+	}
 	if (NextIndex == currentCharacterIndex)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: same index"));
 		return;
+	}
 	if (!characterRoster.IsValidIndex(NextIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: invalid index"));
 		return;
+	}
 
 	// SkillWheel이 열려 있으면 캐릭터 교체 차단
-	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+	if (!bForce)
 	{
-		static const FGameplayTag SkillWheelTag = FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen"));
-		if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(SkillWheelTag))
-			return;
+		if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+		{
+			static const FGameplayTag SkillWheelTag = FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen"));
+			if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(SkillWheelTag))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: SkillWheel open"));
+				return;
+			}
+		}
 	}
 
 	AC_BasePlayerCharactor *OldChar = characterRoster[currentCharacterIndex];
 	AC_BasePlayerCharactor *NewChar = characterRoster[NextIndex];
 
 	if (!OldChar || !NewChar)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: null char"));
 		return;
+	}
+
+	// 강제 교체가 아닐 때만 살아있는지 확인
+	if (!bForce && NewChar->bIsDead)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: NewChar is dead"));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[Switch] Proceeding with switch"));
 
 	bIsSwitching = true;
+
+	// 교체 중 health 변동으로 인한 오사 방지
+	for (AC_BasePlayerCharactor* Char : characterRoster)
+	{
+		if (Char)
+			Char->bSuppressDeath = true;
+	}
 
 	// 새 캐릭터를 현재 위치/회전으로 이동
 	NewChar->SetActorLocationAndRotation(
@@ -147,8 +193,9 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	// 새 캐릭터 활성화
 	NewChar->SetActorHiddenInGame(false);
 	NewChar->SetActorEnableCollision(true);
-
-	OldChar->SaveCharacterState();
+	
+	if (!OldChar->bIsDead)
+		OldChar->SaveCharacterState();
 	UAbilitySystemComponent* ASC = nullptr;
 
 	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
@@ -175,9 +222,13 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	currentCharacterIndex = NextIndex;
 
 	if (ASC)
+	{
 		NewChar->RestoreActiveEffects(ASC);
 
-
+		// 공유 ASC에서 State.Dead 태그 제거(죽은 캐릭터에서 오염됨)
+		FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
+		ASC->RemoveLooseGameplayTag(DeadTag);
+	}
 
 	// 이전 캐릭터 비활성화
 	OldChar->SetActorHiddenInGame(true);
@@ -185,6 +236,14 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 
 	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
 	OnCharacterSwitched.Broadcast(NextIndex);
+
+	// 교체 완료 후 오사 방지 해제
+	for (AC_BasePlayerCharactor* Char : characterRoster)
+	{
+		if(Char)
+			Char->bSuppressDeath = false;
+	}
+
 	bIsSwitching = false;
 
 	// 교체 완료 후 쿨타임 시작
@@ -198,6 +257,28 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 		switchCooldownDuration,
 		false
 	);
+}
+
+void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor* DeadCharacter)
+{ 
+	int32 NextLivingIndex = -1;
+	for (int32 i = 0; i < characterRoster.Num(); i++)
+	{
+		if (characterRoster[i] == DeadCharacter)
+			continue;
+
+		if(characterRoster[i] && characterRoster[i]->IsAlive())
+		{
+			NextLivingIndex = i;
+			break;
+		}
+	}
+
+	if (NextLivingIndex != -1)
+	{
+		SwitchToCharacter(NextLivingIndex, true);
+		// 모두 사망이면 아무것도 안 함 - FinishDying에서 이미 숨김 처리됨
+	}
 }
 
 void AC_PlayerController::SwitchToNextCharacter()

@@ -75,8 +75,6 @@ protected:
 	UPROPERTY()
 	class UC_ChracterAttributeSetBase* attributeSetBase;
 
-	FGameplayTag deadTag;
-
 	FDelegateHandle healthChangedDelegateHandle;
 	FDelegateHandle maxHealthChangedDelegateHandle;
 
