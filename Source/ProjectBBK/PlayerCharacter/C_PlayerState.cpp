@@ -14,8 +14,6 @@ AC_PlayerState::AC_PlayerState()
 	attributeSetBase = CreateDefaultSubobject<UC_ChracterAttributeSetBase>(TEXT("AttributeSetBase"));
 
 	NetUpdateFrequency = 100.0f; // too low update speed can cause perceived lag
-
-	deadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
 }
 
 UAbilitySystemComponent* AC_PlayerState::GetAbilitySystemComponent() const

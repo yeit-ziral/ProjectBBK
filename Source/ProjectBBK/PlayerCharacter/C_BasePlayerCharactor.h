@@ -19,6 +19,7 @@ class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
 struct FInputActionInstance;
+class AC_PlayerController;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBasePlayerCharacter, Log, All);
 
@@ -90,6 +91,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character")
 	virtual void FinishDying();
+
+	UFUNCTION()
+	void OnDeathMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
 	void OnASCInitialized();
@@ -182,6 +186,9 @@ protected:
 	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData &Data);
 	virtual void OnStaminaChanged(const FOnAttributeChangeData &Data);
 
+public:
+	bool bIsDead = false;
+
 protected:
 	// 카메라 블렌딩
 	bool bCameraBlending = false;
@@ -244,7 +251,6 @@ protected:
 
 	TWeakObjectPtr<class UC_ChracterAttributeSetBase> attributeSetBase;
 
-	FGameplayTag deadTag;
 	FGameplayTag effectRemoveOnDeathTag;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Character")
@@ -284,4 +290,6 @@ private:
 	bool bCharacterInitiailized = false;
 
 	FCharacterSavedState savedState;
+
+	TWeakObjectPtr<AC_PlayerController> cachedDeathController;
 };

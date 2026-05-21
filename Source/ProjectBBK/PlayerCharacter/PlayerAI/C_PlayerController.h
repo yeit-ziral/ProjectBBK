@@ -23,7 +23,9 @@ public:
 
 	// 캐릭터 교체 (0-based index). Blueprint에서도 호출 가능.
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
-	void SwitchToCharacter(int32 NextIndex);
+	void SwitchToCharacter(int32 NextIndex, bool bForce = false);
+
+	void HandleCharacterDeath(AC_BasePlayerCharactor* DeadCharacter);
 
 	// Tab키: 다음 캐릭터로 순환
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")

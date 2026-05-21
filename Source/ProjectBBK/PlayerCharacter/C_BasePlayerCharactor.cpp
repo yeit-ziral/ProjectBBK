@@ -63,7 +63,6 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer &O
 
 	bAlwaysRelevant = true;
 
-	deadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
 	effectRemoveOnDeathTag = FGameplayTag::RequestGameplayTag(FName("State.RemoveOnDeath"));
 
 	AIControllerClass = AC_PlayerAIController::StaticClass();
@@ -318,8 +317,6 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 	attributeSetBase = PS->GetAttributeSetBase();
 
-	abilitySystemComponent->SetTagMapCount(deadTag, 0);
-
 	InitializeAttributes();
 
 	RestoreCharacterState();
@@ -384,7 +381,7 @@ UAbilitySystemComponent *AC_BasePlayerCharactor::GetAbilitySystemComponent() con
 
 bool AC_BasePlayerCharactor::IsAlive() const
 {
-	return GetHealth() > 0.0f;
+	return !bIsDead;
 }
 
 void AC_BasePlayerCharactor::RemoveCharacterAbilities()
@@ -416,6 +413,10 @@ void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 
 void AC_BasePlayerCharactor::Die()
 {
+	cachedDeathController = Cast<AC_PlayerController>(GetController());
+
+	bIsDead = true;
+
 	RemoveCharacterAbilities();
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -432,12 +433,20 @@ void AC_BasePlayerCharactor::Die()
 		FGameplayTagContainer EffectTagsToRemove;
 		EffectTagsToRemove.AddTag(effectRemoveOnDeathTag);
 		int32 NumEffectsRemoved = abilitySystemComponent->RemoveActiveEffectsWithTags(EffectTagsToRemove);
-		abilitySystemComponent->AddLooseGameplayTag(deadTag);
 	}
 
 	if (deathMontage)
 	{
-		PlayAnimMontage(deathMontage);
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->OnMontageEnded.AddDynamic(this, &AC_BasePlayerCharactor::OnDeathMontageEnded);
+			PlayAnimMontage(deathMontage);
+		}
+		else
+		{
+			FinishDying();
+		}
 	}
 	else
 	{
@@ -447,7 +456,31 @@ void AC_BasePlayerCharactor::Die()
 
 void AC_BasePlayerCharactor::FinishDying()
 {
-	Destroy();
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	GetCharacterMovement()->DisableMovement();
+
+	if (cachedDeathController.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[FinishDying] Controller valid, calling HandleCharacterDeath"));
+		cachedDeathController->HandleCharacterDeath(this);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[FinishDying] Controller is NULL"));
+	}
+}
+
+void AC_BasePlayerCharactor::OnDeathMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage != deathMontage)
+		return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+		AnimInstance->OnMontageEnded.RemoveDynamic(this, &AC_BasePlayerCharactor::OnDeathMontageEnded);
+
+	FinishDying();
 }
 
 float AC_BasePlayerCharactor::GetCharacterLevel() const
@@ -803,7 +836,7 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
 
 	// 사망 처리
-	if (Health <= 0.0f && IsAlive())
+	if (Data.NewValue <= 0.0f && Data.OldValue > 0.0f)
 	{
 		Die();
 	}

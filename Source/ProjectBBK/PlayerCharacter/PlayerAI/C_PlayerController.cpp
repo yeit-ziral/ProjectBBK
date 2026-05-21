@@ -101,6 +101,7 @@ void AC_PlayerController::SetupInputComponent()
 
 void AC_PlayerController::OnSwitchChar0Input()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Input] OnSwitchChar0Input CALLED"));
 	SwitchToCharacter(0);
 }
 
@@ -109,30 +110,56 @@ void AC_PlayerController::OnSwitchChar1Input()
 	SwitchToCharacter(1);
 }
 
-void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
+void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Switch] Called: NextIndex=%d, Current=%d, bForce=%d"), NextIndex, currentCharacterIndex, bForce);
+
 	if (bIsSwitching)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: bIsSwitching"));
 		return;
-	if (bIsSwitching)
-		return;
+	}
 	if (NextIndex == currentCharacterIndex)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: same index"));
 		return;
+	}
 	if (!characterRoster.IsValidIndex(NextIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: invalid index"));
 		return;
+	}
 
 	// SkillWheel이 열려 있으면 캐릭터 교체 차단
-	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+	if (!bForce)
 	{
-		static const FGameplayTag SkillWheelTag = FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen"));
-		if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(SkillWheelTag))
-			return;
+		if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+		{
+			static const FGameplayTag SkillWheelTag = FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen"));
+			if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(SkillWheelTag))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: SkillWheel open"));
+				return;
+			}
+		}
 	}
 
 	AC_BasePlayerCharactor *OldChar = characterRoster[currentCharacterIndex];
 	AC_BasePlayerCharactor *NewChar = characterRoster[NextIndex];
 
 	if (!OldChar || !NewChar)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: null char"));
 		return;
+	}
+
+	// 강제 교체가 아닐 때만 살아있는지 확인
+	if (!bForce && NewChar->bIsDead)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: NewChar is dead"));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[Switch] Proceeding with switch"));
 
 	bIsSwitching = true;
 
@@ -175,9 +202,13 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 	currentCharacterIndex = NextIndex;
 
 	if (ASC)
+	{
 		NewChar->RestoreActiveEffects(ASC);
 
-
+		// 공유 ASC에서 State.Dead 태그 제거(죽은 캐릭터에서 오염됨)
+		FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
+		ASC->RemoveLooseGameplayTag(DeadTag);
+	}
 
 	// 이전 캐릭터 비활성화
 	OldChar->SetActorHiddenInGame(true);
@@ -198,6 +229,28 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex)
 		switchCooldownDuration,
 		false
 	);
+}
+
+void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor* DeadCharacter)
+{ 
+	int32 NextLivingIndex = -1;
+	for (int32 i = 0; i < characterRoster.Num(); i++)
+	{
+		if (characterRoster[i] == DeadCharacter)
+			continue;
+
+		if(characterRoster[i] && characterRoster[i]->IsAlive())
+		{
+			NextLivingIndex = i;
+			break;
+		}
+	}
+
+	if (NextLivingIndex != -1)
+	{
+		SwitchToCharacter(NextLivingIndex, true);
+		// 모두 사망이면 아무것도 안 함 - FinishDying에서 이미 숨김 처리됨
+	}
 }
 
 void AC_PlayerController::SwitchToNextCharacter()
