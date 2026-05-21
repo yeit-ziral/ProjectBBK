@@ -352,8 +352,7 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 			abilitySystemComponent->SetNumericAttributeBase(
 				UC_ChracterAttributeSetBase::GetdamageAttribute(),
-				baseDamage
-			);
+				baseDamage);
 
 			if (attributeSetBase.IsValid())
 			{
@@ -437,7 +436,7 @@ void AC_BasePlayerCharactor::Die()
 
 	if (deathMontage)
 	{
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		UAnimInstance *AnimInstance = GetMesh()->GetAnimInstance();
 		if (AnimInstance)
 		{
 			AnimInstance->OnMontageEnded.AddDynamic(this, &AC_BasePlayerCharactor::OnDeathMontageEnded);
@@ -461,22 +460,15 @@ void AC_BasePlayerCharactor::FinishDying()
 	GetCharacterMovement()->DisableMovement();
 
 	if (cachedDeathController.IsValid())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[FinishDying] Controller valid, calling HandleCharacterDeath"));
 		cachedDeathController->HandleCharacterDeath(this);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[FinishDying] Controller is NULL"));
-	}
 }
 
-void AC_BasePlayerCharactor::OnDeathMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+void AC_BasePlayerCharactor::OnDeathMontageEnded(UAnimMontage *Montage, bool bInterrupted)
 {
 	if (Montage != deathMontage)
 		return;
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	UAnimInstance *AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance)
 		AnimInstance->OnMontageEnded.RemoveDynamic(this, &AC_BasePlayerCharactor::OnDeathMontageEnded);
 

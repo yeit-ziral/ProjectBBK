@@ -12,7 +12,7 @@
 
 float AC_PlayerController::GetSwitchCooldownRemaining() const
 {
-	if(!bSwitchOnCooldown)
+	if (!bSwitchOnCooldown)
 		return 0.0f;
 	float elapsed = GetWorld()->GetTimeSeconds() - switchCooldownStartTime;
 	return FMath::Max(0.f, switchCooldownDuration - elapsed);
@@ -26,13 +26,13 @@ void AC_PlayerController::BeginPlay()
 	if (!HasAuthority())
 		return;
 
-	//IMC를 컨트롤러에서 한번만 추가 - 캐릭터 교체와 무관하게 유지됨
-	if (ULocalPlayer* LP = GetLocalPlayer())
+	// IMC를 컨트롤러에서 한번만 추가 - 캐릭터 교체와 무관하게 유지됨
+	if (ULocalPlayer *LP = GetLocalPlayer())
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
-			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LP))
+		if (UEnhancedInputLocalPlayerSubsystem *Subsystem =
+				ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LP))
 		{
-			if(playerMappingContext)
+			if (playerMappingContext)
 				Subsystem->AddMappingContext(playerMappingContext, 0);
 		}
 	}
@@ -113,7 +113,6 @@ void AC_PlayerController::SetupInputComponent()
 
 void AC_PlayerController::OnSwitchChar0Input()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Input] OnSwitchChar0Input CALLED"));
 	SwitchToCharacter(0);
 }
 
@@ -124,35 +123,21 @@ void AC_PlayerController::OnSwitchChar1Input()
 
 void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[Switch] Called: NextIndex=%d, Current=%d, bForce=%d"), NextIndex, currentCharacterIndex, bForce);
-
 	if (bIsSwitching)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: bIsSwitching"));
 		return;
-	}
 	if (NextIndex == currentCharacterIndex)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: same index"));
 		return;
-	}
 	if (!characterRoster.IsValidIndex(NextIndex))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: invalid index"));
 		return;
-	}
 
 	// SkillWheel이 열려 있으면 캐릭터 교체 차단
 	if (!bForce)
 	{
-		if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+		if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
 		{
 			static const FGameplayTag SkillWheelTag = FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen"));
 			if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(SkillWheelTag))
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: SkillWheel open"));
 				return;
-			}
 		}
 	}
 
@@ -160,23 +145,16 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	AC_BasePlayerCharactor *NewChar = characterRoster[NextIndex];
 
 	if (!OldChar || !NewChar)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: null char"));
 		return;
-	}
 
 	// 강제 교체가 아닐 때만 살아있는지 확인
 	if (!bForce && NewChar->bIsDead)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Switch] BLOCKED: NewChar is dead"));
 		return;
-	}
-	UE_LOG(LogTemp, Warning, TEXT("[Switch] Proceeding with switch"));
 
 	bIsSwitching = true;
 
 	// 교체 중 health 변동으로 인한 오사 방지
-	for (AC_BasePlayerCharactor* Char : characterRoster)
+	for (AC_BasePlayerCharactor *Char : characterRoster)
 	{
 		if (Char)
 			Char->bSuppressDeath = true;
@@ -193,12 +171,12 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	// 새 캐릭터 활성화
 	NewChar->SetActorHiddenInGame(false);
 	NewChar->SetActorEnableCollision(true);
-	
+
 	if (!OldChar->bIsDead)
 		OldChar->SaveCharacterState();
-	UAbilitySystemComponent* ASC = nullptr;
+	UAbilitySystemComponent *ASC = nullptr;
 
-	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+	if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
 	{
 		ASC = PS->GetAbilitySystemComponent();
 	}
@@ -207,7 +185,7 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	{
 		OldChar->SaveActiveEffects(ASC);
 
-		//2. State 태그를 부여하는 Duration GE 제거
+		// 2. State 태그를 부여하는 Duration GE 제거
 		FGameplayTagContainer tagsToRemove;
 		tagsToRemove.AddTag(FGameplayTag::RequestGameplayTag(FName("State")));
 		tagsToRemove.AddTag(FGameplayTag::RequestGameplayTag(FName("Effect.Cooldown")));
@@ -238,9 +216,9 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	OnCharacterSwitched.Broadcast(NextIndex);
 
 	// 교체 완료 후 오사 방지 해제
-	for (AC_BasePlayerCharactor* Char : characterRoster)
+	for (AC_BasePlayerCharactor *Char : characterRoster)
 	{
-		if(Char)
+		if (Char)
 			Char->bSuppressDeath = false;
 	}
 
@@ -253,21 +231,21 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 
 	GetWorldTimerManager().SetTimer(
 		switchCooldownTimerHandle,
-		[this]() {bSwitchOnCooldown = false; },
+		[this]()
+		{ bSwitchOnCooldown = false; },
 		switchCooldownDuration,
-		false
-	);
+		false);
 }
 
-void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor* DeadCharacter)
-{ 
+void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadCharacter)
+{
 	int32 NextLivingIndex = -1;
 	for (int32 i = 0; i < characterRoster.Num(); i++)
 	{
 		if (characterRoster[i] == DeadCharacter)
 			continue;
 
-		if(characterRoster[i] && characterRoster[i]->IsAlive())
+		if (characterRoster[i] && characterRoster[i]->IsAlive())
 		{
 			NextLivingIndex = i;
 			break;
