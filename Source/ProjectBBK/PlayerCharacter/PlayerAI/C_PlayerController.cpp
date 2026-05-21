@@ -5,6 +5,7 @@
 #include "../C_BasePlayerCharactor.h"
 #include "AbilitySystemComponent.h"
 #include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EngineUtils.h"
@@ -24,6 +25,17 @@ void AC_PlayerController::BeginPlay()
 	// 서버(싱글플레이어 포함)에서만 스폰
 	if (!HasAuthority())
 		return;
+
+	//IMC를 컨트롤러에서 한번만 추가 - 캐릭터 교체와 무관하게 유지됨
+	if (ULocalPlayer* LP = GetLocalPlayer())
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LP))
+		{
+			if(playerMappingContext)
+				Subsystem->AddMappingContext(playerMappingContext, 0);
+		}
+	}
 
 	// 스폰 위치: 레벨에 배치된 첫 번째 PlayerStart 기준
 	FTransform SpawnTransform = FTransform::Identity;
@@ -163,6 +175,13 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 
 	bIsSwitching = true;
 
+	// 교체 중 health 변동으로 인한 오사 방지
+	for (AC_BasePlayerCharactor* Char : characterRoster)
+	{
+		if (Char)
+			Char->bSuppressDeath = true;
+	}
+
 	// 새 캐릭터를 현재 위치/회전으로 이동
 	NewChar->SetActorLocationAndRotation(
 		OldChar->GetActorLocation(),
@@ -174,8 +193,9 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	// 새 캐릭터 활성화
 	NewChar->SetActorHiddenInGame(false);
 	NewChar->SetActorEnableCollision(true);
-
-	OldChar->SaveCharacterState();
+	
+	if (!OldChar->bIsDead)
+		OldChar->SaveCharacterState();
 	UAbilitySystemComponent* ASC = nullptr;
 
 	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
@@ -216,6 +236,14 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 
 	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
 	OnCharacterSwitched.Broadcast(NextIndex);
+
+	// 교체 완료 후 오사 방지 해제
+	for (AC_BasePlayerCharactor* Char : characterRoster)
+	{
+		if(Char)
+			Char->bSuppressDeath = false;
+	}
+
 	bIsSwitching = false;
 
 	// 교체 완료 후 쿨타임 시작

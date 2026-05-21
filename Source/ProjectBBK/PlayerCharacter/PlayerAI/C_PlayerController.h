@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "InputMappingContext.h"
 #include "C_PlayerController.generated.h"
 
 class AC_BasePlayerCharactor;
@@ -46,7 +47,6 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|CharacterRoster")
 	float GetSwitchCooldownRemaining() const;
-	//////////////
 
 protected:
 	virtual void BeginPlay() override;
@@ -75,6 +75,9 @@ protected:
 	// Tab키로 순환 교체
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_SwitchCharNext;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputMappingContext* playerMappingContext;
 
 private:
 	void OnSwitchChar0Input();

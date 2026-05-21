@@ -836,9 +836,12 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
 
 	// 사망 처리
-	if (Data.NewValue <= 0.0f && Data.OldValue > 0.0f)
+	if (Data.NewValue <= 0.0f && Data.OldValue > 0.0f && !bIsDead && !bSuppressDeath)
 	{
-		Die();
+		if (GetController() != nullptr) // 현재 조종 중인 캐릭터만 사망 처리
+		{
+			Die();
+		}
 	}
 }
 
@@ -916,7 +919,7 @@ void AC_BasePlayerCharactor::RestoreCharacterState()
 	if (!attributeSetBase.IsValid())
 		return;
 
-	if (savedState.health < 0.f) // 첫 소유 -> 최대값으로
+	if (savedState.health <= 0.f) // 첫 소유 -> 최대값으로
 	{
 		SetHealth(GetMaxHealth());
 		SetShield(0.f);

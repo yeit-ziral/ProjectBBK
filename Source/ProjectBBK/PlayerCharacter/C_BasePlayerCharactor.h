@@ -188,6 +188,7 @@ protected:
 
 public:
 	bool bIsDead = false;
+	bool bSuppressDeath = false;
 
 protected:
 	// 카메라 블렌딩
