@@ -4,26 +4,43 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
-//#include "../Data/MonsterSpawnData.h"
 #include "C_MonsterSpawnManager.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllMonstersDefeated);
+
 /**
- * 
+ *
  */
-UCLASS()
+UCLASS(BlueprintType)
 class PROJECTBBK_API UC_MonsterSpawnManager : public UObject
 {
 	GENERATED_BODY()
+
 public:
     void Initialize(UWorld* World);
 
-    class AActor* SpawnMonster(TSubclassOf<AActor> MonsterClass, const FVector& Location, const FRotator& Rotation);
+    // 몬스터 스폰 + 생존 추적 자동 등록
+    UFUNCTION(BlueprintCallable, Category = "Spawn")
+    AActor* SpawnMonster(TSubclassOf<AActor> MonsterClass, const FVector& Location, const FRotator& Rotation);
 
+    // 새 던전 시작 시 호출 — 카운터 초기화
+    UFUNCTION(BlueprintCallable, Category = "Spawn")
+    void Reset();
+
+    UFUNCTION(BlueprintPure, Category = "Spawn")
+    int32 GetAliveCount() const { return aliveCount; }
+
+    // 모든 몬스터 사망 시 브로드캐스트
+    UPROPERTY(BlueprintAssignable, Category = "Spawn")
+    FOnAllMonstersDefeated OnAllMonstersDefeated;
 
     void SetSpawnDataTable(UDataTable* InTable);
 
 private:
     UPROPERTY()
     UWorld* world;
-	
+
+    int32 aliveCount = 0;
+
+    void OnMonsterDied();
 };

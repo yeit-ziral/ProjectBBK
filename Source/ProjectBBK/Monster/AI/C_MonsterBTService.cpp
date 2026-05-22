@@ -59,9 +59,11 @@ void UC_MonsterBTService::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* Nod
     {
         BB->SetValueAsObject(TargetActorKey.SelectedKeyName, ClosestPlayer);
         BB->SetValueAsFloat(DistanceToTargetKey.SelectedKeyName, BestDist);
+        AICon->SetFocus(ClosestPlayer);
     }
     else
     {
         BB->ClearValue(TargetActorKey.SelectedKeyName);
+        AICon->ClearFocus(EAIFocusPriority::Gameplay);
     }
 }

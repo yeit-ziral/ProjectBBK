@@ -6,9 +6,12 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AC_BossMonster::AC_BossMonster()
 {
+	bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
 void AC_BossMonster::BeginPlay()
@@ -65,14 +68,19 @@ void AC_BossMonster::BeginPlay()
 
 // ─── 공격 쿨다운 체크 ─────────────────────────────────────────────────────────
 
+bool AC_BossMonster::CanAutoAttack() const
+{
+    return CanNormalAttack() || CanPatternAttack();
+}
+
 bool AC_BossMonster::CanNormalAttack() const
 {
-    return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= normalAttackInterval;
+    return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= GetAttackCooldown();
 }
 
 bool AC_BossMonster::CanPatternAttack() const
 {
-    return GetWorld()->GetTimeSeconds() - lastPatternAttackTime >= patternAttackInterval;
+    return GetWorld()->GetTimeSeconds() - lastPatternAttackTime >= GetSpecialCooldown();
 }
 
 // ─── BT Task 호출 진입점 ──────────────────────────────────────────────────────

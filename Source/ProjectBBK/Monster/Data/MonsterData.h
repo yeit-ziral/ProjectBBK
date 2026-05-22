@@ -17,4 +17,12 @@ struct FMonsterData : public FTableRowBase
     UPROPERTY(EditAnywhere) float MoveSpeed                     = 600.0f;
     UPROPERTY(EditAnywhere) float NormalCooldown                = 1.5f;
     UPROPERTY(EditAnywhere) float SpecialCooldown               = 6.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Reposition") bool  bEnableReposition      = true;
+    UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionDesiredRange = 250.0f;
+    UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionMinRange     = 0.0f;
+    UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionSpeed        = 300.0f;
+    UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionStrafeWeight = 0.5f;
+    UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionBand         = 60.0f;
+    UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionFlipInterval = 2.5f;
 };

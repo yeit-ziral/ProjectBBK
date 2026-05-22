@@ -8,6 +8,7 @@
 #include "C_MonsterASC.h"
 #include "AbilitySystemGlobals.h"
 #include "Net/UnrealNetwork.h"
+#include "../C_BaseMonster.h"
 
 UC_MonsterAttributeSet::UC_MonsterAttributeSet()
 {
@@ -224,6 +225,12 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 		if (Mitigated > 0.0f)
 		{
 			ChargeAttackerMana(Data, Mitigated);
+
+			if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
+			{
+				monster->StartHitFlash();
+				monster->TakeHitReaction();
+			}
 		}
 
         CheckAndHandleDeath(NewHP);
