@@ -817,7 +817,7 @@ void AC_BasePlayerCharactor::SetMana(float NewMana)
 
 void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 {
-	if (Data.NewValue < Data.OldValue)
+	if (Data.NewValue < Data.OldValue && !bSuppressDeath)
 		PlayHitFlash();
 
 	// 사망 처리
@@ -872,7 +872,7 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data
 
 void AC_BasePlayerCharactor::OnLevelChanged(const FOnAttributeChangeData& Data)
 {
-	if (Data.NewValue > Data.OldValue && levelUpEffect)
+	if (Data.NewValue > Data.OldValue && levelUpEffect && !bSuppressDeath)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAttached(
 			levelUpEffect,
