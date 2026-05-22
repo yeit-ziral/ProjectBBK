@@ -9,6 +9,8 @@
 
 class AC_BasePlayerCharactor;
 class UInputAction;
+class UC_EndingScreenWidget;
+class UC_GameOverWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterSwitched, int32, NewCharacterIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSwitchCooldownStarted, float, Duration, int32, CharacterIndex);
@@ -27,6 +29,9 @@ public:
 	void SwitchToCharacter(int32 NextIndex, bool bForce = false);
 
 	void HandleCharacterDeath(AC_BasePlayerCharactor* DeadCharacter);
+
+	// TravelToNextLevel 직전에 GameInstance에 현재 상태를 저장 — UC_BBKGameInstance에서 호출
+	void SaveStateForLevelTransition();
 
 	// Tab키: 다음 캐릭터로 순환
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
@@ -78,6 +83,20 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputMappingContext* playerMappingContext;
+
+	// BP_PlayerController에서 WBP_EndingScreen 할당
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UC_EndingScreenWidget> EndingScreenClass;
+
+	// BP_PlayerController에서 WBP_GameOverScreen 할당
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UC_GameOverWidget> GameOverScreenClass;
+
+	UFUNCTION()
+	void ShowEndingScreen();
+
+	UFUNCTION()
+	void ShowGameOverScreen();
 
 private:
 	void OnSwitchChar0Input();

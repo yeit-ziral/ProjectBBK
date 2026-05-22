@@ -13,7 +13,7 @@ AC_PlayerState::AC_PlayerState()
 
 	attributeSetBase = CreateDefaultSubobject<UC_ChracterAttributeSetBase>(TEXT("AttributeSetBase"));
 
-	NetUpdateFrequency = 100.0f; // too low update speed can cause perceived lag
+	SetNetUpdateFrequency(100.0f);
 }
 
 UAbilitySystemComponent* AC_PlayerState::GetAbilitySystemComponent() const

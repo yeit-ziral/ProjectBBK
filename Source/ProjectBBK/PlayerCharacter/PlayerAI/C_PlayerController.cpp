@@ -1,6 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_PlayerController.h"
+#include "../../Skills/C_SkillManagerComponent.h"
+#include "../../LevelSystem/C_BBKGameInstance.h"
+#include "../../LevelSystem/C_EndingScreenWidget.h"
+#include "../../LevelSystem/C_GameOverWidget.h"
 #include "../C_PlayerState.h"
 #include "../C_BasePlayerCharactor.h"
 #include "AbilitySystemComponent.h"
@@ -21,6 +25,10 @@ float AC_PlayerController::GetSwitchCooldownRemaining() const
 void AC_PlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 레벨 재시작·전환 후 항상 게임 입력 모드로 초기화 (엔딩 화면 이후 되돌아올 때 대비)
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
 
 	// 서버(싱글플레이어 포함)에서만 스폰
 	if (!HasAuthority())
@@ -68,18 +76,39 @@ void AC_PlayerController::BeginPlay()
 		}
 	}
 
-	// 0번 캐릭터로 시작
-	if (characterRoster.IsValidIndex(0))
+	// 저장된 상태가 있으면 해당 캐릭터 인덱스로 시작, 없으면 0번
+	UC_BBKGameInstance* GI_Ref = Cast<UC_BBKGameInstance>(GetGameInstance());
+	const int32 startIndex = (GI_Ref && GI_Ref->HasSavedState())
+		? FMath::Clamp(GI_Ref->GetSavedActiveCharacterIndex(), 0, characterRoster.Num() - 1)
+		: 0;
+
+	if (characterRoster.IsValidIndex(startIndex))
 	{
-		characterRoster[0]->SetActorHiddenInGame(false);
-		characterRoster[0]->SetActorEnableCollision(true);
-		Possess(characterRoster[0]);
-		currentCharacterIndex = 0;
+		characterRoster[startIndex]->SetActorHiddenInGame(false);
+		characterRoster[startIndex]->SetActorEnableCollision(true);
+		Possess(characterRoster[startIndex]);
+		currentCharacterIndex = startIndex;
 
 		// WBP_HUD는 각 캐릭터의 BeginPlay(Possess 전)에서 생성되므로
 		// NativeConstruct 시점엔 어빌리티가 아직 없음.
 		// Possess 완료(= AddCharacterAbilities 완료) 후 브로드캐스트해야 HUD 초기화 가능.
-		OnCharacterSwitched.Broadcast(0);
+		OnCharacterSwitched.Broadcast(startIndex);
+
+		// HUD 초기화 완료 후 이전 레벨의 저장 상태 복원 (activeCharacterIndex 기반 어트리뷰트 적용)
+		if (GI_Ref)
+		{
+			UAbilitySystemComponent* SharedASC = nullptr;
+			if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+				SharedASC = PS->GetAbilitySystemComponent();
+
+			GI_Ref->RestoreGameState(characterRoster, startIndex, SharedASC);
+		}
+	}
+
+	// 게임 클리어 이벤트 바인딩 — 마지막 레벨 포탈 진입 시 엔딩 화면 표시
+	if (UC_BBKGameInstance* GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
+	{
+		GI->OnGameClear.AddDynamic(this, &AC_PlayerController::ShowEndingScreen);
 	}
 }
 
@@ -215,6 +244,15 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
 	OnCharacterSwitched.Broadcast(NextIndex);
 
+	// HUD 초기화(SwitchCommonSkill(0)) 이후 저장된 스킬 인덱스 복원
+	// InitializeDefaultSkill이 항상 0번으로 리셋하므로 Broadcast 이후 덮어써야 함
+	if (UC_SkillManagerComponent* SM = NewChar->FindComponentByClass<UC_SkillManagerComponent>())
+	{
+		const int32 SavedSkillIndex = NewChar->GetSavedActiveSkillIndex();
+		if (SavedSkillIndex > 0)
+			SM->SwitchCommonSkill(SavedSkillIndex);
+	}
+
 	// 교체 완료 후 오사 방지 해제
 	for (AC_BasePlayerCharactor *Char : characterRoster)
 	{
@@ -255,7 +293,10 @@ void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadChara
 	if (NextLivingIndex != -1)
 	{
 		SwitchToCharacter(NextLivingIndex, true);
-		// 모두 사망이면 아무것도 안 함 - FinishDying에서 이미 숨김 처리됨
+	}
+	else
+	{
+		ShowGameOverScreen();
 	}
 }
 
@@ -265,4 +306,38 @@ void AC_PlayerController::SwitchToNextCharacter()
 		return;
 	const int32 NextIndex = (currentCharacterIndex + 1) % characterRoster.Num();
 	SwitchToCharacter(NextIndex);
+}
+
+void AC_PlayerController::SaveStateForLevelTransition()
+{
+	UAbilitySystemComponent* SharedASC = nullptr;
+	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+		SharedASC = PS->GetAbilitySystemComponent();
+
+	if (UC_BBKGameInstance* GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
+		GI->SaveGameState(characterRoster, currentCharacterIndex, SharedASC);
+}
+
+void AC_PlayerController::ShowEndingScreen()
+{
+	if (!ensure(EndingScreenClass)) return;
+
+	UC_EndingScreenWidget* Widget = CreateWidget<UC_EndingScreenWidget>(this, EndingScreenClass);
+	if (!Widget) return;
+
+	Widget->AddToViewport(10);
+	SetInputMode(FInputModeUIOnly());
+	SetShowMouseCursor(true);
+}
+
+void AC_PlayerController::ShowGameOverScreen()
+{
+	if (!ensure(GameOverScreenClass)) return;
+
+	UC_GameOverWidget* Widget = CreateWidget<UC_GameOverWidget>(this, GameOverScreenClass);
+	if (!Widget) return;
+
+	Widget->AddToViewport(10);
+	SetInputMode(FInputModeUIOnly());
+	SetShowMouseCursor(true);
 }

@@ -246,6 +246,9 @@ Skills/
 | WBP_RockSpearAim | ✅ 완료 | 조준선 위젯, GA_RockSpear 생명주기 직접 관리, 마우스 위치 추적 |
 | WBP_SkillWheel | ✅ 완료 | Z키 토글, 마우스 각도 기반 섹터 판정, 호버 강조, 클릭 시 스킬 교체 |
 | WBP_HUD (캐릭터 교체 연동) | ✅ 완료 | OnCharacterSwitched 델리게이트로 교체 시 SkillIcon·UltimateGauge 재초기화 |
+| WBP_LoadingScreen | 🔧 C++ 완료 | UC_LoadingScreenWidget 기반. MoviePlayer 대신 Viewport Overlay 방식 사용. BP 미할당 시 Slate 폴백(검정+텍스트) 자동 사용 — BindWidget: LoadingBackground·DescriptionText·TipText·LoadingBar |
+| WBP_EndingScreen | 🔧 C++ 완료 | UC_EndingScreenWidget 기반, BP_PlayerController의 EndingScreenClass 슬롯에 할당 필요. OnReturnToMainMenu·OnQuitGame 버튼 포함 |
+| WBP_GameOverScreen | 🔧 C++ 완료 | UC_GameOverWidget 기반, BP_PlayerController의 GameOverScreenClass 슬롯에 할당 필요. 전원 사망 시 HandleCharacterDeath에서 자동 표시 |
 
 ### Effects
 | Effect | 상태 | 비고 |
@@ -278,6 +281,15 @@ Skills/
 | Object | 상태 | 비고 |
 |--------|------|------|
 | C_ExpOrb / BP_ExpOrb | ✅ 완료 (C++ 구현) | Overlap → GE_GainExperience 적용 후 Destroy, 스폰 주체 미구현 |
+
+### Level System
+| Class / Asset | 상태 | 비고 |
+|---------------|------|------|
+| UDA_LevelSequence (LevelSequenceData.h) | 🔧 C++ 완료 | 에디터에서 DA_LevelSequence 에셋 생성 후 Levels 배열에 레벨·BGM·텍스처 항목 채우기 필요 |
+| UC_BBKGameInstance (C_BBKGameInstance) | 🔧 C++ 완료 | 레벨 이동·로딩 오버레이·캐릭터 상태 저장/복원·에셋 프리로드 포함. BP_GameInstance: DA_LevelSequence·ActorClassesToPreload 슬롯 할당 필요 |
+| AC_BBKGameMode (C_BBKGameMode) | 🔧 C++ 완료 | DefaultPawnClass=nullptr 설정 완료. BeginPlay에서 AC_BaseMonster·AC_Portal 자동 수집. 각 레벨 GameMode로 설정 필요 |
+| AC_Portal (C_Portal) | 🔧 C++ 완료 | BP_Portal 생성 후 Niagara 에셋 할당, 각 레벨에 배치 필요. 기본 비활성화 → 몬스터 전멸 시 GameMode가 ActivatePortal() 호출 |
+| BGM 재생 로직 | 📋 계획 중 | StartGame() 내 TODO 주석으로 보존. 메인 메뉴 연동 시 구현 예정 |
 
 ---
 
@@ -328,6 +340,10 @@ Skills/
 26. **`InstancedPerActor` GA의 쿨다운 델리게이트가 캐릭터 교체 후 수신 안 될 때** — `InstancedPerActor` 정책에서 첫 `ActivateAbility` 전에는 인스턴스가 없어 `GetPrimaryInstance()` = null → CDO에 바인딩됨. 실제 쿨다운 브로드캐스트는 인스턴스에서 발생하므로 수신 불가. `ApplyGenericCooldown`에서 `GetClass()->GetDefaultObject<UC_SkillBase>()` 경유로 CDO에도 함께 브로드캐스트해야 함.
 27. **`InitializeSkillIcon` 재호출 후 `OnCooldownStarted`가 SkillTag mismatch로 무시될 때** — `InitializeSkillIcon`에서 찾은 어빌리티의 `skillTag`로 위젯의 `SkillTag`를 업데이트하지 않으면 이전 캐릭터의 태그가 남아 새 어빌리티의 쿨다운 브로드캐스트가 tag check에서 필터링됨. `SkillTag = SkillData.skillTag` 업데이트 필수. `InitializeFromCommonSkill`에는 있으나 `InitializeSkillIcon`에서 누락되기 쉬움.
 28. **`QuerySkillCooldown`의 `OutDuration`이 Remaining과 같은 값으로 반환될 때** — `GetActiveEffectsTimeRemainingAndDuration`의 `Value`(Duration)가 SetByCaller Duration GE에서 올바르지 않은 값을 반환하는 경우가 있음. `OutDuration`을 GE에서 읽지 말고 `CachedSkillData.cooldown`에서 직접 가져올 것.
+29. **커스텀 GameMode에서 PlayerStart 위치에 구형 오브젝트(`DefaultPawn0`)가 스폰될 때** — `AGameModeBase`의 기본 `DefaultPawnClass`가 `ADefaultPawn`(구형 메시 + 콜리전)이기 때문. 커스텀 PlayerController가 캐릭터를 직접 스폰하는 구조에서는 GameMode 생성자에서 반드시 `DefaultPawnClass = nullptr` 설정.
+30. **MoviePlayer 로딩 화면에서 UMG 위젯 레이아웃이 표시 안 될 때** — `GetMoviePlayer()->SetupLoadingScreen()`에 `UUserWidget::TakeWidget()`으로 변환한 Slate를 전달해도 UMG Designer 레이아웃이 렌더링되지 않음. Event Construct는 실행되지만 화면에 보이지 않음. → `GEngine->GameViewport->AddViewportWidgetContent()`로 교체. UMG 위젯은 `GameInstance`를 outer로 `CreateWidget` 하여 레벨 전환 중 GC 방지.
+31. **레벨 전환 후 새 레벨에서 캐릭터를 조종할 수 없을 때** — `ShowEndingScreen()`이 `SetInputMode(FInputModeUIOnly)`를 설정한 상태에서 레벨이 재로드되면 새 PlayerController가 입력 모드를 초기화하지 않아 발생. `PlayerController::BeginPlay()` 시작부에 `SetInputMode(FInputModeGameOnly())` + `SetShowMouseCursor(false)` 명시 필요 (HasAuthority 체크 이전).
+32. **PIE에서 Actor 스폰 시 매번 1~2초 프리징이 발생할 때** — PIE에서만 발생하고 Standalone Game에서는 미발생이면 실제 성능 문제가 아님. Blueprint Debugger 추적, Output Log 동기 갱신, World Outliner UI 업데이트 등 에디터 오버헤드가 원인. 코드 수정 불필요, 출시 빌드에서는 정상.
 
 ---
 
@@ -718,6 +734,75 @@ AC_ExpOrb (AActor)
 - `ExpAmount`와 `GE_GainExperience`는 BP에서 할당 (C++ 하드코딩 금지)
 - 스폰 주체(몬스터 Die 등)는 C_ExpOrb 외부에서 처리
 
+### 전체 화면 UI 표시 패턴 (ShowEndingScreen / ShowGameOverScreen 참고)
+PlayerController를 outer로 위젯을 생성해 뷰포트에 올리고 UI 전용 입력 모드로 전환.
+```
+CreateWidget<T>(this, WidgetClass)   // this = PlayerController
+→ AddToViewport(10)                  // ZOrder 10: HUD 위에 표시
+→ SetInputMode(FInputModeUIOnly())
+→ SetShowMouseCursor(true)
+```
+- `PlayerController`를 outer로 생성 → 레벨 전환 없이 표시되는 화면에 적합
+- 레벨 전환 중에도 위젯이 살아있어야 하는 경우(로딩 화면 등)에는 `GameInstance`를 outer로 사용 (아래 패턴 참고)
+
+### 레벨 전환 로딩 화면 패턴 (UC_BBKGameInstance / UC_LoadingScreenWidget 참고)
+MoviePlayer 대신 GameViewport 오버레이 방식 사용. UMG 위젯은 GameInstance를 outer로 생성해 레벨 전환 중 GC 방지.
+```
+TravelToNextLevel()
+  → ShowLoadingOverlay(Entry)
+      → LoadingScreenWidgetClass 할당 시:
+          CreateWidget<UC_LoadingScreenWidget>(this, Class)  ← this = GameInstance (GC 방지)
+          InitializeLoadingScreen(Entry)
+          TakeWidget() → AddViewportWidgetContent(Slate, ZOrder=100)
+      → 미할당 시: 순수 Slate(SOverlay + SColorBlock + STextBlock) 폴백
+  → OpenLevelBySoftObjectPtr()
+
+LoadComplete()
+  → Elapsed 계산 → MinLoadingTime 남은 시간 타이머 후 HideLoadingOverlay()
+      → RemoveViewportWidgetContent + LoadingScreenWidgetInstance = nullptr
+```
+- MoviePlayer는 Slate 렌더 파이프라인만 지원 — UMG Designer 레이아웃 렌더링 불가 (Debugging Checklist 30번)
+- `HideLoadingOverlay()`는 `LoadComplete()`에서만 호출 — 절대 OpenLevel 이후 즉시 호출 금지
+
+### 레벨 간 캐릭터 상태 유지 패턴 (UC_BBKGameInstance 참고)
+GameInstance(레벨 간 영속)에 `FPersistentGameState`로 저장. Non-seamless travel은 PlayerState가 재생성되므로 GameInstance가 유일한 저장소.
+```
+// 저장 (레벨 이동 직전)
+TravelToNextLevel()
+  → PlayerController->SaveStateForLevelTransition()
+      → SaveGameState(roster, activeIndex, SharedASC)
+          활성 캐릭터: GetHealth/Stamina/Shield/Mana 직접 읽기
+          비활성 캐릭터: GetSavedXxxValue() (마지막 SaveCharacterState 기록값)
+          SharedASC: experience, level 읽기
+          activeCharacterIndex 저장
+
+// 복원 (새 레벨 PlayerController::BeginPlay())
+startIndex = GI->HasSavedState() ? GetSavedActiveCharacterIndex() : 0
+Possess(characterRoster[startIndex])
+OnCharacterSwitched.Broadcast(startIndex)
+GI->RestoreGameState(roster, startIndex, SharedASC)
+  활성 캐릭터: SetNumericAttributeBase로 어트리뷰트 직접 설정
+  비활성 캐릭터: InjectPreSavedState → 나중 Possess 시 RestoreCharacterState 자동 적용
+  activeSkillIndex: SwitchCommonSkill(savedIndex) — HUD 초기화 이후 호출이므로 즉시 반영
+```
+- 비활성 캐릭터 스킬 인덱스는 Possess 시 `InitializeDefaultSkill`이 0으로 리셋하므로 레벨 전환 후 첫 교체 시 0번으로 시작 (허용 범위)
+
+### 캐릭터 교체 후 CommonSkill 인덱스 유지 패턴
+`InitializeDefaultSkill`이 항상 activeSkillIndex=0으로 리셋하므로 OnCharacterSwitched.Broadcast 이후 덮어써야 함.
+```
+SwitchToCharacter(NextIndex)
+  OldChar->SaveCharacterState()
+    → FCharacterSavedState.activeSkillIndex = SM->activeSkillIndex
+
+  Possess(NewChar) → AddCharacterAbilities → InitializeDefaultSkill → activeSkillIndex = 0
+
+  OnCharacterSwitched.Broadcast() → HUD → SwitchCommonSkill(0)
+
+  [복원] SM->SwitchCommonSkill(NewChar->GetSavedActiveSkillIndex())
+    → savedIndex > 0 인 경우만 — 0번은 InitializeDefaultSkill이 이미 처리
+    → OnCommonSkillSwitched 브로드캐스트 → HUD 아이콘 갱신
+```
+
 ---
 
 ## Design Decisions
@@ -808,3 +893,33 @@ AC_ExpOrb (AActor)
 - **대안:** `Results[0].Value` (GE의 Duration)만 사용
 - **선택 이유:** `GetActiveEffectsTimeRemainingAndDuration`이 SetByCaller Duration GE에서 전체 Duration 대신 TimeRemaining과 같은 값을 반환하는 케이스가 확인됨
 - **트레이드오프:** GE Duration과 스킬 데이터 cooldown 값이 다른 경우(런타임 쿨다운 스케일링 등)엔 스킬 데이터 값이 부정확할 수 있음
+
+### 레벨 전환 로딩 화면 — Viewport Overlay vs MoviePlayer
+- **선택:** `GEngine->GameViewport->AddViewportWidgetContent()` + GameInstance를 outer로 UMG 위젯 생성
+- **대안:** `GetMoviePlayer()->SetupLoadingScreen()` + `TakeWidget()`
+- **선택 이유:** MoviePlayer는 Slate 렌더 파이프라인만 지원하여 UMG Designer 레이아웃을 렌더링하지 못함. Event Construct는 실행되지만 화면에 아무것도 표시되지 않음. GameViewport는 레벨 전환 중에도 살아있어 오버레이가 확실히 표시됨.
+- **트레이드오프:** `LoadComplete()`에서 명시적으로 `HideLoadingOverlay()` 호출 필요. MinLoadingTime은 타이머로 직접 구현.
+
+### 레벨 간 상태 저장 위치 — GameInstance vs PlayerState (Seamless Travel)
+- **선택:** `UC_BBKGameInstance`에 `FPersistentGameState` 저장, Non-seamless travel 사용
+- **대안:** Seamless Travel로 PlayerState 유지 (멀티플레이어 표준 방식)
+- **선택 이유:** 이 프로젝트는 싱글플레이어이며 `OpenLevel`(Non-seamless) 사용. PlayerState는 레벨 전환 시 재생성되므로 GameInstance가 유일한 영속 저장소. Seamless Travel은 멀티플레이어 인프라를 요구해 범위 초과.
+- **트레이드오프:** 비활성 캐릭터 어트리뷰트는 새 레벨에서 Possess 전까지 초기화 상태. `InjectPreSavedState`로 `savedState`를 미리 주입해 Possess 시 `RestoreCharacterState`가 자동 적용되도록 처리.
+
+### 레벨 시작 캐릭터 인덱스 — 항상 0 vs 저장 인덱스
+- **선택:** `GI->HasSavedState() ? GetSavedActiveCharacterIndex() : 0`으로 동적 결정
+- **대안:** 항상 0번 캐릭터로 시작
+- **선택 이유:** 레벨 이동 중에도 플레이어가 선택한 캐릭터가 유지되어야 자연스러운 게임 흐름. 저장 상태 없는 최초 시작 시 0번으로 폴백.
+- **트레이드오프:** `FPersistentGameState.activeCharacterIndex`를 `SaveGameState` 시 반드시 저장해야 함. `RestoreGameState`의 `ActiveIndex` 파라미터도 이 값으로 전달해야 어트리뷰트 복원 대상이 올바르게 설정됨.
+
+### Game Over UI 상속 구조 — UC_EndingScreenWidget 상속 vs 독립 클래스
+- **선택:** `UC_GameOverWidget : public UC_EndingScreenWidget` — 빈 서브클래스로 시작
+- **대안:** `UUserWidget`을 직접 상속한 독립 클래스
+- **선택 이유:** "메인 메뉴로", "게임 종료" 버튼 로직(`OnReturnToMainMenu`, `OnQuitGame`)을 그대로 재사용. 향후 Retry 버튼은 서브클래스에만 추가하면 됨
+- **트레이드오프:** Ending(클리어)과 GameOver(실패)가 의미상 다른 화면이지만, 현재 버튼 동작이 동일하므로 분리 실익이 없음. Retry 기능 추가 시 서브클래스 확장으로 처리
+
+### Game Over 트리거 위치 — PlayerController vs GameMode
+- **선택:** `AC_PlayerController::HandleCharacterDeath()`에서 `NextLivingIndex == -1` 조건으로 직접 `ShowGameOverScreen()` 호출
+- **대안:** GameMode에서 플레이어 사망을 구독해 별도 처리
+- **선택 이유:** `HandleCharacterDeath`가 이미 "다음 생존 캐릭터 없음" 조건을 감지하고 있어 중복 로직 불필요. UI 표시도 PlayerController 책임 범위 안에 있음
+- **트레이드오프:** 멀티플레이어로 확장 시 서버-클라이언트 분리 필요. 싱글플레이어 전제이므로 현재 범위에서는 문제 없음

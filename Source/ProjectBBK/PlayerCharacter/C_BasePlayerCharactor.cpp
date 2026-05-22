@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BasePlayerCharactor.h"
+#include "../Skills/C_SkillManagerComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -866,10 +867,13 @@ void AC_BasePlayerCharactor::SaveCharacterState()
 	if (!attributeSetBase.IsValid())
 		return;
 
-	savedState.health = GetHealth();
-	savedState.shield = GetShield();
+	savedState.health  = GetHealth();
+	savedState.shield  = GetShield();
 	savedState.stamina = GetStamina();
-	savedState.mana = GetMana();
+	savedState.mana    = GetMana();
+
+	if (UC_SkillManagerComponent* SM = FindComponentByClass<UC_SkillManagerComponent>())
+		savedState.activeSkillIndex = SM->activeSkillIndex;
 }
 
 void AC_BasePlayerCharactor::RestoreCharacterState()
@@ -877,20 +881,30 @@ void AC_BasePlayerCharactor::RestoreCharacterState()
 	if (!attributeSetBase.IsValid())
 		return;
 
-	if (savedState.health <= 0.f) // 첫 소유 -> 최대값으로
+	if (savedState.health <= 0.f)
 	{
 		SetHealth(GetMaxHealth());
 		SetShield(0.f);
 		SetStamina(GetMaxStamina());
 		SetMana(0.f);
 	}
-	else // 저장된 상태로 복원
+	else
 	{
 		SetHealth(savedState.health);
 		SetShield(savedState.shield);
 		SetStamina(savedState.stamina);
 		SetMana(savedState.mana);
 	}
+	// 스킬 인덱스는 AddCharacterAbilities 이후에 적용해야 하므로 여기서 처리하지 않음
+	// → activeSkillIndex는 OnCharacterSwitched 핸들러(HUD)가 SwitchCommonSkill 호출 시 반영됨
+}
+
+void AC_BasePlayerCharactor::InjectPreSavedState(float Health, float Stamina, float Shield, float Mana)
+{
+	savedState.health  = Health;
+	savedState.stamina = Stamina;
+	savedState.shield  = Shield;
+	savedState.mana    = Mana;
 }
 
 void AC_BasePlayerCharactor::SaveActiveEffects(UAbilitySystemComponent *ASC)

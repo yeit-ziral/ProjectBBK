@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BaseMonster.h"
+#include "../LevelSystem/C_BBKGameMode.h"
 #include "Manager/C_AttackManagerComponent.h"
 #include "Manager/C_MonsterDataComponent.h"
 #include "Manager/C_GroggyComponent.h"
@@ -132,6 +133,12 @@ FName AC_BaseMonster::GetRowName() const
 
 void AC_BaseMonster::ExecuteDeathSequence()
 {
+	// GameMode에 몬스터 사망 알림 — cast 실패 시 조용히 무시
+	if (AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>())
+	{
+		GM->NotifyMonsterDead();
+	}
+
 	// 1. AI 영구 정지
 	if (AAIController* AIC = Cast<AAIController>(GetController()))
 	{
