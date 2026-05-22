@@ -31,7 +31,11 @@ EBTNodeResult::Type UC_BTTaskReposition::ExecuteTask(UBehaviorTreeComponent& Own
 	if (!target) return EBTNodeResult::Failed;
 
 	if (UCharacterMovementComponent* move = monster->GetCharacterMovement())
-		move->MaxWalkSpeed = monster->GetRepositionSpeed();
+	{
+		// GA가 이동을 막고 있을 때(MaxWalkSpeed=0)는 덮어쓰지 않음
+		if (move->MaxWalkSpeed > 0.f)
+			move->MaxWalkSpeed = monster->GetRepositionSpeed();
+	}
 
 	// 첫 번째 실행 시에만 초기화 (이후 세션은 이전 상태 그대로 이어짐)
 	const float now = monster->GetWorld()->GetTimeSeconds();
@@ -80,6 +84,10 @@ void UC_BTTaskReposition::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 	}
 
 	if (bAttacking) return;
+
+	// GA가 이동을 막고 있을 때(MaxWalkSpeed=0)는 이동 입력 생략
+	if (UCharacterMovementComponent* mc = monster->GetCharacterMovement())
+		if (mc->MaxWalkSpeed <= 0.f) return;
 
 	FVector monsterLoc = monster->GetActorLocation();
 	FVector targetLoc  = target->GetActorLocation();

@@ -1,14 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "C_BossStormPatternGA.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Components/DecalComponent.h"
-#include "Kismet/KismetMathLibrary.h"
-#include "DrawDebugHelpers.h"
 #include "TimerManager.h"
 #include "AbilitySystemComponent.h"
+#include "Animation/AnimMontage.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "../../C_BossMonster.h"
 #include "../../Object/C_BossStorm.h"
 
@@ -16,7 +16,6 @@ UC_BossStormPatternGA::UC_BossStormPatternGA()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
-	// 발동 중 그로기 인터럽트 면제 — 스톰 액터는 GA 종료 후에도 독립 동작하므로 반드시 완주해야 함
 	FGameplayTagContainer patternTags;
 	patternTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Pattern.NonInterruptible"));
 	SetAssetTags(patternTags);
@@ -26,98 +25,130 @@ void UC_BossStormPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	AActor* BossActor = GetAvatarActorFromActorInfo();
-	if (!BossActor)
+	AActor* boss = GetAvatarActorFromActorInfo();
+	if (!boss)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
-	FVector BossLoc = BossActor->GetActorLocation();
+	ACharacter* bossChar = Cast<ACharacter>(boss);
+	FVector bossLoc = boss->GetActorLocation();
 
-	// 공전 반지름 랜덤 결정
-	cachedOrbitRadius = FMath::RandRange(patternRadius * 0.4f, patternRadius * 0.7f);
-	cachedBaseAngle = FMath::RandRange(0.f, 360.f);
+	// 이동 차단 태그
+	if (UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo())
+		asc->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")));
 
-	// 오빗 중심: 보스 XY + 보스 위치 기준 지면 Z
-	FHitResult BossGroundHit;
+	// 소환 몽타주 재생 (stormDelay에 맞춰 rate 조정)
+	if (summoningMontage && bossChar)
+	{
+		float montageLen = summoningMontage->GetPlayLength();
+		float rate = (montageLen > 0.f && stormDelay > 0.f) ? montageLen / stormDelay : 1.f;
+		bossChar->PlayAnimMontage(summoningMontage, rate);
+	}
+
+	// MaxWalkSpeed = 0으로 이동 차단 (MovementMode는 Walking 유지)
+	if (bossChar)
+	{
+		savedMaxWalkSpeed = bossChar->GetCharacterMovement()->MaxWalkSpeed;
+		bossChar->GetCharacterMovement()->StopMovementImmediately();
+		bossChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
+	}
+
+	// 스폰 위치 계산
+	cachedBaseAngle   = FMath::RandRange(0.f, 360.f);
+	cachedSpawnRadius = FMath::RandRange(patternRadius * 0.4f, patternRadius * 0.7f);
+
+	FHitResult bossGroundHit;
 	bool bBossHit = GetWorld()->LineTraceSingleByChannel(
-		BossGroundHit,
-		BossLoc + FVector(0, 0, 800.f),
-		BossLoc - FVector(0, 0, 2000.f),
-		ECC_WorldStatic
-	);
-	float bossGroundZ = bBossHit ? BossGroundHit.ImpactPoint.Z : BossLoc.Z;
-	cachedOrbitCenter = FVector(BossLoc.X, BossLoc.Y, bossGroundZ);
+		bossGroundHit,
+		bossLoc + FVector(0, 0, 800.f),
+		bossLoc - FVector(0, 0, 2000.f),
+		ECC_WorldStatic);
+	float bossGroundZ = bBossHit ? bossGroundHit.ImpactPoint.Z : bossLoc.Z;
 
-	// 각 오빗 포인트마다 개별 지면 탐색 → 데칼/스폰 위치 정확한 지면에 고정
 	cachedSpawnPoints.Empty();
+	cachedDecalActors.Empty();
+
 	for (int32 i = 0; i < circleCount; ++i)
 	{
-		float Angle = cachedBaseAngle + i * (360.f / circleCount);
-		float Rad = FMath::DegreesToRadians(Angle);
+		float angle = cachedBaseAngle + i * (360.f / circleCount);
+		float rad   = FMath::DegreesToRadians(angle);
 
-		FVector FlatPoint(
-			BossLoc.X + FMath::Cos(Rad) * cachedOrbitRadius,
-			BossLoc.Y + FMath::Sin(Rad) * cachedOrbitRadius,
-			BossLoc.Z
-		);
+		FVector flatPoint(
+			bossLoc.X + FMath::Cos(rad) * cachedSpawnRadius,
+			bossLoc.Y + FMath::Sin(rad) * cachedSpawnRadius,
+			bossLoc.Z);
 
-		FHitResult PointHit;
+		FHitResult pointHit;
 		bool bPointHit = GetWorld()->LineTraceSingleByChannel(
-			PointHit,
-			FlatPoint + FVector(0, 0, 800.f),
-			FlatPoint - FVector(0, 0, 2000.f),
-			ECC_WorldStatic
-		);
+			pointHit,
+			flatPoint + FVector(0, 0, 800.f),
+			flatPoint - FVector(0, 0, 2000.f),
+			ECC_WorldStatic);
 
-		FVector SpawnPos = bPointHit ? PointHit.ImpactPoint : FVector(FlatPoint.X, FlatPoint.Y, bossGroundZ);
-		cachedSpawnPoints.Add(SpawnPos);
+		FVector spawnPos = bPointHit ? pointHit.ImpactPoint : FVector(flatPoint.X, flatPoint.Y, bossGroundZ);
+		cachedSpawnPoints.Add(spawnPos);
 
 		if (magicCircleDecal)
 		{
 			if (UDecalComponent* decal = UGameplayStatics::SpawnDecalAtLocation(
-				GetWorld(), magicCircleDecal, FVector(decalSize), SpawnPos, FRotator(-90.f, 0, 0), stormDelay))
+				GetWorld(), magicCircleDecal, FVector(decalSize), spawnPos, FRotator(-90.f, 0, 0), stormDelay))
 			{
 				cachedDecalActors.Add(decal->GetOwner());
 			}
 		}
 	}
 
-	FTimerHandle StormTimer;
-	GetWorld()->GetTimerManager().SetTimer(StormTimer, this, &UC_BossStormPatternGA::SpawnStorms, stormDelay, false);
-
-	UE_LOG(LogTemp, Warning, TEXT("StormPattern: Orbit pattern armed, delay=%.1f, count=%d, radius=%.0f, speed=%.0f deg/s"),
-		stormDelay, circleCount, cachedOrbitRadius, orbitSpeed);
-}
-
-void UC_BossStormPatternGA::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
-	// 취소(보스 사망 등)로 데칼이 남아있을 경우 즉시 제거
-	if (bWasCancelled)
-	{
-		for (TObjectPtr<AActor>& decalActor : cachedDecalActors)
-		{
-			if (IsValid(decalActor))
-				decalActor->Destroy();
-		}
-	}
-	cachedDecalActors.Empty();
-
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+	GetWorld()->GetTimerManager().SetTimer(spawnTimerHandle, this, &UC_BossStormPatternGA::SpawnStorms, stormDelay, false);
 }
 
 void UC_BossStormPatternGA::SpawnStorms()
 {
-	for (int32 i = 0; i < cachedSpawnPoints.Num(); ++i)
+	for (const FVector& spawnPos : cachedSpawnPoints)
 	{
-		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(stormActorClass, cachedSpawnPoints[i], FRotator::ZeroRotator);
-		if (AC_BossStorm* Storm = Cast<AC_BossStorm>(SpawnedActor))
+		AActor* spawned = GetWorld()->SpawnActor<AActor>(stormActorClass, spawnPos, FRotator::ZeroRotator);
+		if (AC_BossStorm* storm = Cast<AC_BossStorm>(spawned))
+			storm->InitProjectile(stormLaunchDelay, stormFlySpeed, stormMaxTravelDistance);
+	}
+
+	// 폭풍이 실제로 날기 시작하는 시점(stormLaunchDelay 후)에 GA 종료
+	// — 그 전까지는 태그가 살아있어 보스 일반공격이 차단됨
+	GetWorld()->GetTimerManager().SetTimer(
+		launchTimerHandle, this, &UC_BossStormPatternGA::OnStormsLaunched, stormLaunchDelay, false);
+}
+
+void UC_BossStormPatternGA::OnStormsLaunched()
+{
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UC_BossStormPatternGA::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (AActor* boss = GetAvatarActorFromActorInfo())
+	{
+		if (ACharacter* bossChar = Cast<ACharacter>(boss))
 		{
-			float StartAngle = cachedBaseAngle + i * (360.f / circleCount);
-			Storm->InitOrbit(cachedOrbitCenter, cachedOrbitRadius, StartAngle, orbitSpeed);
+			bossChar->GetCharacterMovement()->MaxWalkSpeed = savedMaxWalkSpeed;
+			if (summoningMontage) bossChar->StopAnimMontage(summoningMontage);
 		}
 	}
 
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	if (UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo())
+		asc->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")));
+
+	if (bWasCancelled)
+	{
+		for (TObjectPtr<AActor>& decalActor : cachedDecalActors)
+			if (IsValid(decalActor)) decalActor->Destroy();
+	}
+	cachedDecalActors.Empty();
+
+	if (UWorld* world = GetWorld())
+	{
+		world->GetTimerManager().ClearTimer(spawnTimerHandle);
+		world->GetTimerManager().ClearTimer(launchTimerHandle);
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

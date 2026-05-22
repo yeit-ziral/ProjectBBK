@@ -29,11 +29,7 @@ void AC_BossBeam::BeginPlay()
 
     beam->Deactivate();
 
-    // ÀÏÁ¤ ½Ã°£ µÚ ½ÇÁ¦ ºö
-    FTimerHandle handle;
-    GetWorld()->GetTimerManager().SetTimer(handle, this, &AC_BossBeam::SwitchToBeam, previewTime, false);
-
-    SetLifeSpan(lifeTime);
+    GetWorld()->GetTimerManager().SetTimer(previewTimerHandle, this, &AC_BossBeam::SwitchToBeam, previewTime, false);
 }
 
 // Called every frame
@@ -45,10 +41,10 @@ void AC_BossBeam::Tick(float DeltaTime)
 
     FVector bossLocation = ownerBoss->GetActorLocation();
 
-    // ÇöÀç ºöÀÌ ¹Ù¶óº¸´Â ¹æÇâ
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¶óº¸´ï¿½ ï¿½ï¿½ï¿½ï¿½
     FVector forward = GetActorForwardVector();
 
-    // º¸½º + ¾Õ¹æÇâ * °Å¸®
+    // ï¿½ï¿½ï¿½ï¿½ + ï¿½Õ¹ï¿½ï¿½ï¿½ * ï¿½Å¸ï¿½
     FVector newLocation = bossLocation + forward * distanceFromBoss;
 
     SetActorLocation(newLocation);
@@ -61,10 +57,17 @@ void AC_BossBeam::Tick(float DeltaTime)
     }
 }
 
+void AC_BossBeam::DisableAutoSwitch()
+{
+    GetWorld()->GetTimerManager().ClearTimer(previewTimerHandle);
+}
+
 void AC_BossBeam::SwitchToBeam()
 {
-    bIsPreview = false;
+    // ë‚´ë¶€ íƒ€ì´ë¨¸ë³´ë‹¤ ì™¸ë¶€ì—ì„œ ë¨¼ì € í˜¸ì¶œëœ ê²½ìš° íƒ€ì´ë¨¸ ì •ë¦¬
+    GetWorld()->GetTimerManager().ClearTimer(previewTimerHandle);
 
+    bIsPreview = false;
     previewPlane->SetVisibility(false);
     beam->Activate();
 }

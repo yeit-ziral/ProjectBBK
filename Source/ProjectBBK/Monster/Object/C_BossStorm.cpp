@@ -1,13 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "C_BossStorm.h"
 
 #include "Components/SphereComponent.h"
-#include "NiagaraComponent.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/Character.h"
+#include "TimerManager.h"
 
 AC_BossStorm::AC_BossStorm()
 {
@@ -31,61 +32,90 @@ void AC_BossStorm::BeginPlay()
 {
 	Super::BeginPlay();
 
-	SetLifeSpan(stormLifeTime);
+	// 발사 전까지 Tick 비활성
+	SetActorTickEnabled(false);
 }
 
-void AC_BossStorm::InitOrbit(const FVector& InCenter, float InRadius, float InStartAngleDeg, float InSpeed)
+void AC_BossStorm::InitProjectile(float inLaunchDelay, float inFlySpeed, float inMaxTravelDistance)
 {
-	bOrbit = true;
-	orbitCenter = InCenter;
-	orbitRadius = InRadius;
-	orbitAngle = InStartAngleDeg;
-	orbitSpeed = InSpeed;
+	flySpeed          = inFlySpeed;
+	maxTravelDistance = inMaxTravelDistance;
+
+	GetWorld()->GetTimerManager().SetTimer(launchTimerHandle, this, &AC_BossStorm::LaunchTowardPlayer, inLaunchDelay, false);
+}
+
+void AC_BossStorm::LaunchTowardPlayer()
+{
+	APawn* player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!player)
+	{
+		Destroy();
+		return;
+	}
+
+	FVector toPlayer = player->GetActorLocation() - GetActorLocation();
+	toPlayer.Z = 0.f;
+	flyDirection = toPlayer.GetSafeNormal();
+
+	SetActorRotation(flyDirection.Rotation());
+
+	bFlying = true;
+	SetActorTickEnabled(true);
 }
 
 void AC_BossStorm::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!bOrbit) return;
+	if (!bFlying) return;
 
-	orbitAngle += orbitSpeed * DeltaTime;
+	float step = flySpeed * DeltaTime;
+	distanceTraveled += step;
 
-	float Rad = FMath::DegreesToRadians(orbitAngle);
-	float newX = orbitCenter.X + FMath::Cos(Rad) * orbitRadius;
-	float newY = orbitCenter.Y + FMath::Sin(Rad) * orbitRadius;
-
-	// 현재 위치 아래 지면 탐색 → 지형이 고르지 않아도 항상 지면에 붙음
-	FHitResult Hit;
-	float groundZ = orbitCenter.Z;
-	if (GetWorld()->LineTraceSingleByChannel(
-		Hit,
-		FVector(newX, newY, orbitCenter.Z + 500.f),
-		FVector(newX, newY, orbitCenter.Z - 1000.f),
-		ECC_WorldStatic))
+	if (distanceTraveled >= maxTravelDistance)
 	{
-		groundZ = Hit.ImpactPoint.Z;
+		Destroy();
+		return;
 	}
 
-	SetActorLocation(FVector(newX, newY, groundZ));
+	FVector newLoc = GetActorLocation() + flyDirection * step;
+
+	// 지면 추적 — 경사면에서도 지면에 붙어서 이동
+	FHitResult hit;
+	if (GetWorld()->LineTraceSingleByChannel(
+		hit,
+		newLoc + FVector(0, 0, 500.f),
+		newLoc - FVector(0, 0, 1000.f),
+		ECC_WorldStatic))
+	{
+		newLoc.Z = hit.ImpactPoint.Z;
+	}
+
+	SetActorLocation(newLoc);
 }
 
-void AC_BossStorm::OnDamageSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void AC_BossStorm::OnDamageSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!OtherActor) return;
+	if (bHit || !OtherActor) return;
+
+	// 플레이어 캐릭터에만 반응
+	APawn* pawn = Cast<APawn>(OtherActor);
+	if (!pawn || !pawn->IsPlayerControlled()) return;
 
 	IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(OtherActor);
 	if (!ascInterface) return;
 
-	UAbilitySystemComponent* abilitySystemComponent = ascInterface->GetAbilitySystemComponent();
-	if (!abilitySystemComponent || !damageEffect) return;
+	UAbilitySystemComponent* asc = ascInterface->GetAbilitySystemComponent();
+	if (!asc || !damageEffect) return;
 
-	FGameplayEffectContextHandle context = abilitySystemComponent->MakeEffectContext();
+	bHit = true;
+
+	FGameplayEffectContextHandle context = asc->MakeEffectContext();
 	context.AddSourceObject(this);
-
-	FGameplayEffectSpecHandle spec = abilitySystemComponent->MakeOutgoingSpec(damageEffect, 1.f, context);
+	FGameplayEffectSpecHandle spec = asc->MakeOutgoingSpec(damageEffect, 1.f, context);
 	if (spec.IsValid())
-	{
-		abilitySystemComponent->ApplyGameplayEffectSpecToSelf(*spec.Data.Get());
-	}
+		asc->ApplyGameplayEffectSpecToSelf(*spec.Data.Get());
+
+	Destroy();
 }

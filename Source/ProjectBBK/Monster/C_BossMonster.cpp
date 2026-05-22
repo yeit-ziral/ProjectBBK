@@ -50,6 +50,24 @@ void AC_BossMonster::BeginPlay()
         {
             OnInvincibleTagChanged(Tag, NewCount);
         });
+
+        // 패턴 종료(태그 제거) 시 쿨타임을 종료 시점 기준으로 리셋
+        // — 패턴 시작 시점 기준으로 카운트하면 패턴 지속 시간보다 쿨타임이 짧을 때 즉시 재발동됨
+        auto resetPatternCooldown = [this](const FGameplayTag&, int32 NewCount)
+        {
+            if (NewCount == 0)
+                lastPatternAttackTime = GetWorld()->GetTimeSeconds();
+        };
+
+        monsterASC->RegisterGameplayTagEvent(
+            FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern")),
+            EGameplayTagEventType::NewOrRemoved
+        ).AddWeakLambda(this, resetPatternCooldown);
+
+        monsterASC->RegisterGameplayTagEvent(
+            FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")),
+            EGameplayTagEventType::NewOrRemoved
+        ).AddWeakLambda(this, resetPatternCooldown);
     }
 
     // GA 등록 — BT Task에서 활성화
@@ -70,11 +88,20 @@ void AC_BossMonster::BeginPlay()
 
 bool AC_BossMonster::CanAutoAttack() const
 {
+    if (monsterASC && (
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")))))
+        return false;
     return CanNormalAttack() || CanPatternAttack();
 }
 
 bool AC_BossMonster::CanNormalAttack() const
 {
+    if (monsterASC && (
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")))))
+        return false;
+
     return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= GetAttackCooldown();
 }
 
