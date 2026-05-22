@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "InputMappingContext.h"
 #include "C_PlayerController.generated.h"
 
 class AC_BasePlayerCharactor;
@@ -23,7 +24,9 @@ public:
 
 	// 캐릭터 교체 (0-based index). Blueprint에서도 호출 가능.
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
-	void SwitchToCharacter(int32 NextIndex);
+	void SwitchToCharacter(int32 NextIndex, bool bForce = false);
+
+	void HandleCharacterDeath(AC_BasePlayerCharactor* DeadCharacter);
 
 	// Tab키: 다음 캐릭터로 순환
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
@@ -44,7 +47,6 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|CharacterRoster")
 	float GetSwitchCooldownRemaining() const;
-	//////////////
 
 protected:
 	virtual void BeginPlay() override;
@@ -73,6 +75,9 @@ protected:
 	// Tab키로 순환 교체
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_SwitchCharNext;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputMappingContext* playerMappingContext;
 
 private:
 	void OnSwitchChar0Input();

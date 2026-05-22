@@ -9,22 +9,6 @@
 class AC_PlayerRangedProjectile;
 class UGameplayEffect;
 
-/**
- * 원거리 캐릭터 기본 공격.
- *
- * 흐름:
- *  1. ActivateAbility → CommitAbility → 몽타주 재생
- *  2. AnimNotify에서 Event.Montage.FireProjectile 태그 전송
- *  3. OnFireProjectile → 카메라 전방 LineTrace로 조준점 계산
- *                      → ProjectileSocket에서 투사체 스폰 → EndAbility
- *
- * Blueprint 설정:
- *  - AttackMontage      : 공격 애니메이션 몽타주
- *  - ProjectileClass    : AC_PlayerRangedProjectile (또는 자식 BP)
- *  - DamageEffectClass  : GE_BasicDamage
- *  - BaseDamage         : 기본 데미지 수치
- *  - ProjectileSocketName : 발사 위치로 사용할 스켈레탈 메시 소켓 이름
- */
 UCLASS()
 class PROJECTBBK_API UC_RangeAttackGA : public UC_CharacterGA
 {
@@ -34,16 +18,6 @@ public:
 	UC_RangeAttackGA();
 
 protected:
-	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-	                             const FGameplayAbilityActorInfo* ActorInfo,
-	                             const FGameplayAbilityActivationInfo ActivationInfo,
-	                             const FGameplayEventData* TriggerEventData) override;
-
-	UFUNCTION()
-	void OnFireProjectile(FGameplayEventData Payload);
-
-	// ── Blueprint에서 설정할 프로퍼티 ──────────────────────────────
-
 	UPROPERTY(EditDefaultsOnly, Category = "RangeAttack|Animation")
 	UAnimMontage* AttackMontage;
 

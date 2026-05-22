@@ -22,13 +22,15 @@ public:
 
 	virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
 
-	/**  AnimBP에서 AimOffset 구동에 사용. 카메라 pitch(-90 ~ 90) */
-	UPROPERTY(BlueprintReadOnly, Category = "RangeCharacter|Aim")
-	float aimPitch = 0.0f;
+	// 감지 반경 (에디터에서 조정 가능)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RangeCharacter|Combat")
+	float detectionRange = 600.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "RangeCharacter|Aim")
-	float aimYaw = 0.0f;
+	// 감지 범위 내 가장 가까운 살아있는 몬스터 반환 (없으면 nullptr)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "RangeCharacter|Combat")
+	class AC_BaseMonster *GetHighestPriorityTarget() const;
 
-private:
-	void UpdateAimOffset();
+	// 타겟 방향으로 캐릭터를 즉시 회전 (XY 평면)
+	UFUNCTION(BlueprintCallable, Category = "RangeCharacter|Combat")
+	void FaceTarget(AActor *Target);
 };

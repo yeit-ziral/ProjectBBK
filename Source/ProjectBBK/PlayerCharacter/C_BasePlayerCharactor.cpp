@@ -17,6 +17,8 @@
 #include "PlayerAI/C_PlayerAIController.h"
 #include "PlayerAI/C_PlayerController.h"
 #include "../Skills/C_SkillManagerComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "../Monster/C_BaseMonster.h"
 
 DEFINE_LOG_CATEGORY(LogBasePlayerCharacter);
 
@@ -61,7 +63,6 @@ AC_BasePlayerCharactor::AC_BasePlayerCharactor(const class FObjectInitializer &O
 
 	bAlwaysRelevant = true;
 
-	deadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
 	effectRemoveOnDeathTag = FGameplayTag::RequestGameplayTag(FName("State.RemoveOnDeath"));
 
 	AIControllerClass = AC_PlayerAIController::StaticClass();
@@ -200,21 +201,25 @@ void AC_BasePlayerCharactor::RestoreCameraAfterBlend()
 	bCameraBlending = false;
 }
 
-void AC_BasePlayerCharactor::OnAbilityInputPressed(const FInputActionInstance& Instance)
+void AC_BasePlayerCharactor::OnAbilityInputPressed(const FInputActionInstance &Instance)
 {
-	if (!abilitySystemComponent.IsValid()) return;
+	if (!abilitySystemComponent.IsValid())
+		return;
 
-	const FGameplayTag* Tag = abilityTagMap.Find(Instance.GetSourceAction());
-	if (!Tag || !Tag->IsValid()) return;
+	const FGameplayTag *Tag = abilityTagMap.Find(Instance.GetSourceAction());
+	if (!Tag || !Tag->IsValid())
+		return;
 	abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(*Tag));
 }
 
-void AC_BasePlayerCharactor::OnAbilityInputReleased(const FInputActionInstance& Instance)
+void AC_BasePlayerCharactor::OnAbilityInputReleased(const FInputActionInstance &Instance)
 {
-	if (!abilitySystemComponent.IsValid()) return;
+	if (!abilitySystemComponent.IsValid())
+		return;
 
-	const FGameplayTag* Tag = releaseEventTagMap.Find(Instance.GetSourceAction());
-	if (!Tag || !Tag->IsValid()) return;
+	const FGameplayTag *Tag = releaseEventTagMap.Find(Instance.GetSourceAction());
+	if (!Tag || !Tag->IsValid())
+		return;
 	FGameplayEventData EventData;
 	abilitySystemComponent->HandleGameplayEvent(*Tag, &EventData);
 }
@@ -242,9 +247,10 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent *PlayerIn
 		// Ability input → GAS 연결
 		abilityTagMap.Empty();
 		releaseEventTagMap.Empty();
-		for (const FAbilityInputBinding& Binding : abilityInputBindings)
+		for (const FAbilityInputBinding &Binding : abilityInputBindings)
 		{
-			if (!Binding.inputAction) continue;
+			if (!Binding.inputAction)
+				continue;
 			abilityTagMap.Add(Binding.inputAction, Binding.abilityTag);
 			if (Binding.releaseEventTag.IsValid())
 				releaseEventTagMap.Add(Binding.inputAction, Binding.releaseEventTag);
@@ -311,8 +317,6 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 	attributeSetBase = PS->GetAttributeSetBase();
 
-	abilitySystemComponent->SetTagMapCount(deadTag, 0);
-
 	InitializeAttributes();
 
 	RestoreCharacterState();
@@ -325,31 +329,35 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 		{
 			// Health 변경 감지
 			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-				attributeSetBase->GethealthAttribute())
+									  attributeSetBase->GethealthAttribute())
 				.AddUObject(this, &AC_BasePlayerCharactor::OnHealthChanged);
 
 			// Mana 변경 감지 (다시!)
 			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-				attributeSetBase->GetmanaAttribute())
+									  attributeSetBase->GetmanaAttribute())
 				.AddUObject(this, &AC_BasePlayerCharactor::OnManaChangedInternal);
 
 			// Shield 변경 감지
 			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-				attributeSetBase->GetshieldAttribute())
+									  attributeSetBase->GetshieldAttribute())
 				.AddUObject(this, &AC_BasePlayerCharactor::OnShieldChanged);
 
 			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-				attributeSetBase->GetmoveSpeedAttribute())
+									  attributeSetBase->GetmoveSpeedAttribute())
 				.AddUObject(this, &AC_BasePlayerCharactor::OnMoveSpeedChanged);
 
 			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-				attributeSetBase->GetstaminaAttribute())
+									  attributeSetBase->GetstaminaAttribute())
 				.AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
+
+			abilitySystemComponent->SetNumericAttributeBase(
+				UC_ChracterAttributeSetBase::GetdamageAttribute(),
+				baseDamage);
 
 			if (attributeSetBase.IsValid())
 			{
 				float InitialMoveSpeed = attributeSetBase->GetmoveSpeed();
-				if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+				if (UCharacterMovementComponent *MovementComp = GetCharacterMovement())
 				{
 					MovementComp->MaxWalkSpeed = InitialMoveSpeed;
 
@@ -372,7 +380,7 @@ UAbilitySystemComponent *AC_BasePlayerCharactor::GetAbilitySystemComponent() con
 
 bool AC_BasePlayerCharactor::IsAlive() const
 {
-	return GetHealth() > 0.0f;
+	return !bIsDead;
 }
 
 void AC_BasePlayerCharactor::RemoveCharacterAbilities()
@@ -404,6 +412,10 @@ void AC_BasePlayerCharactor::RemoveCharacterAbilities()
 
 void AC_BasePlayerCharactor::Die()
 {
+	cachedDeathController = Cast<AC_PlayerController>(GetController());
+
+	bIsDead = true;
+
 	RemoveCharacterAbilities();
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -420,12 +432,20 @@ void AC_BasePlayerCharactor::Die()
 		FGameplayTagContainer EffectTagsToRemove;
 		EffectTagsToRemove.AddTag(effectRemoveOnDeathTag);
 		int32 NumEffectsRemoved = abilitySystemComponent->RemoveActiveEffectsWithTags(EffectTagsToRemove);
-		abilitySystemComponent->AddLooseGameplayTag(deadTag);
 	}
 
 	if (deathMontage)
 	{
-		PlayAnimMontage(deathMontage);
+		UAnimInstance *AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->OnMontageEnded.AddDynamic(this, &AC_BasePlayerCharactor::OnDeathMontageEnded);
+			PlayAnimMontage(deathMontage);
+		}
+		else
+		{
+			FinishDying();
+		}
 	}
 	else
 	{
@@ -435,7 +455,24 @@ void AC_BasePlayerCharactor::Die()
 
 void AC_BasePlayerCharactor::FinishDying()
 {
-	Destroy();
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	GetCharacterMovement()->DisableMovement();
+
+	if (cachedDeathController.IsValid())
+		cachedDeathController->HandleCharacterDeath(this);
+}
+
+void AC_BasePlayerCharactor::OnDeathMontageEnded(UAnimMontage *Montage, bool bInterrupted)
+{
+	if (Montage != deathMontage)
+		return;
+
+	UAnimInstance *AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+		AnimInstance->OnMontageEnded.RemoveDynamic(this, &AC_BasePlayerCharactor::OnDeathMontageEnded);
+
+	FinishDying();
 }
 
 float AC_BasePlayerCharactor::GetCharacterLevel() const
@@ -615,15 +652,6 @@ void AC_BasePlayerCharactor::OnAttack(const FInputActionValue &Value)
 {
 	if (!abilitySystemComponent.IsValid())
 		return;
-
-	// const int32 AttackInputID = static_cast<int32>(ProjectBBKAbilityID::Attack);
-
-	// FGameplayTag Tag = FGameplayTag::RequestGameplayTag("Input.Attack");
-
-	// FGameplayTagContainer AbilityTags;
-	// AbilityTags.AddTag(Tag);
-
-	// abilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(Tag));
 }
 
 //// moved to GAS
@@ -669,12 +697,9 @@ void AC_BasePlayerCharactor::AddCharacterAbilities()
 	}
 
 	// for checking test gameplay ability
-
-	// abilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UC_TestGA::StaticClass(), 1, 0));
-
 	abilitySystemComponent->characterAbilitiesGiven = true;
 
-	if (UC_SkillManagerComponent* SkillManager = FindComponentByClass<UC_SkillManagerComponent>())
+	if (UC_SkillManagerComponent *SkillManager = FindComponentByClass<UC_SkillManagerComponent>())
 	{
 		SkillManager->InitializeDefaultSkill();
 	}
@@ -709,7 +734,7 @@ void AC_BasePlayerCharactor::InitializeAttributes()
 		FActiveGameplayEffectHandle ActiveGEHandle = abilitySystemComponent->ApplyGameplayEffectSpecToTarget(*NewHandle.Data.Get(), abilitySystemComponent.Get());
 	}
 
-	//GE가 리셋한 level/exp을 보존된 값으로 복원 + 레벨업 스탯 보너스 재적용
+	// GE가 리셋한 level/exp을 보존된 값으로 복원 + 레벨업 스탯 보너스 재적용
 	if (bPreserveProgression)
 	{
 		attributeSetBase->Setlevel(savedLevel);
@@ -754,8 +779,6 @@ void AC_BasePlayerCharactor::SetHealth(float NewHealth)
 	if (attributeSetBase.IsValid())
 	{
 		attributeSetBase->Sethealth(NewHealth); // this code is dangerous cuz it directly sets the health value, bypassing any gameplay effects or modifiers
-
-		// ApplyModToAttribute(C_CharacterAttributeSetBase::GetHealthAttribute(), EGameplayModOp::Additive, NewHealth);
 	}
 }
 
@@ -788,12 +811,13 @@ void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 	float Health = Data.NewValue;
 	float MaxHealth = GetMaxHealth();
 
-	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Health Changed: %.2f / %.2f"), Health, MaxHealth);
-
 	// 사망 처리
-	if (Health <= 0.0f && IsAlive())
+	if (Data.NewValue <= 0.0f && Data.OldValue > 0.0f && !bIsDead && !bSuppressDeath)
 	{
-		Die();
+		if (GetController() != nullptr) // 현재 조종 중인 캐릭터만 사망 처리
+		{
+			Die();
+		}
 	}
 }
 
@@ -818,8 +842,6 @@ void AC_BasePlayerCharactor::OnShieldChanged(const FOnAttributeChangeData &Data)
 {
 	float Shield = Data.NewValue;
 	float MaxShield = GetMaxShield();
-
-	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Shield, MaxShield);
 }
 
 void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData &Data)
@@ -827,14 +849,9 @@ void AC_BasePlayerCharactor::OnMoveSpeedChanged(const FOnAttributeChangeData &Da
 	float NewMoveSpeed = Data.NewValue;
 	float OldMoveSpeed = Data.OldValue;
 
-	/*UE_LOG(LogBasePlayerCharacter, Log, TEXT("MoveSpeed Changed: %.2f -> %.2f"),
-		OldMoveSpeed, NewMoveSpeed);*/
-
 	if (UCharacterMovementComponent *MovementComp = GetCharacterMovement())
 	{
 		MovementComp->MaxWalkSpeed = NewMoveSpeed;
-
-		// UE_LOG(LogBasePlayerCharacter, Log, TEXT("MaxWalkSpeed Updated: %.2f"), NewMoveSpeed);
 	}
 }
 
@@ -842,17 +859,6 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data
 {
 	float Stamina = Data.NewValue;
 	float MaxStamina = GetMaxStamina();
-
-	// UE_LOG(LogBasePlayerCharacter, Log, TEXT("Shield Changed: %.2f / %.2f"), Stamina, MaxStamina);
-
-	// if (Data.NewValue <= 0.f)
-	//{
-	//	abilitySystemComponent->CancelAbilities(
-	//		nullptr,   // WithTags
-	//		nullptr,   // WithoutTags
-	//		SprintAbilityClass
-	//	);
-	// }
 }
 
 void AC_BasePlayerCharactor::SaveCharacterState()
@@ -868,17 +874,17 @@ void AC_BasePlayerCharactor::SaveCharacterState()
 
 void AC_BasePlayerCharactor::RestoreCharacterState()
 {
-	if(!attributeSetBase.IsValid())
+	if (!attributeSetBase.IsValid())
 		return;
 
-	if(savedState.health < 0.f)  // 첫 소유 -> 최대값으로
+	if (savedState.health <= 0.f) // 첫 소유 -> 최대값으로
 	{
 		SetHealth(GetMaxHealth());
 		SetShield(0.f);
 		SetStamina(GetMaxStamina());
 		SetMana(0.f);
 	}
-	else						// 저장된 상태로 복원
+	else // 저장된 상태로 복원
 	{
 		SetHealth(savedState.health);
 		SetShield(savedState.shield);
@@ -887,7 +893,7 @@ void AC_BasePlayerCharactor::RestoreCharacterState()
 	}
 }
 
-void AC_BasePlayerCharactor::SaveActiveEffects(UAbilitySystemComponent* ASC)
+void AC_BasePlayerCharactor::SaveActiveEffects(UAbilitySystemComponent *ASC)
 {
 	savedActiveEffects.Empty();
 
@@ -895,20 +901,20 @@ void AC_BasePlayerCharactor::SaveActiveEffects(UAbilitySystemComponent* ASC)
 	tagsToMatch.AddTag(FGameplayTag::RequestGameplayTag(FName("State")));
 	tagsToMatch.AddTag(FGameplayTag::RequestGameplayTag(FName("Effect.Cooldown")));
 
-	//State 태그를 부여하는 GE 핸들 목록
+	// State 태그를 부여하는 GE 핸들 목록
 	TArray<FActiveGameplayEffectHandle> handles = ASC->GetActiveEffects(
 		FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(tagsToMatch));
 
 	float worldTime = GetWorld()->GetTimeSeconds();
 
-	for(const FActiveGameplayEffectHandle& Handle : handles)
+	for (const FActiveGameplayEffectHandle &Handle : handles)
 	{
-		const FActiveGameplayEffect* activeGE = ASC->GetActiveGameplayEffect(Handle);
+		const FActiveGameplayEffect *activeGE = ASC->GetActiveGameplayEffect(Handle);
 		if (!activeGE)
 			continue;
 
 		float remaining = activeGE->GetTimeRemaining(worldTime);
-		if(remaining <= 0.f)
+		if (remaining <= 0.f)
 			continue; // 이미 만료된 효과는 저장하지 않음
 
 		FSavedGEState saved;
@@ -919,11 +925,11 @@ void AC_BasePlayerCharactor::SaveActiveEffects(UAbilitySystemComponent* ASC)
 	}
 }
 
-void AC_BasePlayerCharactor::RestoreActiveEffects(UAbilitySystemComponent* ASC)
+void AC_BasePlayerCharactor::RestoreActiveEffects(UAbilitySystemComponent *ASC)
 {
-	for (const FSavedGEState& saved : savedActiveEffects)
+	for (const FSavedGEState &saved : savedActiveEffects)
 	{
-		if( saved.RemainingDuration <= 0.f )
+		if (saved.RemainingDuration <= 0.f)
 			continue; // 만료된 효과는 복원하지 않음
 
 		FGameplayEffectSpec specCopy = saved.Spec;

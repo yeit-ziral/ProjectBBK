@@ -193,6 +193,13 @@ void UC_SkillBase::ApplyGenericCooldown(float CooldownDuration)
 			UE_LOG(LogTemp, Warning, TEXT("[C_SkillBase] 🔔 Broadcasting OnCooldownStarted! SkillTag: %s"),
 				*CachedSkillData.skillTag.ToString());
 			OnCooldownStarted.Broadcast(CooldownDuration, CachedSkillData.skillTag, CooldownTag);
+
+			// InstancedPerActor에서 첫 활성화 전에 위젯이 CDO에 바인딩된 경우도 수신하도록
+			UC_SkillBase* CDO = GetClass()->GetDefaultObject<UC_SkillBase>();
+			if (CDO && CDO != this)
+			{
+				CDO->OnCooldownStarted.Broadcast(CooldownDuration, CachedSkillData.skillTag, CooldownTag);
+			}
 		}
 		else
 		{
@@ -221,7 +228,7 @@ bool UC_SkillBase::QuerySkillCooldown(UAbilitySystemComponent* ASC, float& OutRe
 	if (Results.Num() == 0) return false;
 
 	OutRemaining = Results[0].Key;
-	OutDuration = Results[0].Value;
+	OutDuration = bSkillDataLoaded ? CachedSkillData.cooldown : Results[0].Value;
 
 	return OutRemaining > 0.f;
 }

@@ -234,6 +234,8 @@ void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 		SkillAbility->OnCooldownStarted.RemoveDynamic(this, &UC_SkillIconWidget::OnCooldownStarted);
 	}
 	SkillAbility = nullptr;
+	currentCooldownTime = 0.f;
+	maxCooldownTime = 0.f;
 	SetCooldownVisible(false);
 
 	CachedASC = ASC;
@@ -253,8 +255,8 @@ void UC_SkillIconWidget::InitializeSkillIcon(UAbilitySystemComponent* ASC)
 	FSkillData SkillData;
 	if (SkillAbility->GetSkillData(SkillData))
 	{
-		// 아이콘 설정
 		SetSkillIcon(SkillData.skillIcon);
+		SkillTag = SkillData.skillTag;
 
 		UE_LOG(LogTemp, Log, TEXT("[C_SkillIconWidget] Skill initialized: %s"),
 			*SkillData.skillName.ToString());

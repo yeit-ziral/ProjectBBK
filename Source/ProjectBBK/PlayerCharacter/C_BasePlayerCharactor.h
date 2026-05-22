@@ -19,6 +19,7 @@ class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
 struct FInputActionInstance;
+class AC_PlayerController;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBasePlayerCharacter, Log, All);
 
@@ -46,15 +47,15 @@ struct FCharacterSavedState
 {
 	GENERATED_BODY()
 
-	float health	=  -1.f;
-	float stamina	=  -1.f;
-	float shield	=	0.f;
-	float mana		=	0.f;
+	float health = -1.f;
+	float stamina = -1.f;
+	float shield = 0.f;
+	float mana = 0.f;
 };
 
 struct FSavedGEState
 {
-	FGameplayEffectSpec Spec; // Set by Caller 포함한 전체 스펙
+	FGameplayEffectSpec Spec;	   // Set by Caller 포함한 전체 스펙
 	float RemainingDuration = 0.f; // 남은 지속 시간
 };
 
@@ -91,6 +92,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character")
 	virtual void FinishDying();
 
+	UFUNCTION()
+	void OnDeathMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
 	void OnASCInitialized();
 
@@ -98,7 +102,7 @@ public:
 	float GetCharacterLevel() const;
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
-	float GetExp() const; 
+	float GetExp() const;
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetMaxExp() const;
 
@@ -127,11 +131,11 @@ public:
 	void SetTopDownCamera(bool bTopDown, float BlendTime = 0.75f,
 						  float TopDownArmLength = 1600.f, float TopDownPitch = -85.f);
 
-	void SaveCharacterState();		// 교체 직전에 캐릭터 상태 저장
-	void RestoreCharacterState(); 	// 교체 후 저장된 캐릭터 상태 복원 (Health, Stamina, Shield, Mana 등)
+	void SaveCharacterState();	  // 교체 직전에 캐릭터 상태 저장
+	void RestoreCharacterState(); // 교체 후 저장된 캐릭터 상태 복원 (Health, Stamina, Shield, Mana 등)
 
-	void SaveActiveEffects(UAbilitySystemComponent* ASC); // 캐릭터 교체 시 활성화 된 GE 저장
-	void RestoreActiveEffects(UAbilitySystemComponent* ASC); // 캐릭터 교체 후 저장된 GE 복원
+	void SaveActiveEffects(UAbilitySystemComponent *ASC);	 // 캐릭터 교체 시 활성화 된 GE 저장
+	void RestoreActiveEffects(UAbilitySystemComponent *ASC); // 캐릭터 교체 후 저장된 GE 복원
 
 protected:
 	// Called when the game starts or when spawned
@@ -181,6 +185,10 @@ protected:
 	virtual void OnShieldChanged(const FOnAttributeChangeData &Data);
 	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData &Data);
 	virtual void OnStaminaChanged(const FOnAttributeChangeData &Data);
+
+public:
+	bool bIsDead = false;
+	bool bSuppressDeath = false;
 
 protected:
 	// 카메라 블렌딩
@@ -237,14 +245,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction *lookAction;
 
-	///** Sprint Input Action */
-	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	// class UInputAction* sprintAction;
-
-	///** Attack Input Action */
-	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	// class UInputAction* attackAction;
-
 	// 멀티캐릭터 (Week 1에서 구현 예정)
 	int32 ActiveCharacterIndex = 0;
 
@@ -252,7 +252,6 @@ protected:
 
 	TWeakObjectPtr<class UC_ChracterAttributeSetBase> attributeSetBase;
 
-	FGameplayTag deadTag;
 	FGameplayTag effectRemoveOnDeathTag;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Character")
@@ -279,6 +278,9 @@ protected:
 	// 캐릭터 교체 시 활성화 된 GE 저장
 	TArray<FSavedGEState> savedActiveEffects;
 
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Attribute")
+	float baseDamage = 200.f;
+
 private:
 	TMap<const UInputAction *, FGameplayTag> abilityTagMap;
 	TMap<const UInputAction *, FGameplayTag> releaseEventTagMap;
@@ -289,4 +291,6 @@ private:
 	bool bCharacterInitiailized = false;
 
 	FCharacterSavedState savedState;
+
+	TWeakObjectPtr<AC_PlayerController> cachedDeathController;
 };
