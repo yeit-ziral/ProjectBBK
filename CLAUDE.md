@@ -234,6 +234,7 @@ Skills/
 | BPC_RangedMonsterNormalAttackGA | ✅ 완료 | AC_RangedMonster 사용 |
 | BPC_BossBeamPatternGA | ✅ 완료 | AC_BossMonster 사용 |
 | BPC_BossStormPatternGA | ✅ 완료 | AC_BossMonster 사용 |
+| UC_BTTaskReposition (Idle Reposition / Strafe) | 🔧 에디터 작업 필요 | C++ 완료. BT_Monster_Melee·Ranged·Boss에 fallback 브랜치로 배치 + TargetActorKey 바인딩 필요. FMonsterData DataTable에 Reposition 컬럼 값 입력 필요 |
 
 ### UI
 | Widget | 상태 | 비고 |
@@ -492,6 +493,33 @@ DestroyTrap()
 - `DamageEffectClass`는 BP에서 지정 (C++ 하드코딩 금지) → BP_TrapZone에서 GE_BasicDamage 지정
 - DecalComponent 바닥 투영: BP에서 컴포넌트 Transform Y = -90 (Pitch -90도)
 - `CapsuleOverlapActors`의 `ActorsToIgnore`: AC_BaseMonster 클래스 필터로 플레이어 자동 제외 → 빈 배열로 충분
+
+### 몬스터 Reposition/Strafe BT Task 패턴 (UC_BTTaskReposition 참고)
+공격 쿨다운 대기 중 플레이어 주위를 이동하는 latent BT Task. 노말(Idle Reposition)과 보스(Strafe 서클링)를 단일 Task + DataTable 튜닝으로 표현.
+```
+// BT 구조 (3종 공통)
+Selector (루트)
+├── 공격 브랜치 (고우선): 기존 공격 Task
+│     └── Decorator: 거리·쿨다운 조건, Observer aborts = Both (Lower Priority 이상)
+└── UC_BTTaskReposition (저우선 fallback)
+      → TargetActorKey → "TargetActor" 바인딩
+
+// 이동 수학 (TickTask 매 프레임)
+radial  = (MonsterLoc - TargetLoc).GetSafeNormal2D()           // 플레이어에서 멀어지는 방향
+tangent = Cross(UpVector, radial) * StrafeSign                   // 접선(서클링) 방향
+radialComp:
+  dist > DesiredRange + Band → -radial (접근)
+  dist < MinRange            → +radial (후퇴/kite)
+  그 외                      → ZeroVector (사거리 내 대기)
+dir = radialComp*(1-StrafeWeight) + tangent*StrafeWeight → Normalize → AddMovementInput
+
+// 방향 전환
+if (now >= NextFlipTime) { StrafeSign = -StrafeSign; NextFlipTime += FlipInterval; }
+```
+- 공격 Task가 쿨다운 시 Succeeded 반환하면 Selector가 fallback으로 넘어가지 않음 → 노말 공격 Task에 `if (!CanAutoAttack()) return Failed` 추가 (보스 패턴과 동일)
+- Ranged/Boss는 생성자에서 `bUseControllerRotationYaw=true, bOrientRotationToMovement=false` 설정 → 스트레이프 중 플레이어 정면 유지, `Dir` 2D 블렌드스페이스 정상 동작
+- OnTaskFinished: `MaxWalkSpeed = monsterAttributeSet->GetmoveSpeed()` 복원 (GAS 어트리뷰트 기반 쫓기 속도)
+- DataTable 권장 초기값: 근거리(Weight 0.4, MinRange 0), 원거리(Weight 0.5, MinRange 350), 보스(Weight 0.9, MinRange 300)
 
 ### 몽타주 + AnimNotify 기반 궁극기 패턴 (C_RangedUltimate 참고)
 GA가 몽타주를 재생하고, AnimNotify 수신 시점에 Box 판정·넉백을 실행. 데미지는 Blueprint(CurveTable 레벨 조회), 넉백은 C++ 직접 처리.
@@ -857,6 +885,12 @@ SwitchToCharacter(NextIndex)
 - **대안:** 동일 컴포넌트·동일 크기로 감지와 피해 범위를 통일
 - **선택 이유:** 발동 감지 범위(좁게)와 실제 피해 범위(넓게)를 독립적으로 조정 가능. GA Blueprint 변수로 각각 노출해 디자인 조정 용이
 - **트레이드오프:** InitTrap 파라미터가 늘어남 (반경 2개 + 반높이 2개)
+
+### 몬스터 Reposition/Strafe — 단일 데이터 구동 Task vs Idle/Strafe 분리 Task
+- **선택:** `UC_BTTaskReposition` 하나로 노말 "Idle Repositioning"과 보스 "Strafe 서클링"을 통합
+- **대안:** `UC_BTTaskIdleReposition`(노말 전용) + `UC_BTTaskBossStrafe`(보스 전용) 분리
+- **선택 이유:** 두 동작의 알고리즘(목표 반경 유지 + 접선 이동)이 동일함. 시각 차이는 `StrafeWeight`(노말 ~0.4, 보스 ~0.9)·`RepositionSpeed`·`FlipInterval`·`DesiredRange` 등 데이터값만으로 표현 가능. CLAUDE.md 데이터 구동 원칙 준수, 이동 수학 중복 제거. 세 BT 에셋 모두 동일 Task로 배치 가능
+- **트레이드오프:** 보스 전용 로직(예: 2페이즈 서클링 반경 조정)이 필요해지면 서브클래스로 분리하거나 FMonsterData에 추가 필드를 넣어야 함
 
 ### 쿨다운 오버레이 방향 — 줄어드는 방향 vs 차오르는 방향
 - **선택:** `Progress = CurrentCooldown / MaxCooldown` — 쿨다운 시작 시 꽉 찬 상태에서 시간이 지날수록 줄어듦

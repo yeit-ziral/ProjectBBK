@@ -10,7 +10,6 @@ class USphereComponent;
 class UParticleSystemComponent;
 class UGameplayEffect;
 
-
 UCLASS()
 class PROJECTBBK_API AC_BossStorm : public AActor
 {
@@ -19,13 +18,13 @@ class PROJECTBBK_API AC_BossStorm : public AActor
 public:
 	AC_BossStorm();
 
-	void InitOrbit(const FVector& InCenter, float InRadius, float InStartAngleDeg, float InSpeed);
+	// GA에서 호출 — inLaunchDelay초 후 플레이어 방향으로 발사
+	void InitProjectile(float inLaunchDelay, float inFlySpeed, float inMaxTravelDistance);
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
-protected:
 	UPROPERTY(VisibleAnywhere)
 	USceneComponent* root;
 
@@ -38,17 +37,21 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Storm")
 	TSubclassOf<UGameplayEffect> damageEffect;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Storm")
-	float stormLifeTime = 5.f;
-
 	UFUNCTION()
-	void OnDamageSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-		 int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnDamageSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
-	bool bOrbit = false;
-	FVector orbitCenter = FVector::ZeroVector;
-	float orbitRadius = 800.f;
-	float orbitAngle = 0.f;
-	float orbitSpeed = 60.f;
+	UFUNCTION()
+	void LaunchTowardPlayer();
+
+	float flySpeed          = 700.f;
+	float maxTravelDistance = 2500.f;
+	float distanceTraveled  = 0.f;
+
+	FVector flyDirection = FVector::ForwardVector;
+	bool bFlying = false;
+	bool bHit    = false;
+
+	FTimerHandle launchTimerHandle;
 };

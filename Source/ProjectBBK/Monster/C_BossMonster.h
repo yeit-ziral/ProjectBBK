@@ -22,6 +22,8 @@ public:
     bool CanNormalAttack()  const;
     bool CanPatternAttack() const;
 
+    virtual bool CanAutoAttack() const override;
+
 protected:
     virtual void BeginPlay() override;
 
@@ -53,13 +55,6 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Phase")
     float phase2HpRatio = 0.5f;
 
-    // 노말 공격 간격 (초)
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Cooldown")
-    float normalAttackInterval = 3.f;
-
-    // 패턴 공격 간격 (초)
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Cooldown")
-    float patternAttackInterval = 10.f;
 
 private:
     bool bPhase2Triggered = false;

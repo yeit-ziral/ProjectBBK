@@ -131,6 +131,73 @@ FName AC_BaseMonster::GetRowName() const
 	return dataComponent ? dataComponent->GetRowName() : NAME_None;
 }
 
+bool AC_BaseMonster::CanAutoAttack() const
+{
+	return attackManager && (attackManager->CanAttack() || attackManager->CanSpecialAttack());
+}
+
+void AC_BaseMonster::StartHitFlash()
+{
+	if (!hitFlashMaterial) return;
+	GetWorld()->GetTimerManager().ClearTimer(hitFlashTimerHandle);
+	hitFlashStep = 0;
+	HitFlashTick();
+}
+
+void AC_BaseMonster::HitFlashTick()
+{
+	if (!IsValid(this) || !GetMesh()) return;
+
+	GetMesh()->SetOverlayMaterial(hitFlashStep % 2 == 0 ? hitFlashMaterial : nullptr);
+	hitFlashStep++;
+
+	if (hitFlashStep < 6)  // 3번 점멸 (on/off 각 3회)
+		GetWorld()->GetTimerManager().SetTimer(hitFlashTimerHandle, this, &AC_BaseMonster::HitFlashTick, 0.08f, false);
+}
+
+void AC_BaseMonster::TakeHitReaction()
+{
+	if (!hitReactionMontage) return;
+	if (IsPlayingAttackAnimation()) return;
+
+	UC_MonsterASC* asc = GetMonsterASC();
+	if (IsValid(asc) && (asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))
+	                  || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")))))
+		return;
+
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	PlayAnimMontage(hitReactionMontage);
+
+	if (UAnimInstance* animInst = GetMesh()->GetAnimInstance())
+	{
+		FOnMontageEnded endDelegate;
+		endDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
+		{
+			// bInterrupted=true면 다음 피격 반응이 이동을 다시 차단 — 여기서 복구하지 않음
+			if (bInterrupted) return;
+			if (!IsValid(this)) return;
+
+			UC_MonsterASC* curAsc = GetMonsterASC();
+			if (IsValid(curAsc) && (curAsc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))
+			                     || curAsc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")))))
+				return;
+
+			GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+		});
+		animInst->Montage_SetEndDelegate(endDelegate, hitReactionMontage);
+	}
+}
+
+bool  AC_BaseMonster::IsRepositionEnabled()       const { return dataComponent ? dataComponent->IsRepositionEnabled()       : false; }
+float AC_BaseMonster::GetRepositionDesiredRange() const { return dataComponent ? dataComponent->GetRepositionDesiredRange() : 250.f; }
+float AC_BaseMonster::GetRepositionMinRange()     const { return dataComponent ? dataComponent->GetRepositionMinRange()     : 0.f; }
+float AC_BaseMonster::GetRepositionSpeed()        const { return dataComponent ? dataComponent->GetRepositionSpeed()        : 300.f; }
+float AC_BaseMonster::GetRepositionStrafeWeight() const { return dataComponent ? dataComponent->GetRepositionStrafeWeight() : 0.5f; }
+float AC_BaseMonster::GetRepositionBand()         const { return dataComponent ? dataComponent->GetRepositionBand()         : 60.f; }
+float AC_BaseMonster::GetRepositionFlipInterval() const { return dataComponent ? dataComponent->GetRepositionFlipInterval() : 2.5f; }
+
 void AC_BaseMonster::ExecuteDeathSequence()
 {
 	// GameMode에 몬스터 사망 알림 — cast 실패 시 조용히 무시
@@ -153,6 +220,8 @@ void AC_BaseMonster::ExecuteDeathSequence()
 
 	// 3. 콜리전 비활성화 (플레이어 통과, 추가 피격 방지)
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetWorld()->GetTimerManager().ClearTimer(hitFlashTimerHandle);
+	if (GetMesh()) GetMesh()->SetOverlayMaterial(nullptr);
 
 	// 4. HP 위젯 숨김
 	if (HpWidgetComponent)

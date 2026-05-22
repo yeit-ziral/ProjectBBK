@@ -19,6 +19,9 @@ EBTNodeResult::Type UC_BTTaskRangedAutoAttack::ExecuteTask(UBehaviorTreeComponen
 	if (!monster)
 		return EBTNodeResult::Failed;
 
+	if (!monster->CanAutoAttack())
+		return EBTNodeResult::Failed;
+
 	monster->RangedAutoAttack();
 	return EBTNodeResult::Succeeded;
 }

@@ -22,13 +22,20 @@ void AC_MonsterAIController::OnPossess(APawn* InPawn)
         if (UBehaviorTree* BT = Monster->GetBehaviorTree())
         {
             RunBehaviorTree(BT);
-
-            if (UBlackboardComponent* BB = GetBlackboardComponent())
-            {
-                AActor* Player0 = UGameplayStatics::GetPlayerPawn(this, 0);
-                BB->SetValueAsObject(TEXT("TargetActor"), Player0);
-                SetFocus(Player0);
-            }
+            // 다음 틱에 재시도 — OnPossess 시점에 플레이어가 아직 준비 안 됐을 수 있음
+            GetWorldTimerManager().SetTimer(initTargetTimer, this,
+                &AC_MonsterAIController::TrySetInitialTarget, 0.1f, false);
         }
     }
+}
+
+void AC_MonsterAIController::TrySetInitialTarget()
+{
+    APawn* player = UGameplayStatics::GetPlayerPawn(this, 0);
+    if (!player) return;
+
+    if (UBlackboardComponent* BB = GetBlackboardComponent())
+        BB->SetValueAsObject(TEXT("TargetActor"), player);
+
+    SetFocus(player);
 }
