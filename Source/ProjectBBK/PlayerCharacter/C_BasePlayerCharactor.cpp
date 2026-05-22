@@ -19,6 +19,7 @@
 #include "../Skills/C_SkillManagerComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "../Monster/C_BaseMonster.h"
+#include "NiagaraFunctionLibrary.h"
 
 DEFINE_LOG_CATEGORY(LogBasePlayerCharacter);
 
@@ -321,6 +322,13 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 	RestoreCharacterState();
 
+	if (abilitySystemComponent.IsValid())
+	{
+		abilitySystemComponent->SetNumericAttributeBase(
+			UC_ChracterAttributeSetBase::GetdamageAttribute(),
+			baseDamage);
+	}
+
 	if (!bCharacterInitiailized)
 	{
 		bCharacterInitiailized = true;
@@ -350,9 +358,9 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 									  attributeSetBase->GetstaminaAttribute())
 				.AddUObject(this, &AC_BasePlayerCharactor::OnStaminaChanged);
 
-			abilitySystemComponent->SetNumericAttributeBase(
-				UC_ChracterAttributeSetBase::GetdamageAttribute(),
-				baseDamage);
+			abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+									  attributeSetBase->GetlevelAttribute())
+				.AddUObject(this, &AC_BasePlayerCharactor::OnLevelChanged);
 
 			if (attributeSetBase.IsValid())
 			{
@@ -808,8 +816,8 @@ void AC_BasePlayerCharactor::SetMana(float NewMana)
 
 void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 {
-	float Health = Data.NewValue;
-	float MaxHealth = GetMaxHealth();
+	if (Data.NewValue < Data.OldValue)
+		PlayHitFlash();
 
 	// 사망 처리
 	if (Data.NewValue <= 0.0f && Data.OldValue > 0.0f && !bIsDead && !bSuppressDeath)
@@ -859,6 +867,37 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data
 {
 	float Stamina = Data.NewValue;
 	float MaxStamina = GetMaxStamina();
+}
+
+void AC_BasePlayerCharactor::OnLevelChanged(const FOnAttributeChangeData& Data)
+{
+	if (Data.NewValue > Data.OldValue && levelUpEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAttached(
+			levelUpEffect,
+			GetMesh(),
+			NAME_None,
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			EAttachLocation::SnapToTarget,
+			true);
+	}
+}
+
+void AC_BasePlayerCharactor::PlayHitFlash()
+{
+	if (!hitFlashMaterial)
+		return;
+	GetMesh()->SetOverlayMaterial(hitFlashMaterial);
+	GetWorldTimerManager().SetTimer(
+		hitFlashTimerHandle,
+		this, &AC_BasePlayerCharactor::ClearHitFlash,
+		0.15f, false);
+}
+
+void AC_BasePlayerCharactor::ClearHitFlash()
+{
+	GetMesh()->SetOverlayMaterial(nullptr);
 }
 
 void AC_BasePlayerCharactor::SaveCharacterState()

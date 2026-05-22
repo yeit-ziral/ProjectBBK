@@ -11,6 +11,7 @@
 #include "Delegates/DelegateCombinations.h"
 #include "../ProjectBBK.h"
 #include "C_PlayerState.h"
+#include "NiagaraSystem.h"
 #include "C_BasePlayerCharactor.generated.h"
 
 class USpringArmComponent;
@@ -186,9 +187,18 @@ protected:
 	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData &Data);
 	virtual void OnStaminaChanged(const FOnAttributeChangeData &Data);
 
+	// 캐릭터 레벨업 시 호출되는 함수
+	virtual void OnLevelChanged(const FOnAttributeChangeData& Data);
+
+	void PlayHitFlash();
+	void ClearHitFlash();
+
 public:
 	bool bIsDead = false;
 	bool bSuppressDeath = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Effects")
+	UNiagaraSystem* levelUpEffect;
 
 protected:
 	// 카메라 블렌딩
@@ -280,6 +290,11 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Attribute")
 	float baseDamage = 200.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Effects")
+	UMaterialInterface* hitFlashMaterial;
+
+	FTimerHandle hitFlashTimerHandle;
 
 private:
 	TMap<const UInputAction *, FGameplayTag> abilityTagMap;

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "InputMappingContext.h"
+#include "NiagaraSystem.h"
 #include "C_PlayerController.generated.h"
 
 class AC_BasePlayerCharactor;
@@ -79,14 +80,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputMappingContext* playerMappingContext;
 
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|CharacterRoster")
+	UNiagaraSystem* switchEffect; // 캐릭터 교체 시 재생할 이펙트
+
 private:
 	void OnSwitchChar0Input();
 	void OnSwitchChar1Input();
+	void ExecuteCharacterSwitch(int32 NextIndex);
 
 	bool bIsSwitching = false;
+
+	FTimerHandle switchDelayTimerHandle;
 
 	// <교체 쿨타임 관리>
 	bool bSwitchOnCooldown = false;
 	FTimerHandle switchCooldownTimerHandle;
 	float switchCooldownStartTime = 0.0f;
+
+	FRotator savedControlRotation; // 캐릭터 교체 시 컨트롤 회전 저장
 };
