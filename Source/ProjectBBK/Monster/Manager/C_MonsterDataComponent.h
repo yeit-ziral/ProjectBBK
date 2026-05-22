@@ -30,6 +30,7 @@ public:
 	float GetRepositionStrafeWeight() const { return repositionStrafeWeight; }
 	float GetRepositionBand()         const { return repositionBand; }
 	float GetRepositionFlipInterval() const { return repositionFlipInterval; }
+	float GetExpReward()              const { return expReward; }
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (AllowPrivateAccess = "true"))
@@ -48,6 +49,7 @@ private:
 	float repositionStrafeWeight = 0.5f;
 	float repositionBand         = 60.f;
 	float repositionFlipInterval = 2.5f;
+	float expReward              = 0.f;
 
 	UPROPERTY()
 	AC_BaseMonster* ownerMonster = nullptr;

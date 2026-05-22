@@ -26,6 +26,7 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void ExecuteDeathSequence() override;
 
     UPROPERTY(EditDefaultsOnly, Category = "UI")
     TSubclassOf<UC_BossMonsterHPWidget> bossHpWidgetClass;
