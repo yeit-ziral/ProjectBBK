@@ -16,6 +16,9 @@ class PROJECTBBK_API AC_RangedMonster : public AC_BaseMonster
 public:
 	AC_RangedMonster();
 
+	virtual bool CanAutoAttack() const override;
+	virtual bool IsPlayingAttackAnimation() const override;
+
 	UFUNCTION(BlueprintCallable, Category = "Attack")
 	void RangedNormalAttack();
 

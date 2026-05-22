@@ -6,9 +6,12 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AC_BossMonster::AC_BossMonster()
 {
+	bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
 void AC_BossMonster::BeginPlay()
@@ -47,6 +50,24 @@ void AC_BossMonster::BeginPlay()
         {
             OnInvincibleTagChanged(Tag, NewCount);
         });
+
+        // 패턴 종료(태그 제거) 시 쿨타임을 종료 시점 기준으로 리셋
+        // — 패턴 시작 시점 기준으로 카운트하면 패턴 지속 시간보다 쿨타임이 짧을 때 즉시 재발동됨
+        auto resetPatternCooldown = [this](const FGameplayTag&, int32 NewCount)
+        {
+            if (NewCount == 0)
+                lastPatternAttackTime = GetWorld()->GetTimeSeconds();
+        };
+
+        monsterASC->RegisterGameplayTagEvent(
+            FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern")),
+            EGameplayTagEventType::NewOrRemoved
+        ).AddWeakLambda(this, resetPatternCooldown);
+
+        monsterASC->RegisterGameplayTagEvent(
+            FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")),
+            EGameplayTagEventType::NewOrRemoved
+        ).AddWeakLambda(this, resetPatternCooldown);
     }
 
     // GA 등록 — BT Task에서 활성화
@@ -65,14 +86,28 @@ void AC_BossMonster::BeginPlay()
 
 // ─── 공격 쿨다운 체크 ─────────────────────────────────────────────────────────
 
+bool AC_BossMonster::CanAutoAttack() const
+{
+    if (monsterASC && (
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")))))
+        return false;
+    return CanNormalAttack() || CanPatternAttack();
+}
+
 bool AC_BossMonster::CanNormalAttack() const
 {
-    return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= normalAttackInterval;
+    if (monsterASC && (
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")))))
+        return false;
+
+    return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= GetAttackCooldown();
 }
 
 bool AC_BossMonster::CanPatternAttack() const
 {
-    return GetWorld()->GetTimeSeconds() - lastPatternAttackTime >= patternAttackInterval;
+    return GetWorld()->GetTimeSeconds() - lastPatternAttackTime >= GetSpecialCooldown();
 }
 
 // ─── BT Task 호출 진입점 ──────────────────────────────────────────────────────

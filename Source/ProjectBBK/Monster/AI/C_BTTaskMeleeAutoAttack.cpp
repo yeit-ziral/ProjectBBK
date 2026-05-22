@@ -19,6 +19,9 @@ EBTNodeResult::Type UC_BTTaskMeleeAutoAttack::ExecuteTask(UBehaviorTreeComponent
 	if (!monster)
 		return EBTNodeResult::Failed;
 
+	if (!monster->CanAutoAttack())
+		return EBTNodeResult::Failed;
+
 	monster->MeleeAutoAttack();
 	return EBTNodeResult::Succeeded;
 }

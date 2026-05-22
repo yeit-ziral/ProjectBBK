@@ -17,6 +17,9 @@ class PROJECTBBK_API AC_MeleeMonster : public AC_BaseMonster
 public:
 	AC_MeleeMonster();
 
+	virtual bool CanAutoAttack() const override;
+	virtual bool IsPlayingAttackAnimation() const override;
+
 	// BT에서 호출 — 스페셜 쿨타임 여부에 따라 스페셜/노말 자동 선택
 	UFUNCTION(BlueprintCallable, Category = "Attack")
 	void MeleeAutoAttack();

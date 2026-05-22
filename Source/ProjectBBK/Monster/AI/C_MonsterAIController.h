@@ -18,4 +18,8 @@ public:
 
 protected:
     virtual void OnPossess(APawn* InPawn) override;
+
+private:
+    void TrySetInitialTarget();
+    FTimerHandle initTargetTimer;
 };

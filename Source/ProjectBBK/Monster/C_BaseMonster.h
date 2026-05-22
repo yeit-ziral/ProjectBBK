@@ -99,6 +99,34 @@ public:
 	UC_MonsterAttributeSet*      GetMonsterAttributeSet() const { return monsterAttributeSet; }
 	UC_MonsterDataComponent*     GetDataComponent()       const { return dataComponent; }
 	UC_MonsterHPDisplayComponent*GetHPDisplayComponent()  const { return hpDisplayComponent; }
+
+	bool  IsRepositionEnabled()       const;
+	float GetRepositionDesiredRange() const;
+	float GetRepositionMinRange()     const;
+	float GetRepositionSpeed()        const;
+	float GetRepositionStrafeWeight() const;
+	float GetRepositionBand()         const;
+	float GetRepositionFlipInterval() const;
+
+	virtual bool CanAutoAttack() const;
+	virtual bool IsPlayingAttackAnimation() const { return false; }
+
+	void TakeHitReaction();
+	void StartHitFlash();
+#pragma endregion
+
+#pragma region HitReaction
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "HitReaction")
+	UAnimMontage* hitReactionMontage = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "HitReaction")
+	UMaterialInterface* hitFlashMaterial = nullptr;
+
+private:
+	void HitFlashTick();
+	FTimerHandle hitFlashTimerHandle;
+	int32 hitFlashStep = 0;
 #pragma endregion
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -124,6 +152,11 @@ protected:
 	// 안개 VFX 스폰 후 액터 소멸까지 대기 시간 (VFX 지속 시간보다 길어야 함)
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	float deathDestroyDelay = 2.0f;
+
+public:
+	// Reposition 스트레이프 상태 — BT 세션 간 유지 (C_BTTaskReposition이 관리)
+	int8  repositionStrafeSign   = 1;
+	float repositionNextFlipTime = -1.f;   // -1: 미초기화 sentinel
 
 private:
 	FTimerHandle deathDestroyTimerHandle;

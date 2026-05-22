@@ -8,7 +8,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
 #include "AIController.h"
-#include "BrainComponent.h"
+#include "BehaviorTree/BehaviorTreeComponent.h"
+#include "Animation/AnimInstance.h"
 
 UC_GroggyComponent::UC_GroggyComponent()
 {
@@ -28,15 +29,18 @@ void UC_GroggyComponent::TickGroggy(float DeltaTime)
 
 void UC_GroggyComponent::AddGroggy(float GroggyAmount)
 {
-	if (!ownerMonster) return;
+	if (!IsValid(ownerMonster)) return;
+
+	UWorld* world = GetWorld();
+	if (!world) return;
 
 	UC_MonsterAttributeSet* attrSet = ownerMonster->GetMonsterAttributeSet();
-	if (!attrSet) return;
+	if (!IsValid(attrSet)) return;
 
 	UC_MonsterASC* asc = ownerMonster->GetMonsterASC();
-	if (asc && (asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))
-	         || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")))
-	         || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Invincible")))))
+	if (IsValid(asc) && (asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))
+	                  || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")))
+	                  || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Invincible")))))
 		return;
 
 	const float cur    = attrSet->GetcurGroggy();
@@ -47,7 +51,7 @@ void UC_GroggyComponent::AddGroggy(float GroggyAmount)
 
 	if (newVal >= max)
 	{
-		if (!GetWorld()->GetTimerManager().IsTimerActive(groggyResetTimerHandle))
+		if (!world->GetTimerManager().IsTimerActive(groggyResetTimerHandle))
 		{
 			EnterGroggyState();
 			GetWorld()->GetTimerManager().SetTimer(
@@ -84,8 +88,8 @@ void UC_GroggyComponent::EnterGroggyState()
 	if (AAIController* AIC = Cast<AAIController>(ownerMonster->GetController()))
 	{
 		AIC->StopMovement();
-		if (UBrainComponent* Brain = AIC->GetBrainComponent())
-			Brain->PauseLogic(TEXT("Groggy"));
+		if (UBehaviorTreeComponent* BTC = Cast<UBehaviorTreeComponent>(AIC->GetBrainComponent()))
+			BTC->StopTree(EBTStopMode::Forced);
 	}
 
 	ownerMonster->GetCharacterMovement()->StopMovementImmediately();
@@ -111,7 +115,10 @@ void UC_GroggyComponent::ExitGroggyState()
 	asc->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")));
 
 	if (groggyMontage)
-		ownerMonster->StopAnimMontage(groggyMontage);
+	{
+		if (UAnimInstance* anim = ownerMonster->GetMesh()->GetAnimInstance())
+			anim->Montage_Stop(0.0f, groggyMontage);
+	}
 
 	ownerMonster->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
@@ -120,7 +127,10 @@ void UC_GroggyComponent::ExitGroggyState()
 
 	if (AAIController* AIC = Cast<AAIController>(ownerMonster->GetController()))
 	{
-		if (UBrainComponent* Brain = AIC->GetBrainComponent())
-			Brain->ResumeLogic(TEXT("Groggy"));
+		if (UBehaviorTreeComponent* BTC = Cast<UBehaviorTreeComponent>(AIC->GetBrainComponent()))
+		{
+			if (UBehaviorTree* BT = ownerMonster->GetBehaviorTree())
+				BTC->StartTree(*BT, EBTExecutionMode::Looped);
+		}
 	}
 }

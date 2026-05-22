@@ -45,6 +45,9 @@ public:
 	UFUNCTION()
 	void SwitchToBeam();
 
+	// GA가 타이밍을 직접 제어할 때 내부 자동 전환 타이머를 비활성화
+	void DisableAutoSwitch();
+
 private:
 	UPROPERTY()
 	USceneComponent* root;
@@ -56,5 +59,7 @@ private:
 	UNiagaraComponent* beam;
 
 	bool bIsPreview = true;
+
+	FTimerHandle previewTimerHandle;
 
 };

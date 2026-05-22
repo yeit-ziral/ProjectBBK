@@ -50,6 +50,14 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 	attrSet->SetcurHP(Data->MaxHP);
 	attrSet->SetcurGroggy(0.0f);
 
+	bEnableReposition      = Data->bEnableReposition;
+	repositionDesiredRange = Data->RepositionDesiredRange;
+	repositionMinRange     = Data->RepositionMinRange;
+	repositionSpeed        = Data->RepositionSpeed;
+	repositionStrafeWeight = Data->RepositionStrafeWeight;
+	repositionBand         = Data->RepositionBand;
+	repositionFlipInterval = Data->RepositionFlipInterval;
+
 	if (UCharacterMovementComponent* Move = ownerMonster->GetCharacterMovement())
 	{
 		Move->MaxWalkSpeed = attrSet->GetmoveSpeed();

@@ -7,6 +7,7 @@
 #include "Data/AttackTypes.h"
 
 #include "GameFramework/Actor.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -14,12 +15,31 @@
 
 AC_RangedMonster::AC_RangedMonster()
 {
+	bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+}
 
+bool AC_RangedMonster::IsPlayingAttackAnimation() const
+{
+	UAnimInstance* anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!anim) return false;
+	return (rangedNormalMontage  && anim->Montage_IsPlaying(rangedNormalMontage))
+		|| (rangedSpecialMontage && anim->Montage_IsPlaying(rangedSpecialMontage));
+}
+
+bool AC_RangedMonster::CanAutoAttack() const
+{
+	if (!attackManager) return false;
+	return attackManager->CanAttack() || attackManager->CanSpecialAttack();
 }
 
 void AC_RangedMonster::BeginPlay()
 {
 	Super::BeginPlay();
+
+	bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+
 	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
 
 }
