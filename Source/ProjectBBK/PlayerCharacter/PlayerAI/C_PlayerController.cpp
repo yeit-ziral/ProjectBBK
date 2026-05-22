@@ -9,6 +9,7 @@
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EngineUtils.h"
+#include "NiagaraFunctionLibrary.h"
 
 float AC_PlayerController::GetSwitchCooldownRemaining() const
 {
@@ -147,23 +148,52 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	if (!OldChar || !NewChar)
 		return;
 
-	// 강제 교체가 아닐 때만 살아있는지 확인
 	if (!bForce && NewChar->bIsDead)
 		return;
 
 	bIsSwitching = true;
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
 
-	// 교체 중 health 변동으로 인한 오사 방지
 	for (AC_BasePlayerCharactor *Char : characterRoster)
+		if (Char) Char->bSuppressDeath = true;
+
+	savedControlRotation = GetControlRotation();
+
+	if (switchEffect)
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, switchEffect, OldChar->GetActorLocation());
+
+	FTimerDelegate SwitchDelegate = FTimerDelegate::CreateUObject(this, &AC_PlayerController::ExecuteCharacterSwitch, NextIndex);
+	GetWorldTimerManager().SetTimer(switchDelayTimerHandle, SwitchDelegate, 0.5f, false);
+}
+
+void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
+{
+	if (!characterRoster.IsValidIndex(currentCharacterIndex) || !characterRoster.IsValidIndex(NextIndex))
 	{
-		if (Char)
-			Char->bSuppressDeath = true;
+		for (AC_BasePlayerCharactor *Char : characterRoster)
+			if (Char) Char->bSuppressDeath = false;
+		ResetIgnoreMoveInput();
+		ResetIgnoreLookInput();
+		bIsSwitching = false;
+		return;
+	}
+
+	AC_BasePlayerCharactor *OldChar = characterRoster[currentCharacterIndex];
+	AC_BasePlayerCharactor *NewChar = characterRoster[NextIndex];
+
+	if (!OldChar || !NewChar)
+	{
+		for (AC_BasePlayerCharactor *Char : characterRoster)
+			if (Char) Char->bSuppressDeath = false;
+		ResetIgnoreMoveInput();
+		ResetIgnoreLookInput();
+		bIsSwitching = false;
+		return;
 	}
 
 	// 새 캐릭터를 현재 위치/회전으로 이동
-	NewChar->SetActorLocationAndRotation(
-		OldChar->GetActorLocation(),
-		OldChar->GetActorRotation());
+	NewChar->SetActorLocationAndRotation(OldChar->GetActorLocation(), OldChar->GetActorRotation());
 
 	// 속도 이어받기 (공중에서 교체 시 자연스러운 낙하)
 	NewChar->GetCharacterMovement()->Velocity = OldChar->GetCharacterMovement()->Velocity;
@@ -174,18 +204,15 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 
 	if (!OldChar->bIsDead)
 		OldChar->SaveCharacterState();
-	UAbilitySystemComponent *ASC = nullptr;
 
+	UAbilitySystemComponent *ASC = nullptr;
 	if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
-	{
 		ASC = PS->GetAbilitySystemComponent();
-	}
 
 	if (ASC)
 	{
 		OldChar->SaveActiveEffects(ASC);
 
-		// 2. State 태그를 부여하는 Duration GE 제거
 		FGameplayTagContainer tagsToRemove;
 		tagsToRemove.AddTag(FGameplayTag::RequestGameplayTag(FName("State")));
 		tagsToRemove.AddTag(FGameplayTag::RequestGameplayTag(FName("Effect.Cooldown")));
@@ -198,6 +225,7 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
+	SetControlRotation(savedControlRotation);
 
 	if (ASC)
 	{
@@ -215,13 +243,11 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
 	OnCharacterSwitched.Broadcast(NextIndex);
 
-	// 교체 완료 후 오사 방지 해제
 	for (AC_BasePlayerCharactor *Char : characterRoster)
-	{
-		if (Char)
-			Char->bSuppressDeath = false;
-	}
+		if (Char) Char->bSuppressDeath = false;
 
+	ResetIgnoreMoveInput();
+	ResetIgnoreLookInput();
 	bIsSwitching = false;
 
 	// 교체 완료 후 쿨타임 시작
@@ -231,10 +257,8 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 
 	GetWorldTimerManager().SetTimer(
 		switchCooldownTimerHandle,
-		[this]()
-		{ bSwitchOnCooldown = false; },
-		switchCooldownDuration,
-		false);
+		[this]() { bSwitchOnCooldown = false; },
+		switchCooldownDuration, false);
 }
 
 void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadCharacter)
