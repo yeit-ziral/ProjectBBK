@@ -8,6 +8,7 @@
 
 class AC_BossBeam;
 class UAnimMontage;
+class UGameplayEffect;
 
 UCLASS()
 class PROJECTBBK_API UC_BossBeamPatternGA : public UGameplayAbility
@@ -56,6 +57,18 @@ protected:
 	// 차징 몽타주가 이 시간에 맞춰 속도 조정됨
 	UPROPERTY(EditDefaultsOnly, Category = "Beam")
 	float chargingDuration = 5.f;
+
+	// 빔 데미지 GE (GE_BasicDamage 설정 권장)
+	UPROPERTY(EditDefaultsOnly, Category = "Beam|Damage")
+	TSubclassOf<UGameplayEffect> damageEffectClass;
+
+	// 빔 데미지 틱 간격 (초) — 짧을수록 DPS 증가
+	UPROPERTY(EditDefaultsOnly, Category = "Beam|Damage")
+	float beamDamageTickRate = 0.5f;
+
+	// 빔 판정 최대 사거리 (cm)
+	UPROPERTY(EditDefaultsOnly, Category = "Beam|Damage")
+	float beamRange = 2000.f;
 
 private:
 	void OnBeamDurationExpired();

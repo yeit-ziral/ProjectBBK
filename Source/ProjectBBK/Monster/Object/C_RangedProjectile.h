@@ -9,6 +9,8 @@
 class USphereComponent;
 class UProjectileMovementComponent;
 class UParticleSystemComponent;
+class UAbilitySystemComponent;
+class UGameplayEffect;
 
 UCLASS()
 class PROJECTBBK_API AC_RangedProjectile : public AActor
@@ -21,6 +23,11 @@ public:
 
 	UFUNCTION()
 	void InitVelocity(const FVector& Direction);
+
+	void InitProjectile(UAbilitySystemComponent* InInstigatorASC,
+	                    TSubclassOf<UGameplayEffect> InDamageGEClass,
+	                    float InDamage,
+	                    const FVector& Direction);
 
 protected:
 	// Called when the game starts or when spawned
@@ -35,8 +42,21 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UProjectileMovementComponent* projectileMovement;
-public:	
+
+	UFUNCTION()
+	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	                          UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+	                          bool bFromSweep, const FHitResult& SweepResult);
+
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+private:
+	void ApplyDamageToTarget(AActor* Target);
+
+	TWeakObjectPtr<UAbilitySystemComponent> instigatorASC;
+	TSubclassOf<UGameplayEffect> damageGEClass;
+	float damageValue = 10.f;
+	bool bAlreadyHit = false;
 };

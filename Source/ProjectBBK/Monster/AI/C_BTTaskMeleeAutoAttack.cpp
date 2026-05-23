@@ -22,6 +22,10 @@ EBTNodeResult::Type UC_BTTaskMeleeAutoAttack::ExecuteTask(UBehaviorTreeComponent
 	if (!monster->CanAutoAttack())
 		return EBTNodeResult::Failed;
 
+	// 이전 공격 애니메이션이 재생 중이면 재진입 차단 — 쿨다운 0일 때도 무한 루프 방지
+	if (monster->IsPlayingAttackAnimation())
+		return EBTNodeResult::Failed;
+
 	monster->MeleeAutoAttack();
 	return EBTNodeResult::Succeeded;
 }

@@ -4,6 +4,7 @@
 #include "C_RangedMonster.h"
 #include "Object/C_SpecialProjectile.h"
 #include "Manager/C_AttackManagerComponent.h"
+#include "M_Gas/C_MonsterASC.h"
 #include "Data/AttackTypes.h"
 
 #include "GameFramework/Actor.h"
@@ -125,6 +126,7 @@ void AC_RangedMonster::SpawnSpecialProjectile()
 		return;
 
 	specialProjectile->InitSpecialProjectile(targetPos, specialArcHeight, specialProjectileSpeed);
+	specialProjectile->InitGASDamage(GetMonsterASC(), specialDamageEffectClass, static_cast<float>(GetAttack()) * 2.f);
 }
 
 void AC_RangedMonster::SpawnProjectile()

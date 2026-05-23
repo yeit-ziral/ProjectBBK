@@ -9,6 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "../../Object/C_BossProjectile.h"
+#include "../../C_BaseMonster.h"
 
 UC_BossNormalAttackGA::UC_BossNormalAttackGA()
 {
@@ -22,25 +23,18 @@ void UC_BossNormalAttackGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	UE_LOG(LogTemp, Warning, TEXT("[BossNormalAttackGA] ActivateAbility 진입"));
-
 	ACharacter* boss = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!boss || !attackMontage)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[BossNormalAttackGA] boss=%d attackMontage=%d — 종료"),
-			boss != nullptr, attackMontage != nullptr);
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
 	if (!throwEventTag.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[BossNormalAttackGA] throwEventTag가 설정되지 않음."));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[BossNormalAttackGA] 몽타주 재생 시작: %s"), *attackMontage->GetName());
 
 	// 플레이어 방향으로 Yaw 회전
 	AActor* target = nullptr;
@@ -76,8 +70,6 @@ void UC_BossNormalAttackGA::OnThrowEvent(FGameplayEventData Payload)
 	USkeletalMeshComponent* bossMesh = boss->GetMesh();
 	if (!bossMesh || !bossMesh->DoesSocketExist(throwSocketName))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[BossNormalAttackGA] 소켓 '%s' 없음. 보스 스켈레톤에서 소켓명 확인 필요."),
-			*throwSocketName.ToString());
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
 		return;
 	}
@@ -104,7 +96,9 @@ void UC_BossNormalAttackGA::OnThrowEvent(FGameplayEventData Payload)
 		const FVector targetPos = target->GetActorLocation() + FVector(0.f, 0.f, 60.f);
 		const FVector fireDir = (targetPos - socketTM.GetLocation()).GetSafeNormal();
 
-		proj->InitProjectile(GetAbilitySystemComponentFromActorInfo(), damageGEClass, damage, fireDir);
+		AC_BaseMonster* bossMonster = Cast<AC_BaseMonster>(boss);
+		const float attackValue = bossMonster ? static_cast<float>(bossMonster->GetAttack()) * 0.1f : damage;
+		proj->InitProjectile(GetAbilitySystemComponentFromActorInfo(), damageGEClass, attackValue, fireDir);
 	}
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);

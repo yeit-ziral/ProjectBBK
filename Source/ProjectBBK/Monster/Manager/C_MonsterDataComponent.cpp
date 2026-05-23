@@ -47,6 +47,7 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 	attrSet->InitnormalCooldown (Data->NormalCooldown);
 	attrSet->InitspecialCooldown(Data->SpecialCooldown);
 
+
 	attrSet->SetcurHP(Data->MaxHP);
 	attrSet->SetcurGroggy(0.0f);
 

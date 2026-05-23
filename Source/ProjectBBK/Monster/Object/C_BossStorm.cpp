@@ -6,6 +6,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
+#include "GameplayTagContainer.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
@@ -36,8 +37,14 @@ void AC_BossStorm::BeginPlay()
 	SetActorTickEnabled(false);
 }
 
-void AC_BossStorm::InitProjectile(float inLaunchDelay, float inFlySpeed, float inMaxTravelDistance)
+void AC_BossStorm::InitProjectile(UAbilitySystemComponent* InInstigatorASC,
+                                   TSubclassOf<UGameplayEffect> InDamageGEClass,
+                                   float InDamageValue,
+                                   float inLaunchDelay, float inFlySpeed, float inMaxTravelDistance)
 {
+	instigatorASC     = InInstigatorASC;
+	damageGEClass     = InDamageGEClass;
+	damageValue       = InDamageValue;
 	flySpeed          = inFlySpeed;
 	maxTravelDistance = inMaxTravelDistance;
 
@@ -106,16 +113,19 @@ void AC_BossStorm::OnDamageSphereBeginOverlap(UPrimitiveComponent* OverlappedCom
 	IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(OtherActor);
 	if (!ascInterface) return;
 
-	UAbilitySystemComponent* asc = ascInterface->GetAbilitySystemComponent();
-	if (!asc || !damageEffect) return;
+	UAbilitySystemComponent* targetASC = ascInterface->GetAbilitySystemComponent();
+	if (!targetASC || !instigatorASC.IsValid() || !damageGEClass) return;
 
 	bHit = true;
 
-	FGameplayEffectContextHandle context = asc->MakeEffectContext();
-	context.AddSourceObject(this);
-	FGameplayEffectSpecHandle spec = asc->MakeOutgoingSpec(damageEffect, 1.f, context);
+	FGameplayEffectContextHandle context = instigatorASC->MakeEffectContext();
+	context.AddInstigator(GetOwner(), GetOwner());
+	FGameplayEffectSpecHandle spec = instigatorASC->MakeOutgoingSpec(damageGEClass, 1.f, context);
 	if (spec.IsValid())
-		asc->ApplyGameplayEffectSpecToSelf(*spec.Data.Get());
+	{
+		spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Damage"), damageValue);
+		instigatorASC->ApplyGameplayEffectSpecToTarget(*spec.Data.Get(), targetASC);
+	}
 
 	Destroy();
 }

@@ -7,6 +7,7 @@
 #include "C_BossStormPatternGA.generated.h"
 
 class UAnimMontage;
+class UGameplayEffect;
 
 UCLASS()
 class PROJECTBBK_API UC_BossStormPatternGA : public UGameplayAbility
@@ -65,6 +66,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "StormPattern")
 	TSubclassOf<AActor> stormActorClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "StormPattern|Damage")
+	TSubclassOf<UGameplayEffect> damageEffectClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "StormPattern")
 	UMaterialInterface* magicCircleDecal;

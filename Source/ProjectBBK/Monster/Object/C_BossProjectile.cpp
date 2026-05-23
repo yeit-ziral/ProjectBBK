@@ -90,7 +90,8 @@ void AC_BossProjectile::OnSphereHit(UPrimitiveComponent* HitComp, AActor* OtherA
 
 void AC_BossProjectile::ApplyDamageToTarget(AActor* Target)
 {
-	if (!instigatorASC.IsValid() || !damageGEClass) return;
+	if (!instigatorASC.IsValid()) return;
+	if (!damageGEClass) return;
 
 	IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(Target);
 	if (!ascInterface) return;

@@ -8,6 +8,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayTagContainer.h"
 
 
 // Sets default values for this component's properties
@@ -144,13 +147,7 @@ void UC_AttackManagerComponent::DoSlam()
 		if (!target) continue;
 
 		// 데미지 적용
-		UGameplayStatics::ApplyDamage(
-			target,
-			ownerMonster->GetAttack() * slamDamageMultiplier,
-			ownerMonster->GetController(),
-			ownerMonster,
-			nullptr
-		);
+		ApplyGEDamage(target, static_cast<float>(ownerMonster->GetAttack()) * 0.2f);
 
 		// 넉백: 몬스터에서 타겟 방향으로 날려보냄
 		FVector knockbackDir = (target->GetActorLocation() - ownerMonster->GetActorLocation()).GetSafeNormal2D();
@@ -158,6 +155,32 @@ void UC_AttackManagerComponent::DoSlam()
 		knockbackDir.Normalize();
 		target->LaunchCharacter(knockbackDir * knockbackStrength, true, true);
 	}
+}
+
+void UC_AttackManagerComponent::ApplyGEDamage(ACharacter* Target, float DamageValue)
+{
+	if (!ownerMonster || !Target) return;
+
+	if (!damageEffectClass) return;
+
+	IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(Target);
+	if (!ascInterface) return;
+
+	UAbilitySystemComponent* targetASC = ascInterface->GetAbilitySystemComponent();
+	if (!targetASC) return;
+
+	UAbilitySystemComponent* sourceASC = ownerMonster->GetMonsterASC();
+	if (!sourceASC) return;
+
+	FGameplayEffectContextHandle context = sourceASC->MakeEffectContext();
+	context.AddInstigator(ownerMonster, ownerMonster);
+
+	FGameplayEffectSpecHandle spec = sourceASC->MakeOutgoingSpec(damageEffectClass, 1.f, context);
+	if (!spec.IsValid()) return;
+
+	spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Damage"), DamageValue);
+
+	sourceASC->ApplyGameplayEffectSpecToTarget(*spec.Data.Get(), targetASC);
 }
 
 void UC_AttackManagerComponent::DoMeleeNormalAttack()
@@ -198,15 +221,7 @@ void UC_AttackManagerComponent::DoMeleeNormalAttack()
 	{
 		if (ACharacter* target = Cast<ACharacter>(hit.GetActor()))
 		{
-
-			UGameplayStatics::ApplyDamage
-			(
-				target,
-			ownerMonster->GetAttack(),                    // 나중에 나누기 추가
-				ownerMonster->GetController(),
-				ownerMonster,
-				nullptr
-			);
+			ApplyGEDamage(target, static_cast<float>(ownerMonster->GetAttack()) * 0.1f);
 		}
 	}
 	

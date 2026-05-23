@@ -8,6 +8,7 @@
 #include "C_AttackManagerComponent.generated.h"
 
 class AC_BaseMonster;
+class UGameplayEffect;
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -37,6 +38,7 @@ private:
 	//private functions
 
 	void DoMeleeNormalAttack();
+	void ApplyGEDamage(ACharacter* Target, float DamageValue);
 
 private:
 	//private variable
@@ -66,6 +68,9 @@ private:
 	// 넉백 강도
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	float knockbackStrength = 900.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack")
+	TSubclassOf<UGameplayEffect> damageEffectClass;
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	bool debug = false;
