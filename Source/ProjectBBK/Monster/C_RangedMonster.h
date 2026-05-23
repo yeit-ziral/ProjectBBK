@@ -6,6 +6,8 @@
 #include "C_BaseMonster.h"
 #include "C_RangedMonster.generated.h"
 
+class UGameplayEffect;
+
 /**
  *
  */
@@ -72,6 +74,10 @@ protected:
 	// 스페셜 발사체 이동 속도 (cm/s)
 	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
 	float specialProjectileSpeed = 800.f;
+
+	// 스페셜 공격 데미지 GE (GE_BasicDamage 설정 권장)
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Special")
+	TSubclassOf<UGameplayEffect> specialDamageEffectClass;
 
 private:
 	void SpawnProjectile();

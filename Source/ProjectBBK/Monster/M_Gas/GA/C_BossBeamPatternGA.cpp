@@ -2,6 +2,7 @@
 
 #include "C_BossBeamPatternGA.h"
 #include "../../Object/C_BossBeam.h"
+#include "../../C_BaseMonster.h"
 #include "AbilitySystemComponent.h"
 #include "Animation/AnimMontage.h"
 #include "GameFramework/Character.h"
@@ -49,6 +50,10 @@ void UC_BossBeamPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 
 	// 빔 즉시 스폰 — BeginPlay에서 마법진(previewPlane) 자동 표시
 	// GA가 타이밍을 직접 제어하므로 빔 내부 자동 전환 타이머는 비활성화
+	AC_BaseMonster* bossMonster = Cast<AC_BaseMonster>(boss);
+	const float attackValue = bossMonster ? static_cast<float>(bossMonster->GetAttack()) * 0.2f : 0.f;
+	UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo();
+
 	float angleStep = 360.f / beamCount;
 	spawnedBeams.Empty();
 	for (int32 i = 0; i < beamCount; ++i)
@@ -60,6 +65,7 @@ void UC_BossBeamPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 			beam->ownerBoss = boss;
 			beam->SetLifeSpan(0.f);
 			beam->DisableAutoSwitch();
+			beam->InitBeam(asc, damageEffectClass, attackValue, beamRange, beamDamageTickRate);
 			spawnedBeams.Add(beam);
 		}
 	}

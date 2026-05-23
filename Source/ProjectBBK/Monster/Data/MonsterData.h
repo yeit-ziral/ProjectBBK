@@ -25,4 +25,6 @@ struct FMonsterData : public FTableRowBase
     UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionStrafeWeight = 0.5f;
     UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionBand         = 60.0f;
     UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionFlipInterval = 2.5f;
+
+    UPROPERTY(EditAnywhere, Category = "Reward") float ExpReward = 0.0f;
 };

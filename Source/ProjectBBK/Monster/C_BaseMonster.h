@@ -15,6 +15,7 @@
 #include "C_BaseMonster.generated.h"
 
 class UNiagaraSystem;
+class AC_ExpOrb;
 
 class UC_AttackManagerComponent;
 class UC_MonsterDataComponent;
@@ -74,9 +75,9 @@ protected:
 	UBehaviorTree* behaviorTree;
 #pragma endregion
 
-	// false로 설정하면 Tick의 자동 그로기 누적을 비활성화
+	// true로 설정하면 Tick마다 그로기 자동 누적 (기본 비활성화)
 	UPROPERTY(EditDefaultsOnly, Category = "Groggy")
-	bool bAutoAccumulateGroggy = true;
+	bool bAutoAccumulateGroggy = false;
 
 public:
 
@@ -152,6 +153,9 @@ protected:
 	// 안개 VFX 스폰 후 액터 소멸까지 대기 시간 (VFX 지속 시간보다 길어야 함)
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	float deathDestroyDelay = 2.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Reward")
+	TSubclassOf<AC_ExpOrb> ExpOrbClass;
 
 public:
 	// Reposition 스트레이프 상태 — BT 세션 간 유지 (C_BTTaskReposition이 관리)

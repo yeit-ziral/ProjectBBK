@@ -11,6 +11,8 @@ class UStaticMeshComponent;
 class UParticleSystemComponent;
 class UParticleSystem;
 class UNiagaraSystem;
+class UAbilitySystemComponent;
+class UGameplayEffect;
 
 UENUM(BlueprintType)
 enum class ESpecialProjectilePhase : uint8
@@ -30,6 +32,12 @@ public:
 	// 스폰 직후 호출 — 타겟 위치, 호 높이, 이동 속도 설정
 	UFUNCTION(BlueprintCallable, Category = "SpecialProjectile")
 	void InitSpecialProjectile(FVector InTargetLocation, float InArcHeight, float InMoveSpeed);
+
+	// GAS 데미지 파라미터 설정 — InitSpecialProjectile 직후 호출
+	void InitGASDamage(UAbilitySystemComponent* InInstigatorASC,
+	                   TSubclassOf<UGameplayEffect> InDamageGEClass,
+	                   float InDamage,
+	                   float InAoERadius = 300.f);
 
 	virtual void Tick(float DeltaTime) override;
 
@@ -77,4 +85,10 @@ private:
 	bool bInitialized = false;
 
 	void MoveToward(FVector Destination, float DeltaTime);
+	void ApplyAoEDamage();
+
+	TWeakObjectPtr<UAbilitySystemComponent> instigatorASC;
+	TSubclassOf<UGameplayEffect> damageGEClass;
+	float damageValue = 0.f;
+	float aoERadius   = 300.f;
 };

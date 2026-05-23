@@ -5,7 +5,11 @@
 #include "Components/StaticMeshComponent.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "NiagaraFunctionLibrary.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayTagContainer.h"
 
 AC_SpecialProjectile::AC_SpecialProjectile()
 {
@@ -90,11 +94,56 @@ void AC_SpecialProjectile::Tick(float DeltaTime)
 				trailEffect->Deactivate();
 			if (explosionEffect)
 				UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), explosionEffect, targetLocation, FRotator::ZeroRotator, FVector(0.5f));
+			ApplyAoEDamage();
 			OnReachedTarget();
 			Destroy();
 		}
 		break;
 	}
+	}
+}
+
+void AC_SpecialProjectile::InitGASDamage(UAbilitySystemComponent* InInstigatorASC,
+                                          TSubclassOf<UGameplayEffect> InDamageGEClass,
+                                          float InDamage,
+                                          float InAoERadius)
+{
+	instigatorASC = InInstigatorASC;
+	damageGEClass = InDamageGEClass;
+	damageValue   = InDamage;
+	aoERadius     = InAoERadius;
+}
+
+void AC_SpecialProjectile::ApplyAoEDamage()
+{
+	if (!instigatorASC.IsValid() || !damageGEClass) return;
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> objectTypes;
+	objectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+
+	TArray<AActor*> ignoredActors;
+	if (GetOwner()) ignoredActors.Add(GetOwner());
+
+	TArray<AActor*> hitActors;
+	UKismetSystemLibrary::SphereOverlapActors(
+		this, targetLocation, aoERadius, objectTypes, nullptr, ignoredActors, hitActors);
+
+	for (AActor* hitActor : hitActors)
+	{
+		IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(hitActor);
+		if (!ascInterface) continue;
+
+		UAbilitySystemComponent* targetASC = ascInterface->GetAbilitySystemComponent();
+		if (!targetASC) continue;
+
+		FGameplayEffectContextHandle context = instigatorASC->MakeEffectContext();
+		context.AddInstigator(GetOwner(), GetOwner());
+
+		FGameplayEffectSpecHandle spec = instigatorASC->MakeOutgoingSpec(damageGEClass, 1.f, context);
+		if (!spec.IsValid()) continue;
+
+		spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Damage"), damageValue);
+		instigatorASC->ApplyGameplayEffectSpecToTarget(*spec.Data.Get(), targetASC);
 	}
 }
 

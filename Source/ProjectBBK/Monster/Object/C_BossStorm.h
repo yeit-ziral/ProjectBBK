@@ -9,6 +9,7 @@
 class USphereComponent;
 class UParticleSystemComponent;
 class UGameplayEffect;
+class UAbilitySystemComponent;
 
 UCLASS()
 class PROJECTBBK_API AC_BossStorm : public AActor
@@ -19,7 +20,10 @@ public:
 	AC_BossStorm();
 
 	// GA에서 호출 — inLaunchDelay초 후 플레이어 방향으로 발사
-	void InitProjectile(float inLaunchDelay, float inFlySpeed, float inMaxTravelDistance);
+	void InitProjectile(UAbilitySystemComponent* InInstigatorASC,
+	                    TSubclassOf<UGameplayEffect> InDamageGEClass,
+	                    float InDamageValue,
+	                    float inLaunchDelay, float inFlySpeed, float inMaxTravelDistance);
 
 protected:
 	virtual void BeginPlay() override;
@@ -33,9 +37,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	UParticleSystemComponent* stormParticle;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Storm")
-	TSubclassOf<UGameplayEffect> damageEffect;
 
 	UFUNCTION()
 	void OnDamageSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -54,4 +55,8 @@ private:
 	bool bHit    = false;
 
 	FTimerHandle launchTimerHandle;
+
+	TWeakObjectPtr<UAbilitySystemComponent> instigatorASC;
+	TSubclassOf<UGameplayEffect> damageGEClass;
+	float damageValue = 0.f;
 };

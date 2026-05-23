@@ -22,6 +22,10 @@ EBTNodeResult::Type UC_BTTaskRangedAutoAttack::ExecuteTask(UBehaviorTreeComponen
 	if (!monster->CanAutoAttack())
 		return EBTNodeResult::Failed;
 
+	// 이전 공격 애니메이션이 재생 중이면 재진입 차단
+	if (monster->IsPlayingAttackAnimation())
+		return EBTNodeResult::Failed;
+
 	monster->RangedAutoAttack();
 	return EBTNodeResult::Succeeded;
 }

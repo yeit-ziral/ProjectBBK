@@ -4,10 +4,11 @@
 #include "C_RangedMonsterNormalAttackGA.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemComponent.h"
-#include "AIController.h"               
-#include "Kismet/GameplayStatics.h" 
+#include "AIController.h"
+#include "Kismet/GameplayStatics.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "../../Object/C_RangedProjectile.h"
+#include "../../C_BaseMonster.h"
 
 
 UC_RangedMonsterNormalAttackGA::UC_RangedMonsterNormalAttackGA()
@@ -52,10 +53,10 @@ void UC_RangedMonsterNormalAttackGA::ActivateAbility(const FGameplayAbilitySpecH
 
 	character->PlayAnimMontage(AttackMontage);
 
-	// Áö±ÝÀº ¡°¸ð¼Ç¸¸¡±
-	// ³ªÁß¿¡:
-	// - AnimNotify¿¡¼­ Projectile Spawn
-	// - ¶Ç´Â WaitMontageNotify / WaitMontageEnd Ãß°¡
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ç¸ï¿½ï¿½ï¿½
+	// ï¿½ï¿½ï¿½ß¿ï¿½:
+	// - AnimNotifyï¿½ï¿½ï¿½ï¿½ Projectile Spawn
+	// - ï¿½Ç´ï¿½ WaitMontageNotify / WaitMontageEnd ï¿½ß°ï¿½
 
 	UAbilityTask_WaitGameplayEvent* waitEvent =
 		UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag("Event.Montage.FireProjectile"),
@@ -106,7 +107,9 @@ void UC_RangedMonsterNormalAttackGA::OnFireProjectileEvent(FGameplayEventData Pa
 	if (proj && targetActor)
 	{
 		const FVector dir = (targetActor->GetActorLocation() - proj->GetActorLocation()).GetSafeNormal();
-		proj->InitVelocity(dir); 
+		AC_BaseMonster* monster = Cast<AC_BaseMonster>(character);
+		const float attackValue = monster ? static_cast<float>(monster->GetAttack()) * 0.1f : 10.f;
+		proj->InitProjectile(GetAbilitySystemComponentFromActorInfo(), damageEffectClass, attackValue, dir);
 	}
 
 

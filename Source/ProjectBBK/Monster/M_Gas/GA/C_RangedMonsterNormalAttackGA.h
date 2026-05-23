@@ -9,6 +9,8 @@
 
 #include "C_RangedMonsterNormalAttackGA.generated.h"
 
+class UGameplayEffect;
+
 /**
  * 
  */
@@ -32,4 +34,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
 	TSubclassOf<class AC_RangedProjectile> ProjectileClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+	TSubclassOf<UGameplayEffect> damageEffectClass;
 };

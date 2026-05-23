@@ -15,6 +15,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Animation/AnimInstance.h"
+#include "../Skills/C_ExpOrb.h"
 
 AC_BaseMonster::AC_BaseMonster()
 {
@@ -200,13 +201,30 @@ float AC_BaseMonster::GetRepositionFlipInterval() const { return dataComponent ?
 
 void AC_BaseMonster::ExecuteDeathSequence()
 {
-	// GameMode에 몬스터 사망 알림 — cast 실패 시 조용히 무시
+	// 0. ExpOrb 드랍
+	if (ExpOrbClass && dataComponent)
+	{
+		const float reward = dataComponent->GetExpReward();
+		if (reward > 0.f)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			AC_ExpOrb* Orb = GetWorld()->SpawnActor<AC_ExpOrb>(ExpOrbClass, GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
+			if (Orb) Orb->InitOrb(reward);
+		}
+	}
+
+	// GameMode에 몬스터 사망 알림
 	if (AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>())
 	{
 		GM->NotifyMonsterDead();
 	}
 
-	// 1. AI 영구 정지
+	// 1. 진행 중인 GA 전부 즉시 취소 (빔·스톰 오브젝트 포함)
+	if (monsterASC)
+		monsterASC->CancelAllAbilities();
+
+	// 2. AI 영구 정지
 	if (AAIController* AIC = Cast<AAIController>(GetController()))
 	{
 		AIC->StopMovement();
@@ -214,33 +232,33 @@ void AC_BaseMonster::ExecuteDeathSequence()
 			Brain->StopLogic(TEXT("Dead"));
 	}
 
-	// 2. 캐릭터 이동 비활성화
+	// 3. 캐릭터 이동 비활성화
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->DisableMovement();
 
-	// 3. 콜리전 비활성화 (플레이어 통과, 추가 피격 방지)
+	// 4. 콜리전 비활성화 (플레이어 통과, 추가 피격 방지)
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetWorld()->GetTimerManager().ClearTimer(hitFlashTimerHandle);
 	if (GetMesh()) GetMesh()->SetOverlayMaterial(nullptr);
 
-	// 4. HP 위젯 숨김
+	// 5. HP 위젯 숨김
 	if (HpWidgetComponent)
 		HpWidgetComponent->SetVisibility(false);
 
-	// 5. Death 몽타주 재생
+	// 6. Death 몽타주 재생
 	if (deathMontage)
 	{
 		PlayAnimMontage(deathMontage);
 
-		// 몽타주 종료 시 VFX+소멸 폴백 — ANC_DeathVFX notify가 없는 경우 대비
+		// 블렌드아웃 시작 시점(= 모션 마지막 프레임)에 VFX 발동 — 공중 정지 프레임 방지
 		if (UAnimInstance* animInst = GetMesh()->GetAnimInstance())
 		{
-			FOnMontageEnded endDelegate;
-			endDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
+			FOnMontageBlendingOutStarted blendOutDelegate;
+			blendOutDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
 			{
 				OnDeathMontageVFXPoint();
 			});
-			animInst->Montage_SetEndDelegate(endDelegate, deathMontage);
+			animInst->Montage_SetBlendingOutDelegate(blendOutDelegate, deathMontage);
 		}
 	}
 	else

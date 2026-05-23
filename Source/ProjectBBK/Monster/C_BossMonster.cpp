@@ -84,6 +84,12 @@ void AC_BossMonster::BeginPlay()
     }
 }
 
+void AC_BossMonster::ExecuteDeathSequence()
+{
+    RemoveBossHpWidget();
+    Super::ExecuteDeathSequence();
+}
+
 // ─── 공격 쿨다운 체크 ─────────────────────────────────────────────────────────
 
 bool AC_BossMonster::CanAutoAttack() const
