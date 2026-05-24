@@ -93,7 +93,11 @@ void UC_BBKGameInstance::LoadComplete(const float LoadTime, const FString& MapNa
 	Super::LoadComplete(LoadTime, MapName);
 	bIsTransitioning = false;
 
-	// 로딩 완료 → 100%로 즉시 점프
+	// Ticker를 먼저 중단 — 이후 시간 기반 계산이 100%를 덮어쓰는 것을 방지
+	FTSTicker::GetCoreTicker().RemoveTicker(ProgressTickerHandle);
+	ProgressTickerHandle = FTSTicker::FDelegateHandle();
+
+	// 로딩 완료 → 100%로 점프
 	if (SharedLoadingProgress.IsValid())
 		*SharedLoadingProgress = 1.0f;
 	if (IsValid(LoadingScreenWidgetInstance))
