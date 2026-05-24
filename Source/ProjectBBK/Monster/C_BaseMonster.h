@@ -100,6 +100,7 @@ public:
 	UC_MonsterAttributeSet*      GetMonsterAttributeSet() const { return monsterAttributeSet; }
 	UC_MonsterDataComponent*     GetDataComponent()       const { return dataComponent; }
 	UC_MonsterHPDisplayComponent*GetHPDisplayComponent()  const { return hpDisplayComponent; }
+	UC_GroggyComponent*          GetGroggyComponent()     const { return groggyComponent; }
 
 	bool  IsRepositionEnabled()       const;
 	float GetRepositionDesiredRange() const;

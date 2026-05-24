@@ -107,6 +107,11 @@ public:
     FGameplayAttributeData ReceivedTrueDamage;
     ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet, ReceivedTrueDamage)
 
+    // 그로기 누적량 — GE_GroggyDamage Set by Caller(Data.Groggy) → curGroggy 가산 → 그로기 판정
+    UPROPERTY(BlueprintReadOnly, Category = "Meta")
+    FGameplayAttributeData ReceivedGroggy;
+    ATTRIBUTE_ACCESSORS(UC_MonsterAttributeSet, ReceivedGroggy)
+
 #pragma endregion
 
 public:

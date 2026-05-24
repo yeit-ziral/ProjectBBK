@@ -7,6 +7,8 @@
 #include "Components/WidgetComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Object/C_BossStorm.h"
+#include "Kismet/GameplayStatics.h"
 
 AC_BossMonster::AC_BossMonster()
 {
@@ -87,6 +89,13 @@ void AC_BossMonster::BeginPlay()
 void AC_BossMonster::ExecuteDeathSequence()
 {
     RemoveBossHpWidget();
+
+    // StormGA가 이미 정상 종료된 뒤 보스가 사망하는 경우 대비 — 월드에 남은 Storm 액터 일괄 제거
+    TArray<AActor*> remainingStorms;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AC_BossStorm::StaticClass(), remainingStorms);
+    for (AActor* storm : remainingStorms)
+        if (IsValid(storm)) storm->Destroy();
+
     Super::ExecuteDeathSequence();
 }
 

@@ -9,6 +9,7 @@
 #include "AbilitySystemGlobals.h"
 #include "Net/UnrealNetwork.h"
 #include "../C_BaseMonster.h"
+#include "../Manager/C_GroggyComponent.h"
 
 UC_MonsterAttributeSet::UC_MonsterAttributeSet()
 {
@@ -256,6 +257,25 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
         CheckAndHandleDeath(NewHP);
         return;
     }
+    // Groggy 누적 처리
+    if (Data.EvaluatedData.Attribute == GetReceivedGroggyAttribute())
+    {
+        const float GroggyAmount = GetReceivedGroggy();
+        SetReceivedGroggy(0.0f);
+
+        if (GroggyAmount > 0.0f)
+        {
+            if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
+            {
+                if (UC_GroggyComponent* groggyComp = monster->GetGroggyComponent())
+                {
+                    groggyComp->AddGroggy(GroggyAmount);
+                }
+            }
+        }
+        return;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////
     if (Data.EvaluatedData.Attribute == GetmaxHPAttribute())
     {

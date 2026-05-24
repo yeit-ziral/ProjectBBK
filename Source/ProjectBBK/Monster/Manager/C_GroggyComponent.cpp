@@ -83,7 +83,7 @@ void UC_GroggyComponent::EnterGroggyState()
 	if (!asc) return;
 
 	asc->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")));
-	asc->CancelAllAbilities();
+	asc->InterruptCurrentAbilities();
 
 	if (AAIController* AIC = Cast<AAIController>(ownerMonster->GetController()))
 	{

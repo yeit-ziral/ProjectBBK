@@ -69,6 +69,7 @@ void UC_BossStormPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 
 	cachedSpawnPoints.Empty();
 	cachedDecalActors.Empty();
+	cachedStormActors.Empty();
 
 	for (int32 i = 0; i < circleCount; ++i)
 	{
@@ -113,7 +114,10 @@ void UC_BossStormPatternGA::SpawnStorms()
 	{
 		AActor* spawned = GetWorld()->SpawnActor<AActor>(stormActorClass, spawnPos, FRotator::ZeroRotator);
 		if (AC_BossStorm* storm = Cast<AC_BossStorm>(spawned))
+		{
 			storm->InitProjectile(asc, damageEffectClass, attackValue, stormLaunchDelay, stormFlySpeed, stormMaxTravelDistance);
+			cachedStormActors.Add(storm);
+		}
 	}
 
 	// 폭풍이 실제로 날기 시작하는 시점(stormLaunchDelay 후)에 GA 종료
@@ -145,8 +149,12 @@ void UC_BossStormPatternGA::EndAbility(const FGameplayAbilitySpecHandle Handle, 
 	{
 		for (TObjectPtr<AActor>& decalActor : cachedDecalActors)
 			if (IsValid(decalActor)) decalActor->Destroy();
+
+		for (TWeakObjectPtr<AActor>& stormActor : cachedStormActors)
+			if (stormActor.IsValid()) stormActor->Destroy();
 	}
 	cachedDecalActors.Empty();
+	cachedStormActors.Empty();
 
 	if (UWorld* world = GetWorld())
 	{

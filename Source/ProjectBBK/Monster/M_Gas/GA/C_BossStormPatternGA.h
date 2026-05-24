@@ -31,6 +31,9 @@ protected:
 	TArray<TObjectPtr<AActor>> cachedDecalActors;
 
 	UPROPERTY()
+	TArray<TWeakObjectPtr<AActor>> cachedStormActors;
+
+	UPROPERTY()
 	TArray<FVector> cachedSpawnPoints;
 
 	UPROPERTY()
