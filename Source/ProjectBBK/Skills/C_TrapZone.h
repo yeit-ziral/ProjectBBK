@@ -12,6 +12,7 @@
 class UCapsuleComponent;
 class UDecalComponent;
 class UPointLightComponent;
+class USoundBase;
 
 UCLASS()
 class PROJECTBBK_API AC_TrapZone : public AActor
@@ -29,6 +30,7 @@ public:
 	void InitTrap(
 		UAbilitySystemComponent* InASC,
 		float InDamageMagnitude,
+		float InGroggyMagnitude,
 		float InLifeTime,
 		float InTriggerRadius,
 		float InTriggerHalfHeight,
@@ -58,15 +60,22 @@ protected:
 	UNiagaraSystem* ImpactNiagaraSystem;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TrapZone")
+	USoundBase* ImpactSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TrapZone")
 	FVector NiagaraScale = FVector(1.f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TrapZone")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TrapZone")
+	TSubclassOf<UGameplayEffect> GroggyEffectClass;
+
 private:
 	TWeakObjectPtr<UAbilitySystemComponent> OwnerASC;
 
 	float DamageMagnitude    = 0.f;
+	float GroggyMagnitude    = 0.f;
 	float LifeTime           = 0.f;
 	float TriggerCapsuleRadius     = 0.f;
 	float TriggerCapsuleHalfHeight = 0.f;

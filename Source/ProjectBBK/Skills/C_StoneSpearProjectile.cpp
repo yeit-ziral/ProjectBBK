@@ -4,6 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NiagaraComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "AbilitySystemGlobals.h"
 #include "GameplayEffectTypes.h"
 #include "../Monster/C_BaseMonster.h"
@@ -54,14 +55,18 @@ void AC_StoneSpearProjectile::InitProjectile(
 	AActor* InInstigatorActor,
 	TSubclassOf<UGameplayEffect> InDamageGEClass,
 	TSubclassOf<UGameplayEffect> InSlowedGEClass,
+	TSubclassOf<UGameplayEffect> InGroggyGEClass,
 	float InDamage,
+	float InGroggyMagnitude,
 	const FVector& Direction)
 {
 	InstigatorASC   = InInstigatorASC;
 	InstigatorActor = InInstigatorActor;
 	DamageGEClass   = InDamageGEClass;
 	SlowedGEClass   = InSlowedGEClass;
+	GroggyGEClass   = InGroggyGEClass;
 	DamageMagnitude = InDamage;
+	GroggyMagnitude = InGroggyMagnitude;
 
 	ProjectileMovement->Velocity = Direction.GetSafeNormal() * ProjectileMovement->InitialSpeed;
 
@@ -106,6 +111,12 @@ void AC_StoneSpearProjectile::HandleImpact()
 	Collision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ProjectileEffect->Deactivate();
 	ImpactEffect->Activate();
+
+	if (IsValid(ImpactSound))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
+
 	SetLifeSpan(2.0f);
 }
 
@@ -139,6 +150,19 @@ void AC_StoneSpearProjectile::ApplyEffectsToTarget(AActor* TargetActor)
 		if (SlowedSpec.IsValid())
 		{
 			InstigatorASC->ApplyGameplayEffectSpecToTarget(*SlowedSpec.Data, TargetASC);
+		}
+	}
+
+	if (GroggyGEClass)
+	{
+		FGameplayEffectSpecHandle GroggySpec =
+			InstigatorASC->MakeOutgoingSpec(GroggyGEClass, 1.0f, Context);
+		if (GroggySpec.IsValid())
+		{
+			GroggySpec.Data->SetSetByCallerMagnitude(
+				FGameplayTag::RequestGameplayTag(FName("Data.GroggyDamage")),
+				GroggyMagnitude);
+			InstigatorASC->ApplyGameplayEffectSpecToTarget(*GroggySpec.Data, TargetASC);
 		}
 	}
 }

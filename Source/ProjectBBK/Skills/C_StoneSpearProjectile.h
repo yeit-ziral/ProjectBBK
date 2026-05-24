@@ -11,6 +11,7 @@
 class USphereComponent;
 class UProjectileMovementComponent;
 class UNiagaraComponent;
+class USoundBase;
 
 /**
  * GA_StoneSpear가 발사하는 돌창 Projectile.
@@ -41,7 +42,9 @@ public:
 		AActor* InInstigatorActor,
 		TSubclassOf<UGameplayEffect> InDamageGEClass,
 		TSubclassOf<UGameplayEffect> InSlowedGEClass,
+		TSubclassOf<UGameplayEffect> InGroggyGEClass,
 		float InDamage,
+		float InGroggyMagnitude,
 		const FVector& Direction
 	);
 
@@ -60,13 +63,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UNiagaraComponent* ImpactEffect;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	USoundBase* ImpactSound;
+
 private:
 	TWeakObjectPtr<UAbilitySystemComponent> InstigatorASC;
 	TWeakObjectPtr<AActor> InstigatorActor;
 
 	TSubclassOf<UGameplayEffect> DamageGEClass;
 	TSubclassOf<UGameplayEffect> SlowedGEClass;
-	float DamageMagnitude = 0.f;
+	TSubclassOf<UGameplayEffect> GroggyGEClass;
+	float DamageMagnitude  = 0.f;
+	float GroggyMagnitude  = 0.f;
 
 	bool bHasHit = false;
 
