@@ -967,3 +967,13 @@ void AC_BasePlayerCharactor::RestoreActiveEffects(UAbilitySystemComponent *ASC)
 
 	savedActiveEffects.Empty();
 }
+
+void AC_BasePlayerCharactor::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if(springArm)
+	{
+		springArm->bDoCollisionTest = false;
+		springArm->ProbeChannel = ECC_GameTraceChannel1; // Set Cameral Collision Channel to void collision with monsters
+	}
+}

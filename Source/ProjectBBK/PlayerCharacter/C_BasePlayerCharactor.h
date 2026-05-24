@@ -149,6 +149,8 @@ public:
 	void SaveActiveEffects(UAbilitySystemComponent *ASC);	 // 캐릭터 교체 시 활성화 된 GE 저장
 	void RestoreActiveEffects(UAbilitySystemComponent *ASC); // 캐릭터 교체 후 저장된 GE 복원
 
+	virtual void PostInitializeComponents() override;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
