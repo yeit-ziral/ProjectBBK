@@ -1,0 +1,124 @@
+## Design Decisions
+
+> 설계 방식을 결정할 때 대안이 존재했던 경우 여기에 기록.
+> 형식: 선택한 방식 / 고려했던 대안 / 선택 이유 / 트레이드오프
+
+### GE_Ablaze + GE_DotDamage — 상태이상과 데미지 처리 분리
+- **선택:** GE_Ablaze는 State.Ablaze 태그 부여 + GameplayCue.Debug.Ablaze 담당, 실제 DoT 데미지는 GE_DotDamage가 별도 처리
+- **대안:** GE_Ablaze Modifier에 Health / ReceivedTrueDamage를 직접 포함해 단일 GE로 처리
+- **선택 이유:** 상태이상 태그 관리와 데미지 수치 계산을 분리하면 각자 독립적으로 수정 가능. GE_DotDamage를 다른 상태이상(GE_Wet 등)에서도 재사용할 수 있음
+- **트레이드오프:** GE가 두 개로 늘어나 적용 순서와 생명주기를 함께 관리해야 함
+
+### GA_Heal — GE 단일 구조 (GE_Ablaze의 분리 구조 미적용)
+- **선택:** GE_HealOverTime 하나로 Health Modifier + State.Healing 태그 + GameplayCue.Heal 통합
+- **대안:** GE_Ablaze처럼 상태 태그용 GE와 수치 처리 GE를 분리
+- **선택 이유:** GA_Heal은 회복 단일 목적이므로 분리할 책임이 없음. GE_Ablaze 분리는 DoT와 상태이상을 독립적으로 재사용하기 위한 것
+- **트레이드오프:** 향후 State.Healing 태그를 다른 GE에서 재사용하려면 분리 구조로 리팩토링 필요
+
+### PostAttributeChange vs PostGameplayEffectExecute — attribute 변경 외부 반영 위치
+- **선택:** `PostAttributeChange`에서 `moveSpeed` → `MaxWalkSpeed` 동기화 (`UC_MonsterAttributeSet` 구현)
+- **대안:** `PostGameplayEffectExecute`에서 처리
+- **선택 이유:** `PostGameplayEffectExecute`는 Instant GE 실행 시에만 호출됨. Duration GE(GE_Slowed 등)의 Modifier 변경은 `PostAttributeChange`를 통해야 모든 케이스 커버 가능
+- **트레이드오프:** `PostAttributeChange`는 모든 attribute 변경에 호출되므로 attribute 분기 처리 필수
+
+### Projectile SpawnLocation — 카메라 위치 기반
+- **선택:** `WorldOrigin + WorldDir * 100` (카메라 기준 스폰)
+- **대안:** 캐릭터 위치 + ForwardVector offset
+- **선택 이유:** 캐릭터-카메라 시차(Parallax)로 인해 캐릭터 기준 발사 시 크로스헤어 방향과 실제 발사 방향이 어긋남. 카메라 기준 발사 시 크로스헤어와 완전 일치
+- **트레이드오프:** 투사체가 캐릭터 모델이 아닌 카메라 앞 허공에서 시작하는 것처럼 보일 수 있음 (VFX로 커버 가능)
+
+### SkillWheel 스킬 교체 — TryActivateAbilityByClass vs TryActivateAbilitiesByTag
+- **선택:** `UC_SkillManagerComponent::GetActiveSkillClass()`로 현재 활성 GA 클래스를 가져와 `TryActivateAbilityByClass` 호출
+- **대안:** 활성 스킬에 `DynamicAbilityTags`로 `Ability.Skill.Common` 태그를 추가하고 `TryActivateAbilitiesByTag`로 발동
+- **선택 이유:** `TryActivateAbilitiesByTag`는 `DynamicAbilityTags`를 조회하지 않아 발동되지 않음이 실험으로 확인됨
+- **트레이드오프:** F키 Blueprint에서 SkillManagerComponent 참조가 필요해짐. DynamicAbilityTags 조작 코드는 불필요해져 `SwitchCommonSkill`이 단순히 `activeSkillIndex`만 갱신하는 구조로 단순화됨
+
+### CommonSkill 아이콘 갱신 — OnCommonSkillSwitched 델리게이트 vs OnCharacterSwitched + FindAbilityByTag
+- **선택:** `SkillManagerComponent`에 `OnCommonSkillSwitched` 델리게이트 추가, `SwitchCommonSkill()` 호출 시 브로드캐스트
+- **대안:** `OnCharacterSwitched` 시 `FindAbilityByTag`로 CommonSkill 탐색
+- **선택 이유:** CommonSkill은 캐릭터 교체와 무관하게 SkillWheel로 독립 변경됨. tag-based 탐색은 고정 태그가 필요한데 CommonSkill은 SkillWheel 리팩토링 후 고정 GAS 태그 없음. `SwitchCommonSkill`을 단일 진입점으로 사용하면 교체·초기화 두 경우를 동일 코드로 처리 가능
+- **트레이드오프:** WBP_HUD가 캐릭터 교체 시마다 `OnCommonSkillSwitched` 바인딩을 해제·재등록해야 함
+
+### TrapZone 스폰 위치 — LineTrace vs 수동 계산
+- **선택:** 캐릭터 발 위치 아래로 `LineTraceByChannel`, `ImpactPoint + TriggerHalfHeight`를 스폰 위치로 사용
+- **대안:** `ActorLocation.Z - CapsuleHalfHeight + TriggerHalfHeight` 수동 계산
+- **선택 이유:** 경사면·계단에서 수동 계산은 실제 지면과 Z값이 어긋남. LineTrace는 지형에 무관하게 정확한 지면 좌표 반환
+- **트레이드오프:** `bBlockingHit == false` 엣지 케이스 처리 필요 → EndAbility로 처리 (Debugging Checklist 22번 참고)
+
+### TriggerCapsule / DamageCapsule 분리 — 단일 컴포넌트 vs 분리
+- **선택:** 트리거 판정(`UCapsuleComponent` Overlap)과 데미지 판정(`CapsuleOverlapActors`)을 별도 크기 파라미터로 분리
+- **대안:** 동일 컴포넌트·동일 크기로 감지와 피해 범위를 통일
+- **선택 이유:** 발동 감지 범위(좁게)와 실제 피해 범위(넓게)를 독립적으로 조정 가능. GA Blueprint 변수로 각각 노출해 디자인 조정 용이
+- **트레이드오프:** InitTrap 파라미터가 늘어남 (반경 2개 + 반높이 2개)
+
+### 몬스터 Reposition/Strafe — 단일 데이터 구동 Task vs Idle/Strafe 분리 Task
+- **선택:** `UC_BTTaskReposition` 하나로 노말 "Idle Repositioning"과 보스 "Strafe 서클링"을 통합
+- **대안:** `UC_BTTaskIdleReposition`(노말 전용) + `UC_BTTaskBossStrafe`(보스 전용) 분리
+- **선택 이유:** 두 동작의 알고리즘(목표 반경 유지 + 접선 이동)이 동일함. 시각 차이는 `StrafeWeight`(노말 ~0.4, 보스 ~0.9)·`RepositionSpeed`·`FlipInterval`·`DesiredRange` 등 데이터값만으로 표현 가능. CLAUDE.md 데이터 구동 원칙 준수, 이동 수학 중복 제거. 세 BT 에셋 모두 동일 Task로 배치 가능
+- **트레이드오프:** 보스 전용 로직(예: 2페이즈 서클링 반경 조정)이 필요해지면 서브클래스로 분리하거나 FMonsterData에 추가 필드를 넣어야 함
+
+### 쿨다운 오버레이 방향 — 줄어드는 방향 vs 차오르는 방향
+- **선택:** `Progress = CurrentCooldown / MaxCooldown` — 쿨다운 시작 시 꽉 찬 상태에서 시간이 지날수록 줄어듦
+- **대안:** `Progress = 1.0f - (CurrentCooldown / MaxCooldown)` — 빈 상태에서 차오르다가 완료
+- **선택 이유:** 줄어드는 방향이 "남은 시간이 소진된다"는 시각적 직관에 부합
+- **트레이드오프:** 머티리얼의 Progress 파라미터가 1→0 방향으로 동작해야 하므로 머티리얼 설계 방향과 맞춰야 함
+
+### Mana Charge — C++ SetByCaller vs MMC
+- **선택:** C++ SetByCaller로 마나 충전량 전달
+- **대안:** MMC(Modifier Magnitude Calculation)로 계산 로직 캡슐화
+- **선택 이유:** 충전량이 전투 상황(피격, 공격 등)에 따라 호출 시점마다 달라지므로 런타임에 값을 직접 주입하는 SetByCaller가 적합. MMC는 AttributeSet 기반 정적 계산에 더 어울림
+- **트레이드오프:** SetByCaller는 호출부에서 태그와 값을 직접 관리해야 하므로 태그 불일치 오류에 취약 (Debugging Checklist 7번 참고)
+
+### LaunchCharacter — GC 경유 vs C++ 직접 호출
+- **선택:** C++ HandleNotifyEvent에서 `LaunchCharacter` 직접 호출, 면역은 `State.KnockbackImmune` ASC 태그 수동 체크
+- **대안:** GE_Knockback → GC_Knockback(GameplayCueNotify_Static) On Execute에서 LaunchCharacter, Instigator로 방향 계산
+- **선택 이유:** Instant GE의 GC Parameters에서 Instigator가 None으로 전달되어 방향 계산 불가 확인(Debugging Checklist 24번). C++에서 AvatarActor·Target을 직접 참조하면 방향 계산이 확실하고 GE/GC 에셋 불필요
+- **트레이드오프:** GAS 내장 Immunity GE 시스템 우회 → `State.KnockbackImmune` 태그 수동 체크로 대체. 넉백 면역 몬스터 추가 시 해당 태그를 GE로 부여하면 됨
+
+### Niagara 이펙트 스폰 위치 — BoxStart vs BoxCenter
+- **선택:** `BoxStart = BoxCenter - ForwardVector * BoxExtent.X` (박스 시작점, 캐릭터 바로 앞)에서 스폰
+- **대안:** BoxCenter(박스 중심)에서 스폰
+- **선택 이유:** BoxCenter 스폰 시 캐릭터에서 너무 멀고, 이펙트 크기가 박스와 같을 때 절반만 박스 안에 위치. BoxStart에서 스폰하면 캐릭터 바로 앞에서 시작해 박스 전체를 커버
+- **트레이드오프:** Blueprint에서 `ForwardVector * BoxExtent.X`를 빼는 계산이 추가 필요. C++ 파라미터 추가 없이 BP에서 처리 가능
+
+### 픽업 아이템 Collision — Collision Profile vs Cast 필터
+- **선택:** `QueryOnly` + `SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap)` + `OnOrbOverlap`에서 `Cast<AC_BasePlayerCharactor>` 필터
+- **대안:** 커스텀 Collision Profile `"OverlapOnlyPawn"` 정의
+- **선택 이유:** 어차피 콜백에서 Cast 필터를 사용하므로 커스텀 프로파일은 중복 관리. 기본 채널 설정만으로 동일한 결과 달성 가능
+- **트레이드오프:** Pawn 채널 전체가 Overlap 대상이 되므로 몬스터 Pawn도 콜백 진입하나, Cast 실패로 즉시 return되므로 실질적 영향 없음
+
+### `QuerySkillCooldown`의 `OutDuration` 소스 — GE ActiveEffect vs 스킬 데이터
+- **선택:** `OutDuration = bSkillDataLoaded ? CachedSkillData.cooldown : Results[0].Value` — 스킬 데이터 원본값 우선
+- **대안:** `Results[0].Value` (GE의 Duration)만 사용
+- **선택 이유:** `GetActiveEffectsTimeRemainingAndDuration`이 SetByCaller Duration GE에서 전체 Duration 대신 TimeRemaining과 같은 값을 반환하는 케이스가 확인됨
+- **트레이드오프:** GE Duration과 스킬 데이터 cooldown 값이 다른 경우(런타임 쿨다운 스케일링 등)엔 스킬 데이터 값이 부정확할 수 있음
+
+### 레벨 전환 로딩 화면 — Viewport Overlay vs MoviePlayer
+- **선택:** `GEngine->GameViewport->AddViewportWidgetContent()` + GameInstance를 outer로 UMG 위젯 생성
+- **대안:** `GetMoviePlayer()->SetupLoadingScreen()` + `TakeWidget()`
+- **선택 이유:** MoviePlayer는 Slate 렌더 파이프라인만 지원하여 UMG Designer 레이아웃을 렌더링하지 못함. Event Construct는 실행되지만 화면에 아무것도 표시되지 않음. GameViewport는 레벨 전환 중에도 살아있어 오버레이가 확실히 표시됨.
+- **트레이드오프:** `LoadComplete()`에서 명시적으로 `HideLoadingOverlay()` 호출 필요. MinLoadingTime은 타이머로 직접 구현.
+
+### 레벨 간 상태 저장 위치 — GameInstance vs PlayerState (Seamless Travel)
+- **선택:** `UC_BBKGameInstance`에 `FPersistentGameState` 저장, Non-seamless travel 사용
+- **대안:** Seamless Travel로 PlayerState 유지 (멀티플레이어 표준 방식)
+- **선택 이유:** 이 프로젝트는 싱글플레이어이며 `OpenLevel`(Non-seamless) 사용. PlayerState는 레벨 전환 시 재생성되므로 GameInstance가 유일한 영속 저장소. Seamless Travel은 멀티플레이어 인프라를 요구해 범위 초과.
+- **트레이드오프:** 비활성 캐릭터 어트리뷰트는 새 레벨에서 Possess 전까지 초기화 상태. `InjectPreSavedState`로 `savedState`를 미리 주입해 Possess 시 `RestoreCharacterState`가 자동 적용되도록 처리.
+
+### 레벨 시작 캐릭터 인덱스 — 항상 0 vs 저장 인덱스
+- **선택:** `GI->HasSavedState() ? GetSavedActiveCharacterIndex() : 0`으로 동적 결정
+- **대안:** 항상 0번 캐릭터로 시작
+- **선택 이유:** 레벨 이동 중에도 플레이어가 선택한 캐릭터가 유지되어야 자연스러운 게임 흐름. 저장 상태 없는 최초 시작 시 0번으로 폴백.
+- **트레이드오프:** `FPersistentGameState.activeCharacterIndex`를 `SaveGameState` 시 반드시 저장해야 함. `RestoreGameState`의 `ActiveIndex` 파라미터도 이 값으로 전달해야 어트리뷰트 복원 대상이 올바르게 설정됨.
+
+### Game Over UI 상속 구조 — UC_EndingScreenWidget 상속 vs 독립 클래스
+- **선택:** `UC_GameOverWidget : public UC_EndingScreenWidget` — 빈 서브클래스로 시작
+- **대안:** `UUserWidget`을 직접 상속한 독립 클래스
+- **선택 이유:** "메인 메뉴로", "게임 종료" 버튼 로직(`OnReturnToMainMenu`, `OnQuitGame`)을 그대로 재사용. 향후 Retry 버튼은 서브클래스에만 추가하면 됨
+- **트레이드오프:** Ending(클리어)과 GameOver(실패)가 의미상 다른 화면이지만, 현재 버튼 동작이 동일하므로 분리 실익이 없음. Retry 기능 추가 시 서브클래스 확장으로 처리
+
+### Game Over 트리거 위치 — PlayerController vs GameMode
+- **선택:** `AC_PlayerController::HandleCharacterDeath()`에서 `NextLivingIndex == -1` 조건으로 직접 `ShowGameOverScreen()` 호출
+- **대안:** GameMode에서 플레이어 사망을 구독해 별도 처리
+- **선택 이유:** `HandleCharacterDeath`가 이미 "다음 생존 캐릭터 없음" 조건을 감지하고 있어 중복 로직 불필요. UI 표시도 PlayerController 책임 범위 안에 있음
+- **트레이드오프:** 멀티플레이어로 확장 시 서버-클라이언트 분리 필요. 싱글플레이어 전제이므로 현재 범위에서는 문제 없음

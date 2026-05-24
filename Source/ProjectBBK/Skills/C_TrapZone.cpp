@@ -6,6 +6,7 @@
 #include "Components/PointLightComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "DrawDebugHelpers.h"
@@ -36,6 +37,7 @@ void AC_TrapZone::BeginPlay()
 void AC_TrapZone::InitTrap(
 	UAbilitySystemComponent* InASC,
 	float InDamageMagnitude,
+	float InGroggyMagnitude,
 	float InLifeTime,
 	float InTriggerRadius,
 	float InTriggerHalfHeight,
@@ -44,6 +46,7 @@ void AC_TrapZone::InitTrap(
 {
 	OwnerASC               = InASC;
 	DamageMagnitude        = InDamageMagnitude;
+	GroggyMagnitude        = InGroggyMagnitude;
 	LifeTime               = InLifeTime;
 	TriggerCapsuleRadius      = InTriggerRadius;
 	TriggerCapsuleHalfHeight  = InTriggerHalfHeight;
@@ -105,6 +108,11 @@ void AC_TrapZone::OnTriggerOverlap(
 
 	DecalComp->SetVisibility(false);
 	PointLightComp->SetVisibility(false);
+
+	if (IsValid(ImpactSound))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
 
 	if (IsValid(ImpactNiagaraSystem))
 	{
@@ -179,6 +187,22 @@ void AC_TrapZone::ApplyDamageToOverlappingMonsters()
 		FGameplayTag::RequestGameplayTag(TEXT("Data.Damage")),
 		DamageMagnitude);
 
+	FGameplayEffectSpecHandle GroggySpecHandle;
+	if (IsValid(GroggyEffectClass))
+	{
+		GroggySpecHandle = OwnerASC->MakeOutgoingSpec(
+			GroggyEffectClass, 1.0f,
+			OwnerASC->MakeEffectContext());
+
+		if (GroggySpecHandle.IsValid())
+		{
+			UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+				GroggySpecHandle,
+				FGameplayTag::RequestGameplayTag(TEXT("Data.GroggyDamage")),
+				GroggyMagnitude);
+		}
+	}
+
 	for (AActor* Actor : OverlappedActors)
 	{
 		UAbilitySystemComponent* TargetASC =
@@ -187,6 +211,11 @@ void AC_TrapZone::ApplyDamageToOverlappingMonsters()
 		if (IsValid(TargetASC))
 		{
 			OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+
+			if (GroggySpecHandle.IsValid())
+			{
+				OwnerASC->ApplyGameplayEffectSpecToTarget(*GroggySpecHandle.Data.Get(), TargetASC);
+			}
 		}
 	}
 }
