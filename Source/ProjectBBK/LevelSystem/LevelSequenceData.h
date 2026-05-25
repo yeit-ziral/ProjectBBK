@@ -54,6 +54,9 @@ struct FPersistentGameState
 	float experience          = 0.f;
 	float characterLevel      = 1.f;
 	float maxExperience       = 100.f;
+	float maxHealth           = -1.f;   // -1 = 저장 없음 (기본값 사용)
+	float maxStamina          = -1.f;
+	float damage              = -1.f;
 	int32 activeCharacterIndex = 0;
 	bool  bHasSavedState      = false;
 };
