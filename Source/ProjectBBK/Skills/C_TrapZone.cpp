@@ -65,7 +65,7 @@ void AC_TrapZone::InitTrap(
 		this, &AC_TrapZone::OnLifeTimeExpired,
 		LifeTime, false);
 
-#if !UE_BUILD_SHIPPING
+#if 0 // DrawDebugCapsule disabled
 	DrawDebugCapsule(
 		GetWorld(),
 		GetActorLocation(),
@@ -159,7 +159,7 @@ void AC_TrapZone::ApplyDamageToOverlappingMonsters()
 		TArray<AActor*>{},
 		OverlappedActors);
 
-#if !UE_BUILD_SHIPPING
+#if 0 // DrawDebugCapsule disabled
 	DrawDebugCapsule(
 		GetWorld(),
 		GetActorLocation(),
