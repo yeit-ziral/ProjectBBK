@@ -8,6 +8,7 @@
 #include "../C_PlayerState.h"
 #include "../C_BasePlayerCharactor.h"
 #include "AbilitySystemComponent.h"
+#include "../../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerStart.h"
@@ -80,10 +81,10 @@ void AC_PlayerController::BeginPlay()
 	}
 
 	// 저장된 상태가 있으면 해당 캐릭터 인덱스로 시작, 없으면 0번
-	UC_BBKGameInstance* GI_Ref = Cast<UC_BBKGameInstance>(GetGameInstance());
+	UC_BBKGameInstance *GI_Ref = Cast<UC_BBKGameInstance>(GetGameInstance());
 	const int32 startIndex = (GI_Ref && GI_Ref->HasSavedState())
-		? FMath::Clamp(GI_Ref->GetSavedActiveCharacterIndex(), 0, characterRoster.Num() - 1)
-		: 0;
+								 ? FMath::Clamp(GI_Ref->GetSavedActiveCharacterIndex(), 0, characterRoster.Num() - 1)
+								 : 0;
 
 	if (characterRoster.IsValidIndex(startIndex))
 	{
@@ -100,8 +101,8 @@ void AC_PlayerController::BeginPlay()
 		// HUD 초기화 완료 후 이전 레벨의 저장 상태 복원 (activeCharacterIndex 기반 어트리뷰트 적용)
 		if (GI_Ref)
 		{
-			UAbilitySystemComponent* SharedASC = nullptr;
-			if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+			UAbilitySystemComponent *SharedASC = nullptr;
+			if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
 				SharedASC = PS->GetAbilitySystemComponent();
 
 			GI_Ref->RestoreGameState(characterRoster, startIndex, SharedASC);
@@ -109,7 +110,7 @@ void AC_PlayerController::BeginPlay()
 	}
 
 	// 게임 클리어 이벤트 바인딩 — 마지막 레벨 포탈 진입 시 엔딩 화면 표시
-	if (UC_BBKGameInstance* GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
+	if (UC_BBKGameInstance *GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
 	{
 		GI->OnGameClear.AddDynamic(this, &AC_PlayerController::ShowEndingScreen);
 	}
@@ -187,7 +188,8 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	SetIgnoreLookInput(true);
 
 	for (AC_BasePlayerCharactor *Char : characterRoster)
-		if (Char) Char->bSuppressDeath = true;
+		if (Char)
+			Char->bSuppressDeath = true;
 
 	savedControlRotation = GetControlRotation();
 
@@ -196,7 +198,7 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 		FVector feetLocation = OldChar->GetActorLocation();
 		feetLocation.Z -= OldChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 
-		UNiagaraComponent* spawnedEffect = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, switchEffect, feetLocation);
+		UNiagaraComponent *spawnedEffect = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, switchEffect, feetLocation);
 
 		if (spawnedEffect)
 		{
@@ -217,7 +219,8 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	if (!characterRoster.IsValidIndex(currentCharacterIndex) || !characterRoster.IsValidIndex(NextIndex))
 	{
 		for (AC_BasePlayerCharactor *Char : characterRoster)
-			if (Char) Char->bSuppressDeath = false;
+			if (Char)
+				Char->bSuppressDeath = false;
 		ResetIgnoreMoveInput();
 		ResetIgnoreLookInput();
 		bIsSwitching = false;
@@ -230,7 +233,8 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	if (!OldChar || !NewChar)
 	{
 		for (AC_BasePlayerCharactor *Char : characterRoster)
-			if (Char) Char->bSuppressDeath = false;
+			if (Char)
+				Char->bSuppressDeath = false;
 		ResetIgnoreMoveInput();
 		ResetIgnoreLookInput();
 		bIsSwitching = false;
@@ -270,6 +274,7 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
+
 	SetControlRotation(savedControlRotation);
 
 	if (ASC)
@@ -290,7 +295,7 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 
 	// HUD 초기화(SwitchCommonSkill(0)) 이후 저장된 스킬 인덱스 복원
 	// InitializeDefaultSkill이 항상 0번으로 리셋하므로 Broadcast 이후 덮어써야 함
-	if (UC_SkillManagerComponent* SM = NewChar->FindComponentByClass<UC_SkillManagerComponent>())
+	if (UC_SkillManagerComponent *SM = NewChar->FindComponentByClass<UC_SkillManagerComponent>())
 	{
 		const int32 SavedSkillIndex = NewChar->GetSavedActiveSkillIndex();
 		if (SavedSkillIndex > 0)
@@ -299,7 +304,7 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 
 	// HUD 초기화(SwitchCommonSkill(0)) 이후 저장된 스킬 인덱스 복원
 	// InitializeDefaultSkill이 항상 0번으로 리셋하므로 Broadcast 이후 덮어써야 함
-	if (UC_SkillManagerComponent* SM = NewChar->FindComponentByClass<UC_SkillManagerComponent>())
+	if (UC_SkillManagerComponent *SM = NewChar->FindComponentByClass<UC_SkillManagerComponent>())
 	{
 		const int32 SavedSkillIndex = NewChar->GetSavedActiveSkillIndex();
 		if (SavedSkillIndex > 0)
@@ -307,7 +312,8 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	}
 
 	for (AC_BasePlayerCharactor *Char : characterRoster)
-		if (Char) Char->bSuppressDeath = false;
+		if (Char)
+			Char->bSuppressDeath = false;
 
 	ResetIgnoreMoveInput();
 	ResetIgnoreLookInput();
@@ -320,7 +326,8 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 
 	GetWorldTimerManager().SetTimer(
 		switchCooldownTimerHandle,
-		[this]() { bSwitchOnCooldown = false; },
+		[this]()
+		{ bSwitchOnCooldown = false; },
 		switchCooldownDuration, false);
 }
 
@@ -359,20 +366,22 @@ void AC_PlayerController::SwitchToNextCharacter()
 
 void AC_PlayerController::SaveStateForLevelTransition()
 {
-	UAbilitySystemComponent* SharedASC = nullptr;
-	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+	UAbilitySystemComponent *SharedASC = nullptr;
+	if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
 		SharedASC = PS->GetAbilitySystemComponent();
 
-	if (UC_BBKGameInstance* GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
+	if (UC_BBKGameInstance *GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
 		GI->SaveGameState(characterRoster, currentCharacterIndex, SharedASC);
 }
 
 void AC_PlayerController::ShowEndingScreen()
 {
-	if (!ensure(EndingScreenClass)) return;
+	if (!ensure(EndingScreenClass))
+		return;
 
-	UC_EndingScreenWidget* Widget = CreateWidget<UC_EndingScreenWidget>(this, EndingScreenClass);
-	if (!Widget) return;
+	UC_EndingScreenWidget *Widget = CreateWidget<UC_EndingScreenWidget>(this, EndingScreenClass);
+	if (!Widget)
+		return;
 
 	Widget->AddToViewport(10);
 	SetInputMode(FInputModeUIOnly());
@@ -381,10 +390,12 @@ void AC_PlayerController::ShowEndingScreen()
 
 void AC_PlayerController::ShowGameOverScreen()
 {
-	if (!ensure(GameOverScreenClass)) return;
+	if (!ensure(GameOverScreenClass))
+		return;
 
-	UC_GameOverWidget* Widget = CreateWidget<UC_GameOverWidget>(this, GameOverScreenClass);
-	if (!Widget) return;
+	UC_GameOverWidget *Widget = CreateWidget<UC_GameOverWidget>(this, GameOverScreenClass);
+	if (!Widget)
+		return;
 
 	Widget->AddToViewport(10);
 	SetInputMode(FInputModeUIOnly());
