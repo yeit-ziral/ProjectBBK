@@ -155,6 +155,9 @@ protected:
 	TSubclassOf<AC_ExpOrb> ExpOrbClass;
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster")
+	int32 level = 1;
+
 	// Reposition 스트레이프 상태 — BT 세션 간 유지 (C_BTTaskReposition이 관리)
 	int8  repositionStrafeSign   = 1;
 	float repositionNextFlipTime = -1.f;   // -1: 미초기화 sentinel

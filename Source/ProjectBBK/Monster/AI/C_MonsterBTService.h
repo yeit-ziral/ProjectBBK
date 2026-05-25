@@ -19,6 +19,9 @@ public:
 
 protected:
    
+    UPROPERTY(EditAnywhere, Category = "Detection")
+    float DetectionRange = 1500.0f;
+
     UPROPERTY(EditAnywhere, Category = "Blackboard")
     FBlackboardKeySelector TargetActorKey;
 

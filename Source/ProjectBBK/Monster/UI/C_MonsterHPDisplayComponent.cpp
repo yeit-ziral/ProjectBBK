@@ -48,7 +48,7 @@ void UC_MonsterHPDisplayComponent::Initialize(AC_BaseMonster* InOwner, UWidgetCo
 
 	if (UC_MonsterDataComponent* dataComp = ownerMonster->GetDataComponent())
 	{
-		monsterHpWidget->SetMonsterLevel(1);
+		monsterHpWidget->SetMonsterLevel(ownerMonster->level);
 		monsterHpWidget->SetMonsterName(FText::FromName(dataComp->GetRowName()));
 	}
 

@@ -38,7 +38,9 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 
 	monsterId = Data->MonsterId;
 
-	attrSet->InitmaxHP          (Data->MaxHP);
+	const float finalMaxHP = Data->MaxHP + ownerMonster->level * 50.0f;
+
+	attrSet->InitmaxHP          (finalMaxHP);
 	attrSet->InitmaxGroggy      (Data->MaxGroggy);
 	attrSet->Initattack         (Data->Attack);
 	attrSet->Initdefense        (Data->Defense);
@@ -48,7 +50,7 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 	attrSet->InitspecialCooldown(Data->SpecialCooldown);
 
 
-	attrSet->SetcurHP(Data->MaxHP);
+	attrSet->SetcurHP(finalMaxHP);
 	attrSet->SetcurGroggy(0.0f);
 
 	bEnableReposition      = Data->bEnableReposition;

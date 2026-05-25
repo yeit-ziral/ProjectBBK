@@ -9,16 +9,22 @@ void UC_MonsterSpawnManager::Initialize(UWorld* World)
     world = World;
 }
 
-AActor* UC_MonsterSpawnManager::SpawnMonster(TSubclassOf<AActor> MonsterClass, const FVector& Location, const FRotator& Rotation)
+AActor* UC_MonsterSpawnManager::SpawnMonster(TSubclassOf<AActor> MonsterClass, const FVector& Location, const FRotator& Rotation, int32 InLevel)
 {
     if (!world || !MonsterClass) return nullptr;
 
     FActorSpawnParameters Params;
-    AActor* spawned = world->SpawnActor<AActor>(MonsterClass, Location, Rotation, Params);
-    if (!spawned) return nullptr;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-    AC_BaseMonster* monster = Cast<AC_BaseMonster>(spawned);
-    if (monster && monster->GetMonsterASC())
+    // BeginPlay 전에 level을 설정하기 위해 deferred spawn 사용
+    AC_BaseMonster* monster = world->SpawnActorDeferred<AC_BaseMonster>(MonsterClass, FTransform(Rotation, Location), nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+    if (!monster) return nullptr;
+
+    monster->level = InLevel;
+
+    monster->FinishSpawning(FTransform(Rotation, Location));
+
+    if (monster->GetMonsterASC())
     {
         aliveCount++;
         monster->GetMonsterASC()->OnMonsterDeath.AddLambda([this](UC_MonsterASC*)
@@ -27,7 +33,7 @@ AActor* UC_MonsterSpawnManager::SpawnMonster(TSubclassOf<AActor> MonsterClass, c
         });
     }
 
-    return spawned;
+    return monster;
 }
 
 void UC_MonsterSpawnManager::Reset()
