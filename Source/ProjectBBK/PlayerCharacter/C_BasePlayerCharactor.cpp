@@ -290,9 +290,10 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 
 	if (abilitySystemComponent.IsValid())
 	{
+		const float bonusLevel = attributeSetBase.IsValid() ? FMath::Max(0.f, attributeSetBase->Getlevel() - 1.f) : 0.f;
 		abilitySystemComponent->SetNumericAttributeBase(
 			UC_ChracterAttributeSetBase::GetdamageAttribute(),
-			baseDamage);
+			baseDamage + bonusLevel * 30.f);
 	}
 
 	if (!bCharacterInitiailized)
