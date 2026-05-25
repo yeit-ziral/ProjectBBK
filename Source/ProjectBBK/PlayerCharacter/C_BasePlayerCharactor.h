@@ -52,6 +52,7 @@ struct FCharacterSavedState
 	float stamina = -1.f;
 	float shield = 0.f;
 	float mana = 0.f;
+	int32 activeSkillIndex = 0;
 };
 
 struct FSavedGEState
@@ -132,11 +133,23 @@ public:
 	void SetTopDownCamera(bool bTopDown, float BlendTime = 0.75f,
 						  float TopDownArmLength = 1600.f, float TopDownPitch = -85.f);
 
-	void SaveCharacterState();	  // 교체 직전에 캐릭터 상태 저장
-	void RestoreCharacterState(); // 교체 후 저장된 캐릭터 상태 복원 (Health, Stamina, Shield, Mana 등)
+	void SaveCharacterState();
+	void RestoreCharacterState();
+
+	// 레벨 전환용: savedState에 값을 직접 주입 (비활성 캐릭터가 나중에 Possess될 때 적용됨)
+	void InjectPreSavedState(float Health, float Stamina, float Shield, float Mana);
+
+	// 비활성 캐릭터의 마지막 저장 값 읽기 (SaveGameState에서 사용)
+	float GetSavedHealthValue()      const { return savedState.health;           }
+	float GetSavedStaminaValue()     const { return savedState.stamina;          }
+	float GetSavedShieldValue()      const { return savedState.shield;           }
+	float GetSavedManaValue()        const { return savedState.mana;             }
+	int32 GetSavedActiveSkillIndex() const { return savedState.activeSkillIndex; }
 
 	void SaveActiveEffects(UAbilitySystemComponent *ASC);	 // 캐릭터 교체 시 활성화 된 GE 저장
 	void RestoreActiveEffects(UAbilitySystemComponent *ASC); // 캐릭터 교체 후 저장된 GE 복원
+
+	virtual void PostInitializeComponents() override;
 
 protected:
 	// Called when the game starts or when spawned

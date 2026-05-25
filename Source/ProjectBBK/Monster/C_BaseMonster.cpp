@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BaseMonster.h"
+#include "../LevelSystem/C_BBKGameMode.h"
 #include "Manager/C_AttackManagerComponent.h"
 #include "Manager/C_MonsterDataComponent.h"
 #include "Manager/C_GroggyComponent.h"
@@ -209,6 +210,12 @@ void AC_BaseMonster::ExecuteDeathSequence()
 			AC_ExpOrb* Orb = GetWorld()->SpawnActor<AC_ExpOrb>(ExpOrbClass, GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
 			if (Orb) Orb->InitOrb(reward);
 		}
+	}
+
+	// GameMode에 몬스터 사망 알림
+	if (AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>())
+	{
+		GM->NotifyMonsterDead();
 	}
 
 	// 1. 진행 중인 GA 전부 즉시 취소 (빔·스톰 오브젝트 포함)

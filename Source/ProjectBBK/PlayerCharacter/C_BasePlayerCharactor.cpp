@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BasePlayerCharactor.h"
+#include "../Skills/C_SkillManagerComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -86,41 +87,6 @@ void AC_BasePlayerCharactor::BeginPlay()
 	Super::BeginPlay();
 
 	SetupMappingContext();
-
-	if (abilitySystemComponent.IsValid())
-	{
-		// 초기 Mana 설정
-		if (const UC_ChracterAttributeSetBase *Attributes =
-				abilitySystemComponent->GetSet<UC_ChracterAttributeSetBase>())
-		{
-			abilitySystemComponent->SetNumericAttributeBase(
-				Attributes->GetmanaAttribute(), 0.0f);
-			abilitySystemComponent->SetNumericAttributeBase(
-				Attributes->GetmaxManaAttribute(), 100.0f);
-		}
-
-		// Mana Regen GE 적용
-		if (GE_ManaRegen)
-		{
-			FGameplayEffectContextHandle EffectContext =
-				abilitySystemComponent->MakeEffectContext();
-
-			FGameplayEffectSpecHandle SpecHandle =
-				abilitySystemComponent->MakeOutgoingSpec(
-					GE_ManaRegen,
-					1.0f,
-					EffectContext);
-
-			abilitySystemComponent->ApplyGameplayEffectSpecToSelf(
-				*SpecHandle.Data);
-
-			UE_LOG(LogTemp, Log, TEXT("[Player] Mana Regen started"));
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[Player] GE_ManaRegen not set!"));
-		}
-	}
 
 	GetMesh()->SetReceivesDecals(false);
 }
@@ -779,6 +745,15 @@ void AC_BasePlayerCharactor::AddStartupEffects()
 		}
 	}
 
+	if (GE_ManaRegen)
+	{
+		FGameplayEffectSpecHandle NewHandle = abilitySystemComponent->MakeOutgoingSpec(GE_ManaRegen, 1.0f, EffectContext);
+		if (NewHandle.IsValid())
+		{
+			abilitySystemComponent->ApplyGameplayEffectSpecToSelf(*NewHandle.Data.Get());
+		}
+	}
+
 	abilitySystemComponent->startupEffectsApplied = true;
 }
 
@@ -816,7 +791,7 @@ void AC_BasePlayerCharactor::SetMana(float NewMana)
 
 void AC_BasePlayerCharactor::OnHealthChanged(const FOnAttributeChangeData &Data)
 {
-	if (Data.NewValue < Data.OldValue)
+	if (Data.NewValue < Data.OldValue && !bSuppressDeath)
 		PlayHitFlash();
 
 	// 사망 처리
@@ -871,7 +846,7 @@ void AC_BasePlayerCharactor::OnStaminaChanged(const FOnAttributeChangeData &Data
 
 void AC_BasePlayerCharactor::OnLevelChanged(const FOnAttributeChangeData& Data)
 {
-	if (Data.NewValue > Data.OldValue && levelUpEffect)
+	if (Data.NewValue > Data.OldValue && levelUpEffect && !bSuppressDeath)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAttached(
 			levelUpEffect,
@@ -905,10 +880,13 @@ void AC_BasePlayerCharactor::SaveCharacterState()
 	if (!attributeSetBase.IsValid())
 		return;
 
-	savedState.health = GetHealth();
-	savedState.shield = GetShield();
+	savedState.health  = GetHealth();
+	savedState.shield  = GetShield();
 	savedState.stamina = GetStamina();
-	savedState.mana = GetMana();
+	savedState.mana    = GetMana();
+
+	if (UC_SkillManagerComponent* SM = FindComponentByClass<UC_SkillManagerComponent>())
+		savedState.activeSkillIndex = SM->activeSkillIndex;
 }
 
 void AC_BasePlayerCharactor::RestoreCharacterState()
@@ -916,20 +894,30 @@ void AC_BasePlayerCharactor::RestoreCharacterState()
 	if (!attributeSetBase.IsValid())
 		return;
 
-	if (savedState.health <= 0.f) // 첫 소유 -> 최대값으로
+	if (savedState.health <= 0.f)
 	{
 		SetHealth(GetMaxHealth());
 		SetShield(0.f);
 		SetStamina(GetMaxStamina());
 		SetMana(0.f);
 	}
-	else // 저장된 상태로 복원
+	else
 	{
 		SetHealth(savedState.health);
 		SetShield(savedState.shield);
 		SetStamina(savedState.stamina);
 		SetMana(savedState.mana);
 	}
+	// 스킬 인덱스는 AddCharacterAbilities 이후에 적용해야 하므로 여기서 처리하지 않음
+	// → activeSkillIndex는 OnCharacterSwitched 핸들러(HUD)가 SwitchCommonSkill 호출 시 반영됨
+}
+
+void AC_BasePlayerCharactor::InjectPreSavedState(float Health, float Stamina, float Shield, float Mana)
+{
+	savedState.health  = Health;
+	savedState.stamina = Stamina;
+	savedState.shield  = Shield;
+	savedState.mana    = Mana;
 }
 
 void AC_BasePlayerCharactor::SaveActiveEffects(UAbilitySystemComponent *ASC)
@@ -978,4 +966,14 @@ void AC_BasePlayerCharactor::RestoreActiveEffects(UAbilitySystemComponent *ASC)
 	}
 
 	savedActiveEffects.Empty();
+}
+
+void AC_BasePlayerCharactor::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if(springArm)
+	{
+		springArm->bDoCollisionTest = false;
+		springArm->ProbeChannel = ECC_GameTraceChannel1; // Set Cameral Collision Channel to void collision with monsters
+	}
 }
