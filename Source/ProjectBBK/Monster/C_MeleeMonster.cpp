@@ -45,35 +45,31 @@ bool AC_MeleeMonster::CanAutoAttack() const
 	return attackManager->CanAttack() || attackManager->CanSpecialAttack();
 }
 
-void AC_MeleeMonster::MeleeAutoAttack()
+bool AC_MeleeMonster::MeleeAutoAttack()
 {
-	if (!attackManager) return;
+	if (!attackManager) return false;
 
 	if (attackManager->CanSpecialAttack())
-	{
-		MeleeSpecialAttack();
-	}
+		return MeleeSpecialAttack();
 	else
-	{
-		MeleeNormalAttack();
-	}
+		return MeleeNormalAttack();
 }
 
-void AC_MeleeMonster::MeleeNormalAttack()
+bool AC_MeleeMonster::MeleeNormalAttack()
 {
-	if (!attackManager)
-		return;
+	if (!attackManager) return false;
 
 	if (attackManager->DoNormalAttack())
 	{
 		PlayAnimMontage(meleeNormalMontage);
+		return true;
 	}
-
+	return false;
 }
 
-void AC_MeleeMonster::MeleeSpecialAttack()
+bool AC_MeleeMonster::MeleeSpecialAttack()
 {
-	if (!attackManager) return;
+	if (!attackManager) return false;
 
 	if (attackManager->DoSpecialAttack())
 	{
@@ -85,5 +81,7 @@ void AC_MeleeMonster::MeleeSpecialAttack()
 			slamHitDelay,
 			false
 		);
+		return true;
 	}
+	return false;
 }

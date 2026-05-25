@@ -20,15 +20,15 @@ public:
 	virtual bool CanAutoAttack() const override;
 	virtual bool IsPlayingAttackAnimation() const override;
 
-	// BT에서 호출 — 스페셜 쿨타임 여부에 따라 스페셜/노말 자동 선택
+	// BT에서 호출 — 공격 실행 시 true, 쿨타임/조건 미충족 시 false
 	UFUNCTION(BlueprintCallable, Category = "Attack")
-	void MeleeAutoAttack();
+	bool MeleeAutoAttack();
 
 	UFUNCTION(BlueprintCallable, Category = "Attack")
-	void MeleeNormalAttack();
+	bool MeleeNormalAttack();
 
 	UFUNCTION(BlueprintCallable, Category = "Attack")
-	void MeleeSpecialAttack();
+	bool MeleeSpecialAttack();
 
 protected:
 	virtual void BeginPlay() override;
