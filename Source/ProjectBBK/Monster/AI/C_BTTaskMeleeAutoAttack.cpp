@@ -3,6 +3,7 @@
 #include "C_BTTaskMeleeAutoAttack.h"
 #include "AIController.h"
 #include "../C_MeleeMonster.h"
+#include "../Manager/C_AttackManagerComponent.h"
 
 UC_BTTaskMeleeAutoAttack::UC_BTTaskMeleeAutoAttack()
 {
@@ -19,13 +20,18 @@ EBTNodeResult::Type UC_BTTaskMeleeAutoAttack::ExecuteTask(UBehaviorTreeComponent
 	if (!monster)
 		return EBTNodeResult::Failed;
 
+	UC_AttackManagerComponent* am = monster->GetAttackManager();
+	UE_LOG(LogTemp, Warning, TEXT("[BTMelee] ExecuteTask — AttackMgr=%s  CanAttack=%s  CanSpecial=%s  MonsterID=%d"),
+		am ? TEXT("valid") : TEXT("NULL"),
+		(am && am->CanAttack()) ? TEXT("true") : TEXT("false"),
+		(am && am->CanSpecialAttack()) ? TEXT("true") : TEXT("false"),
+		monster->GetMonsterID());
+
 	if (!monster->CanAutoAttack())
 		return EBTNodeResult::Failed;
 
-	// 이전 공격 애니메이션이 재생 중이면 재진입 차단
 	if (monster->IsPlayingAttackAnimation())
 		return EBTNodeResult::Failed;
 
-	// 공격이 실제로 실행된 경우에만 Succeeded — 쿨타임/ID 불일치로 미실행 시 Failed
 	return monster->MeleeAutoAttack() ? EBTNodeResult::Succeeded : EBTNodeResult::Failed;
 }

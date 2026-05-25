@@ -90,7 +90,7 @@ public:
 	float GetSpecialCooldown()const { return monsterAttributeSet->GetspecialCooldown(); }
 	float GetAttackRange()    const { return monsterAttributeSet->GetattackRange(); }
 
-	UC_AttackManagerComponent*   GetAttackManager()       const { return attackManager; }
+	UC_AttackManagerComponent*   GetAttackManager()       const;
 	UBehaviorTree*               GetBehaviorTree()        const { return behaviorTree; }
 	UC_MonsterASC*               GetMonsterASC()          const { return monsterASC; }
 	UC_MonsterAttributeSet*      GetMonsterAttributeSet() const { return monsterAttributeSet; }

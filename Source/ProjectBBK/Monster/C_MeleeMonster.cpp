@@ -49,7 +49,12 @@ bool AC_MeleeMonster::MeleeAutoAttack()
 {
 	if (!attackManager) return false;
 
-	if (attackManager->CanSpecialAttack())
+	const bool bCanSpecial = attackManager->CanSpecialAttack();
+	UE_LOG(LogTemp, Warning, TEXT("[Melee] AutoAttack — CanSpecial=%s  CanNormal=%s"),
+		bCanSpecial ? TEXT("true") : TEXT("false"),
+		attackManager->CanAttack() ? TEXT("true") : TEXT("false"));
+
+	if (bCanSpecial)
 		return MeleeSpecialAttack();
 	else
 		return MeleeNormalAttack();
@@ -61,7 +66,10 @@ bool AC_MeleeMonster::MeleeNormalAttack()
 
 	if (attackManager->DoNormalAttack())
 	{
-		PlayAnimMontage(meleeNormalMontage);
+		UE_LOG(LogTemp, Warning, TEXT("[Melee] NormalAttack — Montage=%s"),
+			meleeNormalMontage ? *meleeNormalMontage->GetName() : TEXT("NULL"));
+		float len = PlayAnimMontage(meleeNormalMontage);
+		UE_LOG(LogTemp, Warning, TEXT("[Melee] PlayAnimMontage returned %.3f"), len);
 		return true;
 	}
 	return false;
@@ -73,7 +81,11 @@ bool AC_MeleeMonster::MeleeSpecialAttack()
 
 	if (attackManager->DoSpecialAttack())
 	{
-		PlayAnimMontage(meleeSpecialMontage);
+		UE_LOG(LogTemp, Warning, TEXT("[Melee] SpecialAttack — Montage=%s  SpecialCooldown=%.2f"),
+			meleeSpecialMontage ? *meleeSpecialMontage->GetName() : TEXT("NULL"),
+			GetSpecialCooldown());
+		float len = PlayAnimMontage(meleeSpecialMontage);
+		UE_LOG(LogTemp, Warning, TEXT("[Melee] SpecialMontage played, length=%.3f"), len);
 
 		GetWorld()->GetTimerManager().SetTimer(
 			slamTimerHandle,

@@ -66,6 +66,9 @@ bool UC_AttackManagerComponent::DoNormalAttack()
 
 	const int32 id = ownerMonster->GetMonsterID();
 
+	UE_LOG(LogTemp, Warning, TEXT("[AttackMgr] DoNormalAttack — ID=%d  CanAttack=%s  NormalCooldown=%.2f"),
+		id, CanAttack() ? TEXT("true") : TEXT("false"), ownerMonster->GetAttackCooldown());
+
 	switch (id)
 	{
 	case MONSTER_ID_BEAR:
@@ -82,7 +85,7 @@ bool UC_AttackManagerComponent::DoNormalAttack()
 		return true;
 	}
 	default:
-		UE_LOG(LogTemp, Warning, TEXT("No NormalAttack implementation for MonsterId=%d"), id);
+		UE_LOG(LogTemp, Warning, TEXT("[AttackMgr] No NormalAttack for MonsterId=%d — DataTable 미로드 또는 ID 불일치"), id);
 		return false;
 	}
 }
@@ -92,6 +95,9 @@ bool UC_AttackManagerComponent::DoSpecialAttack()
 	if (!ownerMonster) return false;
 
 	const int32 id = ownerMonster->GetMonsterID();
+
+	UE_LOG(LogTemp, Warning, TEXT("[AttackMgr] DoSpecialAttack — ID=%d  CanSpecial=%s  SpecialCooldown=%.2f"),
+		id, CanSpecialAttack() ? TEXT("true") : TEXT("false"), ownerMonster->GetSpecialCooldown());
 
 	switch (id)
 	{

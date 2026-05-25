@@ -9,6 +9,7 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayTagContainer.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AC_BossBeam::AC_BossBeam()
@@ -100,42 +101,38 @@ void AC_BossBeam::ApplyBeamDamage()
 {
     if (!ownerBoss || !instigatorASC.IsValid() || !damageGEClass) return;
 
-    const FVector start = GetActorLocation();
-    const FVector end   = start + GetActorForwardVector() * beamRange;
+    APawn* player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+    if (!player) return;
 
-    TArray<TEnumAsByte<EObjectTypeQuery>> objectTypes;
-    objectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+    IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(player);
+    if (!ascInterface) return;
 
-    TArray<AActor*> ignoredActors;
-    ignoredActors.Add(ownerBoss);
+    UAbilitySystemComponent* targetASC = ascInterface->GetAbilitySystemComponent();
+    if (!targetASC) return;
 
-    // 빔 전체 경로를 구체로 sweep — 2점 체크 대비 누락 없음
-    TArray<FHitResult> hits;
-    UKismetSystemLibrary::SphereTraceMultiForObjects(
-        this, start, end, 80.f, objectTypes, false, ignoredActors,
-        EDrawDebugTrace::None, hits, true);
+    const FVector bossLoc  = ownerBoss->GetActorLocation();
+    const FVector toPlayer = player->GetActorLocation() - bossLoc;
+    const float   dist2D   = FVector(toPlayer.X, toPlayer.Y, 0.f).Size();
 
-    TSet<AActor*> hitActorSet;
-    for (const FHitResult& hit : hits)
-        if (hit.GetActor()) hitActorSet.Add(hit.GetActor());
+    // 사거리 밖이면 무시
+    if (dist2D > beamRange || dist2D < distanceFromBoss) return;
 
-    for (AActor* hitActor : hitActorSet)
-    {
-        IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(hitActor);
-        if (!ascInterface) continue;
+    // 빔 정방향과 플레이어 방향의 각도 체크 (수평 기준)
+    const FVector forward2D   = FVector(GetActorForwardVector().X, GetActorForwardVector().Y, 0.f).GetSafeNormal();
+    const FVector toPlayer2D  = FVector(toPlayer.X, toPlayer.Y, 0.f).GetSafeNormal();
+    const float   dot         = FVector::DotProduct(forward2D, toPlayer2D);
 
-        UAbilitySystemComponent* targetASC = ascInterface->GetAbilitySystemComponent();
-        if (!targetASC) continue;
+    // cos(20°) ≈ 0.94 — 빔 폭 허용 각도
+    if (dot < 0.94f) return;
 
-        FGameplayEffectContextHandle context = instigatorASC->MakeEffectContext();
-        context.AddInstigator(ownerBoss, ownerBoss);
+    FGameplayEffectContextHandle context = instigatorASC->MakeEffectContext();
+    context.AddInstigator(ownerBoss, ownerBoss);
 
-        FGameplayEffectSpecHandle spec = instigatorASC->MakeOutgoingSpec(damageGEClass, 1.f, context);
-        if (!spec.IsValid()) continue;
+    FGameplayEffectSpecHandle spec = instigatorASC->MakeOutgoingSpec(damageGEClass, 1.f, context);
+    if (!spec.IsValid()) return;
 
-        spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Damage"), damageValue);
-        instigatorASC->ApplyGameplayEffectSpecToTarget(*spec.Data.Get(), targetASC);
-    }
+    spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Damage"), damageValue);
+    instigatorASC->ApplyGameplayEffectSpecToTarget(*spec.Data.Get(), targetASC);
 }
 
 void AC_BossBeam::EndPlay(const EEndPlayReason::Type EndPlayReason)

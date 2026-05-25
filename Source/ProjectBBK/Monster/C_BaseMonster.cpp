@@ -63,6 +63,12 @@ void AC_BaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Blueprint CDO가 null로 직렬화한 경우 컴포넌트 포인터 복구
+	if (!attackManager)    attackManager    = FindComponentByClass<UC_AttackManagerComponent>();
+	if (!dataComponent)    dataComponent    = FindComponentByClass<UC_MonsterDataComponent>();
+	if (!groggyComponent)  groggyComponent  = FindComponentByClass<UC_GroggyComponent>();
+	if (!hpDisplayComponent) hpDisplayComponent = FindComponentByClass<UC_MonsterHPDisplayComponent>();
+
 	// GAS 초기화
 	if (monsterASC)
 	{
@@ -99,6 +105,8 @@ void AC_BaseMonster::BeginPlay()
 		groggyComponent->Initialize(this, hpDisplayComponent);
 
 	// 어택 매니저 초기화
+	UE_LOG(LogTemp, Warning, TEXT("[BaseMonster] BeginPlay — AttackMgr=%s  %s"),
+		attackManager ? TEXT("valid") : TEXT("NULL"), *GetName());
 	if (attackManager)
 		attackManager->Initialize(this);
 
@@ -118,6 +126,12 @@ void AC_BaseMonster::ApplyMonsterTypeTag()
 {
 	if (!monsterASC || !monsterTypeTag.IsValid()) return;
 	monsterASC->AddLooseGameplayTag(monsterTypeTag);
+}
+
+UC_AttackManagerComponent* AC_BaseMonster::GetAttackManager() const
+{
+	if (attackManager) return attackManager;
+	return FindComponentByClass<UC_AttackManagerComponent>();
 }
 
 int32 AC_BaseMonster::GetMonsterID() const
