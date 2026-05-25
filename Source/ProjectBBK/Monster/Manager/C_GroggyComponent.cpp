@@ -83,6 +83,7 @@ void UC_GroggyComponent::EnterGroggyState()
 	if (AAIController* AIC = Cast<AAIController>(ownerMonster->GetController()))
 	{
 		AIC->StopMovement();
+		AIC->ClearFocus(EAIFocusPriority::Gameplay);
 		if (UBehaviorTreeComponent* BTC = Cast<UBehaviorTreeComponent>(AIC->GetBrainComponent()))
 			BTC->StopTree(EBTStopMode::Forced);
 	}

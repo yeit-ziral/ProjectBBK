@@ -71,7 +71,7 @@ bool UC_AttackManagerComponent::DoNormalAttack()
 
 	switch (id)
 	{
-	case MONSTER_ID_BEAR:
+	case MONSTER_ID_TANK:
 	{
 		if (!CanAttack()) return false;
 		DoMeleeNormalAttack();
@@ -101,7 +101,7 @@ bool UC_AttackManagerComponent::DoSpecialAttack()
 
 	switch (id)
 	{
-	case MONSTER_ID_BEAR:
+	case MONSTER_ID_TANK:
 	{
 		if (!CanSpecialAttack()) return false;
 		StartSpecialCooldown();

@@ -56,18 +56,26 @@ void UC_MonsterASC::InterruptCurrentAbilities()
         FGameplayTag::RequestGameplayTag("Ability.Pattern.NonInterruptible");
 
     // NonInterruptible 태그가 없는 GA만 취소 (발동 중 패턴은 그로기에도 완주)
-    TArray<UGameplayAbility*> toCancel;
+    // NonInstanced GA는 GetPrimaryInstance()가 null → CDO에서 태그 확인 후 CancelAbilitySpec 사용
+    TArray<FGameplayAbilitySpecHandle> toCancel;
     for (const FGameplayAbilitySpec& spec : ActivatableAbilities.Items)
     {
         if (!spec.IsActive()) continue;
-        UGameplayAbility* instance = spec.GetPrimaryInstance();
-        if (!instance) continue;
-        if (instance->GetAssetTags().HasTag(nonInterruptTag)) continue;
-        toCancel.Add(instance);
+
+        UGameplayAbility* cdoOrInstance = spec.GetPrimaryInstance()
+            ? spec.GetPrimaryInstance()
+            : spec.Ability.Get();
+        if (!cdoOrInstance) continue;
+        if (cdoOrInstance->GetAssetTags().HasTag(nonInterruptTag)) continue;
+
+        toCancel.Add(spec.Handle);
     }
 
-    for (UGameplayAbility* ability : toCancel)
-        CancelAbility(ability);
+    for (const FGameplayAbilitySpecHandle& handle : toCancel)
+    {
+        if (FGameplayAbilitySpec* spec = FindAbilitySpecFromHandle(handle))
+            CancelAbilitySpec(*spec, nullptr);
+    }
 }
 
 bool UC_MonsterASC::CanUseAbilityByTag(FGameplayTag AbilityTag) const

@@ -11,7 +11,7 @@ struct FMonsterSpawnRow : public FTableRowBase
 
 public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    int32 MonsterId;
+    int32 MonsterId = 0;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TSubclassOf<AActor> MonsterClass;
