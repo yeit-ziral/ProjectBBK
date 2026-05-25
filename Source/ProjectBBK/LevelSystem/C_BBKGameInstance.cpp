@@ -273,6 +273,7 @@ void UC_BBKGameInstance::SaveGameState(const TArray<AC_BasePlayerCharactor*>& Ro
 		{
 			PersistedState.experience     = AS->Getexperience();
 			PersistedState.characterLevel = AS->Getlevel();
+			PersistedState.maxExperience  = AS->GetmaxExperience();
 		}
 	}
 
@@ -290,6 +291,8 @@ void UC_BBKGameInstance::RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roste
 			UC_ChracterAttributeSetBase::GetexperienceAttribute(), PersistedState.experience);
 		SharedASC->SetNumericAttributeBase(
 			UC_ChracterAttributeSetBase::GetlevelAttribute(), PersistedState.characterLevel);
+		SharedASC->SetNumericAttributeBase(
+			UC_ChracterAttributeSetBase::GetmaxExperienceAttribute(), PersistedState.maxExperience);
 	}
 
 	for (int32 i = 0; i < Roster.Num() && i < PersistedState.characterStates.Num(); i++)

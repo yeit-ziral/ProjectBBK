@@ -90,7 +90,7 @@ void UC_BossGridLaserPatternGA::ComputeGridPositions(const FVector& Center,
 		else
 			OutH.Add(flat);
 
-		DrawDebugSphere(world, OutH.Last(), 30.f, 8, FColor::Cyan, false, cachedRow.chargeDuration + 1.f);
+		//DrawDebugSphere(world, OutH.Last(), 30.f, 8, FColor::Cyan, false, cachedRow.chargeDuration + 1.f);
 	}
 
 	// 세로 클론: 위쪽 바깥에 배치, 아래(-Y)를 바라봄, X축 슬라이스
@@ -106,7 +106,7 @@ void UC_BossGridLaserPatternGA::ComputeGridPositions(const FVector& Center,
 		else
 			OutV.Add(flat);
 
-		DrawDebugSphere(world, OutV.Last(), 30.f, 8, FColor::Magenta, false, cachedRow.chargeDuration + 1.f);
+		//DrawDebugSphere(world, OutV.Last(), 30.f, 8, FColor::Magenta, false, cachedRow.chargeDuration + 1.f);
 	}
 }
 

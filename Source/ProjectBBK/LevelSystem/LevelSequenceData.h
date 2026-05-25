@@ -53,6 +53,7 @@ struct FPersistentGameState
 	TArray<FPersistentCharacterState> characterStates;
 	float experience          = 0.f;
 	float characterLevel      = 1.f;
+	float maxExperience       = 100.f;
 	int32 activeCharacterIndex = 0;
 	bool  bHasSavedState      = false;
 };
