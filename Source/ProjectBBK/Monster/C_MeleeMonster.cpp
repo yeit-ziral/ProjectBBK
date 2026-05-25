@@ -78,5 +78,12 @@ void AC_MeleeMonster::MeleeSpecialAttack()
 	if (attackManager->DoSpecialAttack())
 	{
 		PlayAnimMontage(meleeSpecialMontage);
+
+		GetWorld()->GetTimerManager().SetTimer(
+			slamTimerHandle,
+			[this]() { if (attackManager) attackManager->DoSlam(); },
+			slamHitDelay,
+			false
+		);
 	}
 }

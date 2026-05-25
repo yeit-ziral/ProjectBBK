@@ -39,6 +39,7 @@ private:
 
 	void DoMeleeNormalAttack();
 	void ApplyGEDamage(ACharacter* Target, float DamageValue);
+	void ApplyDirectDamage(ACharacter* Target, float DamageValue);
 
 private:
 	//private variable

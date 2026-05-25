@@ -5,10 +5,13 @@
 #include "UI/C_BossMonsterHPWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Object/C_BossStorm.h"
 #include "Kismet/GameplayStatics.h"
+#include "AIController.h"
+#include "BrainComponent.h"
 
 AC_BossMonster::AC_BossMonster()
 {
@@ -19,8 +22,6 @@ AC_BossMonster::AC_BossMonster()
 void AC_BossMonster::BeginPlay()
 {
     Super::BeginPlay();
-
-    bAutoAccumulateGroggy = false;
 
     monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Boss"));
 
@@ -210,6 +211,16 @@ void AC_BossMonster::OnBossHpChanged(const FOnAttributeChangeData& ChangeData)
         if (maxHp > 0.f && ratio < phase2HpRatio && ratio > 0.1f)
         {
             bPhase2Triggered = true;
+
+            // 진행 중인 모든 GA 즉시 취소 (빔·스톰 등)
+            monsterASC->CancelAllAbilities();
+
+            // 월드에 남아있는 Storm 오브젝트 일괄 제거
+            TArray<AActor*> remainingStorms;
+            UGameplayStatics::GetAllActorsOfClass(GetWorld(), AC_BossStorm::StaticClass(), remainingStorms);
+            for (AActor* storm : remainingStorms)
+                if (IsValid(storm)) storm->Destroy();
+
             monsterASC->TryActivateAbilityByClass(bossGridLaserPatternGA);
         }
     }
@@ -223,6 +234,33 @@ void AC_BossMonster::OnBossGroggyChanged(const FOnAttributeChangeData& ChangeDat
 
 void AC_BossMonster::OnInvincibleTagChanged(const FGameplayTag& Tag, int32 NewCount)
 {
-    if (!bossHpWidget) return;
-    bossHpWidget->SetInvincible(NewCount > 0);
+    if (bossHpWidget)
+        bossHpWidget->SetInvincible(NewCount > 0);
+
+    if (NewCount > 0)
+    {
+        // 반피 패턴 시작: BT 정지 + 숨김 + 충돌 비활성 + 이동 정지
+        if (AAIController* AIC = Cast<AAIController>(GetController()))
+        {
+            AIC->StopMovement();
+            if (UBrainComponent* Brain = AIC->GetBrainComponent())
+                Brain->StopLogic(TEXT("Phase2"));
+        }
+        GetMesh()->SetVisibility(false);
+        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        GetCharacterMovement()->StopMovementImmediately();
+        GetCharacterMovement()->DisableMovement();
+    }
+    else
+    {
+        // 패턴 종료: 복구 + BT 재시작
+        GetMesh()->SetVisibility(true);
+        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+        if (AAIController* AIC = Cast<AAIController>(GetController()))
+        {
+            if (UBrainComponent* Brain = AIC->GetBrainComponent())
+                Brain->RestartLogic();
+        }
+    }
 }

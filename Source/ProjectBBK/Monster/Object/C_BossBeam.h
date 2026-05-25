@@ -30,7 +30,7 @@ public:
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float rotateSpeed = 90.f;
+	float rotateSpeed = 63.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	AActor* ownerBoss;

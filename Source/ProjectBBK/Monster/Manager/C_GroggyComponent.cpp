@@ -22,11 +22,6 @@ void UC_GroggyComponent::Initialize(AC_BaseMonster* InOwner, UC_MonsterHPDisplay
 	hpDisplayComponent = InHPDisplay;
 }
 
-void UC_GroggyComponent::TickGroggy(float DeltaTime)
-{
-	AddGroggy(groggyAccumulationRate * DeltaTime);
-}
-
 void UC_GroggyComponent::AddGroggy(float GroggyAmount)
 {
 	if (!IsValid(ownerMonster)) return;

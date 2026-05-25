@@ -126,7 +126,7 @@ void AC_RangedMonster::SpawnSpecialProjectile()
 		return;
 
 	specialProjectile->InitSpecialProjectile(targetPos, specialArcHeight, specialProjectileSpeed);
-	specialProjectile->InitGASDamage(GetMonsterASC(), specialDamageEffectClass, static_cast<float>(GetAttack()) * 2.f);
+	specialProjectile->InitGASDamage(GetMonsterASC(), specialDamageEffectClass, static_cast<float>(GetAttack()) * 0.2f);
 }
 
 void AC_RangedMonster::SpawnProjectile()

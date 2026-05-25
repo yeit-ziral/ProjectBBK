@@ -75,10 +75,6 @@ protected:
 	UBehaviorTree* behaviorTree;
 #pragma endregion
 
-	// true로 설정하면 Tick마다 그로기 자동 누적 (기본 비활성화)
-	UPROPERTY(EditDefaultsOnly, Category = "Groggy")
-	bool bAutoAccumulateGroggy = false;
-
 public:
 
 #pragma region Getters

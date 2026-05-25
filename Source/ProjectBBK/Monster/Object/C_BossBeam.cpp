@@ -100,9 +100,8 @@ void AC_BossBeam::ApplyBeamDamage()
 {
     if (!ownerBoss || !instigatorASC.IsValid() || !damageGEClass) return;
 
-    // 보스 위치에서 빔 방향으로 Sweep
-    const FVector start = ownerBoss->GetActorLocation();
-    const FVector end   = GetActorLocation() + GetActorForwardVector() * beamRange;
+    const FVector start = GetActorLocation();
+    const FVector end   = start + GetActorForwardVector() * beamRange;
 
     TArray<TEnumAsByte<EObjectTypeQuery>> objectTypes;
     objectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
@@ -110,19 +109,17 @@ void AC_BossBeam::ApplyBeamDamage()
     TArray<AActor*> ignoredActors;
     ignoredActors.Add(ownerBoss);
 
-    TArray<AActor*> hitActors;
-    UKismetSystemLibrary::SphereOverlapActors(
-        this, end, 80.f, objectTypes, nullptr, ignoredActors, hitActors);
+    // 빔 전체 경로를 구체로 sweep — 2점 체크 대비 누락 없음
+    TArray<FHitResult> hits;
+    UKismetSystemLibrary::SphereTraceMultiForObjects(
+        this, start, end, 80.f, objectTypes, false, ignoredActors,
+        EDrawDebugTrace::None, hits, true);
 
-    // Sweep으로 범위가 좁을 수 있으므로 라인 상의 중간 지점도 검사
-    TArray<AActor*> midActors;
-    FVector midPoint = (start + end) * 0.5f;
-    UKismetSystemLibrary::SphereOverlapActors(
-        this, midPoint, 80.f, objectTypes, nullptr, ignoredActors, midActors);
-    for (AActor* a : midActors)
-        hitActors.AddUnique(a);
+    TSet<AActor*> hitActorSet;
+    for (const FHitResult& hit : hits)
+        if (hit.GetActor()) hitActorSet.Add(hit.GetActor());
 
-    for (AActor* hitActor : hitActors)
+    for (AActor* hitActor : hitActorSet)
     {
         IAbilitySystemInterface* ascInterface = Cast<IAbilitySystemInterface>(hitActor);
         if (!ascInterface) continue;

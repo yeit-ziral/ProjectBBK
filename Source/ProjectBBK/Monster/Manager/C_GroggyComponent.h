@@ -19,9 +19,6 @@ public:
 
 	void Initialize(AC_BaseMonster* InOwner, UC_MonsterHPDisplayComponent* InHPDisplay);
 
-	// BaseMonster::Tick에서 DeltaTime을 전달받아 호출
-	void TickGroggy(float DeltaTime);
-
 	UFUNCTION(BlueprintCallable, Category = "Groggy")
 	void AddGroggy(float GroggyAmount);
 
@@ -31,10 +28,6 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Groggy")
 	UAnimMontage* groggyMontage = nullptr;
-
-	// 초당 그로기 누적량
-	UPROPERTY(EditDefaultsOnly, Category = "Groggy")
-	float groggyAccumulationRate = 8.0f;
 
 private:
 	UPROPERTY()

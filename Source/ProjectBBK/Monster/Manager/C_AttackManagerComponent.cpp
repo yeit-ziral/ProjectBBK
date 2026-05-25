@@ -10,7 +10,9 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
 #include "GameplayTagContainer.h"
+#include "../../GAS/Attributes/C_ChracterAttributeSetBase.h"
 
 
 // Sets default values for this component's properties
@@ -147,7 +149,7 @@ void UC_AttackManagerComponent::DoSlam()
 		if (!target) continue;
 
 		// 데미지 적용
-		ApplyGEDamage(target, static_cast<float>(ownerMonster->GetAttack()) * 0.2f);
+		ApplyDirectDamage(target, 10.f);
 
 		// 넉백: 몬스터에서 타겟 방향으로 날려보냄
 		FVector knockbackDir = (target->GetActorLocation() - ownerMonster->GetActorLocation()).GetSafeNormal2D();
@@ -155,6 +157,19 @@ void UC_AttackManagerComponent::DoSlam()
 		knockbackDir.Normalize();
 		target->LaunchCharacter(knockbackDir * knockbackStrength, true, true);
 	}
+}
+
+void UC_AttackManagerComponent::ApplyDirectDamage(ACharacter* Target, float DamageValue)
+{
+	if (!Target) return;
+
+	UAbilitySystemComponent* targetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Target);
+	if (!targetASC) return;
+
+	const FGameplayAttribute healthAttr = UC_ChracterAttributeSetBase::GethealthAttribute();
+	const float currentHealth = targetASC->GetNumericAttribute(healthAttr);
+	const float newHealth = FMath::Max(0.f, currentHealth - DamageValue);
+	targetASC->SetNumericAttributeBase(healthAttr, newHealth);
 }
 
 void UC_AttackManagerComponent::ApplyGEDamage(ACharacter* Target, float DamageValue)
@@ -221,7 +236,7 @@ void UC_AttackManagerComponent::DoMeleeNormalAttack()
 	{
 		if (ACharacter* target = Cast<ACharacter>(hit.GetActor()))
 		{
-			ApplyGEDamage(target, static_cast<float>(ownerMonster->GetAttack()) * 0.1f);
+			ApplyDirectDamage(target, 5.f);
 		}
 	}
 	

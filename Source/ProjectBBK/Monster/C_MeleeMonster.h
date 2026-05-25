@@ -39,4 +39,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* meleeSpecialMontage = nullptr;
+
+	// 슬램 모션에서 실제 타격 프레임까지의 딜레이 (에디터에서 조절)
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float slamHitDelay = 0.8f;
+
+	FTimerHandle slamTimerHandle;
 };
