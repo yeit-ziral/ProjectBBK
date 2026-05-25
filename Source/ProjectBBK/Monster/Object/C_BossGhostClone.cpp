@@ -47,8 +47,8 @@ void AC_BossGhostClone::Tick(float DeltaTime)
 	if (bIsMarked)
 	{
 		const FVector center = GetActorLocation() + FVector(0.f, 0.f, 120.f);
-		DrawDebugSphere(GetWorld(), center, 70.f, 16, FColor::Yellow, false, -1.f, 0, 5.f);
-		DrawDebugSphere(GetWorld(), center, 80.f, 16, FColor::Orange, false, -1.f, 0, 3.f);
+		//DrawDebugSphere(GetWorld(), center, 70.f, 16, FColor::Yellow, false, -1.f, 0, 5.f);
+		//DrawDebugSphere(GetWorld(), center, 80.f, 16, FColor::Orange, false, -1.f, 0, 3.f);
 	}
 }
 

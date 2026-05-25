@@ -146,7 +146,7 @@ void UC_AttackManagerComponent::DoSlam()
 
 	if (debug)
 	{
-		DrawDebugSphere(GetWorld(), center, slamRadius, 16, FColor::Orange, false, 2.0f);
+		//DrawDebugSphere(GetWorld(), center, slamRadius, 16, FColor::Orange, false, 2.0f);
 	}
 
 	for (AActor* actor : hitActors)
@@ -234,7 +234,7 @@ void UC_AttackManagerComponent::DoMeleeNormalAttack()
 	const bool hitOk = UKismetSystemLibrary::SphereTraceSingleForObjects  // 구체 탐지
 	(
 		ownerMonster, start, end, traceRadius, types, false, ignore,
-		debug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+		/*debug ? EDrawDebugTrace::ForDuration :*/ EDrawDebugTrace::None,
 		hit, true
 	);
 
