@@ -722,6 +722,7 @@ void AC_BasePlayerCharactor::InitializeAttributes()
 		{
 			attributeSetBase->SetmaxHealth(attributeSetBase->GetmaxHealth() + bonusLevel * 50.f);
 			attributeSetBase->SetmaxStamina(attributeSetBase->GetmaxStamina() + bonusLevel * 20.f);
+			attributeSetBase->Setdamage(attributeSetBase->Getdamage() + bonusLevel * 30.f);
 		}
 	}
 }

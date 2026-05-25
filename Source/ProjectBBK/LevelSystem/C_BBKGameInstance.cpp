@@ -274,6 +274,9 @@ void UC_BBKGameInstance::SaveGameState(const TArray<AC_BasePlayerCharactor*>& Ro
 			PersistedState.experience     = AS->Getexperience();
 			PersistedState.characterLevel = AS->Getlevel();
 			PersistedState.maxExperience  = AS->GetmaxExperience();
+			PersistedState.maxHealth      = AS->GetmaxHealth();
+			PersistedState.maxStamina     = AS->GetmaxStamina();
+			PersistedState.damage         = AS->Getdamage();
 		}
 	}
 
@@ -293,6 +296,12 @@ void UC_BBKGameInstance::RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roste
 			UC_ChracterAttributeSetBase::GetlevelAttribute(), PersistedState.characterLevel);
 		SharedASC->SetNumericAttributeBase(
 			UC_ChracterAttributeSetBase::GetmaxExperienceAttribute(), PersistedState.maxExperience);
+		if (PersistedState.maxHealth  >= 0.f)
+			SharedASC->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetmaxHealthAttribute(),  PersistedState.maxHealth);
+		if (PersistedState.maxStamina >= 0.f)
+			SharedASC->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetmaxStaminaAttribute(), PersistedState.maxStamina);
+		if (PersistedState.damage     >= 0.f)
+			SharedASC->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetdamageAttribute(),     PersistedState.damage);
 	}
 
 	for (int32 i = 0; i < Roster.Num() && i < PersistedState.characterStates.Num(); i++)
