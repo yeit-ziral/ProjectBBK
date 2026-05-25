@@ -104,18 +104,22 @@ void AC_BossMonster::ExecuteDeathSequence()
 
 bool AC_BossMonster::CanAutoAttack() const
 {
-    if (monsterASC && (
-        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
-        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")))))
+    if (!monsterASC) return false;
+    if (monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Invincible"))))
+        return false;
+    if (monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern"))))
         return false;
     return CanNormalAttack() || CanPatternAttack();
 }
 
 bool AC_BossMonster::CanNormalAttack() const
 {
-    if (monsterASC && (
-        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
-        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")))))
+    if (!monsterASC) return false;
+    if (monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Invincible"))))
+        return false;
+    if (monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern"))) ||
+        monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern"))))
         return false;
 
     return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= GetAttackCooldown();
@@ -123,6 +127,8 @@ bool AC_BossMonster::CanNormalAttack() const
 
 bool AC_BossMonster::CanPatternAttack() const
 {
+    if (monsterASC && monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Invincible"))))
+        return false;
     return GetWorld()->GetTimeSeconds() - lastPatternAttackTime >= GetSpecialCooldown();
 }
 
@@ -257,6 +263,12 @@ void AC_BossMonster::OnInvincibleTagChanged(const FGameplayTag& Tag, int32 NewCo
         GetMesh()->SetVisibility(true);
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+        // 반피 패턴 지속 시간만큼 쿨타임이 소진됐으므로 종료 시점 기준으로 리셋
+        const float now = GetWorld()->GetTimeSeconds();
+        lastNormalAttackTime  = now;
+        lastPatternAttackTime = now;
+
         if (AAIController* AIC = Cast<AAIController>(GetController()))
         {
             if (UBrainComponent* Brain = AIC->GetBrainComponent())
