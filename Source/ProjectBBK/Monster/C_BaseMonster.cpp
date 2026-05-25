@@ -240,13 +240,15 @@ void AC_BaseMonster::ExecuteDeathSequence()
 	if (monsterASC)
 		monsterASC->CancelAllAbilities();
 
-	// 2. AI 영구 정지
+	// 2. AI 영구 정지 + 회전 고정
 	if (AAIController* AIC = Cast<AAIController>(GetController()))
 	{
 		AIC->StopMovement();
+		AIC->ClearFocus(EAIFocusPriority::Gameplay);
 		if (UBrainComponent* Brain = AIC->GetBrainComponent())
 			Brain->StopLogic(TEXT("Dead"));
 	}
+	bUseControllerRotationYaw = false;
 
 	// 3. 캐릭터 이동 비활성화
 	GetCharacterMovement()->StopMovementImmediately();
@@ -266,7 +268,7 @@ void AC_BaseMonster::ExecuteDeathSequence()
 	{
 		PlayAnimMontage(deathMontage);
 
-		// 블렌드아웃 시작 시점(= 모션 마지막 프레임)에 VFX 발동 — 공중 정지 프레임 방지
+		// 블렌드아웃 시작 시점에 VFX 발동 (폴백)
 		if (UAnimInstance* animInst = GetMesh()->GetAnimInstance())
 		{
 			FOnMontageBlendingOutStarted blendOutDelegate;
@@ -277,7 +279,17 @@ void AC_BaseMonster::ExecuteDeathSequence()
 			animInst->Montage_SetBlendingOutDelegate(blendOutDelegate, deathMontage);
 		}
 	}
-	else
+
+	// deathVFXDelay 후 강제 트리거 — 몽타주가 길어도 이 시간 안에 연기+숨김 실행
+	GetWorld()->GetTimerManager().SetTimer(
+		deathVFXTimerHandle,
+		this,
+		&AC_BaseMonster::OnDeathMontageVFXPoint,
+		deathVFXDelay,
+		false
+	);
+
+	if (!deathMontage)
 	{
 		OnDeathMontageVFXPoint();
 	}

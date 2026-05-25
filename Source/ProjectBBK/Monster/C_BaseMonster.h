@@ -151,6 +151,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	float deathDestroyDelay = 2.0f;
 
+	// 사망 후 이 시간이 지나면 몽타주 끝을 기다리지 않고 VFX + 메시 숨김을 강제 실행
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	float deathVFXDelay = 1.0f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Reward")
 	TSubclassOf<AC_ExpOrb> ExpOrbClass;
 
@@ -164,6 +168,7 @@ public:
 
 private:
 	FTimerHandle deathDestroyTimerHandle;
+	FTimerHandle deathVFXTimerHandle;
 	bool bDeathVFXTriggered = false;
 #pragma endregion
 };
