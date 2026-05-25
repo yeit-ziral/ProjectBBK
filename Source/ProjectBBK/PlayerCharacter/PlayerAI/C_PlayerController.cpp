@@ -14,6 +14,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EngineUtils.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "Components/CapsuleComponent.h"
 
 float AC_PlayerController::GetSwitchCooldownRemaining() const
 {
@@ -190,7 +192,21 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	savedControlRotation = GetControlRotation();
 
 	if (switchEffect)
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, switchEffect, OldChar->GetActorLocation());
+	{
+		FVector feetLocation = OldChar->GetActorLocation();
+		feetLocation.Z -= OldChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+		UNiagaraComponent* spawnedEffect = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, switchEffect, feetLocation);
+
+		if (spawnedEffect)
+		{
+			FLinearColor blue = FLinearColor(0.0f, 0.3f, 1.0f, 1.0f);
+			spawnedEffect->SetColorParameter(TEXT("Color_Circle"), blue);
+			spawnedEffect->SetColorParameter(TEXT("Color_Smoke"), blue);
+			spawnedEffect->SetColorParameter(TEXT("Color_Sparks1"), blue);
+			spawnedEffect->SetColorParameter(TEXT("Color_Spiral1"), blue);
+		}
+	}
 
 	FTimerDelegate SwitchDelegate = FTimerDelegate::CreateUObject(this, &AC_PlayerController::ExecuteCharacterSwitch, NextIndex);
 	GetWorldTimerManager().SetTimer(switchDelayTimerHandle, SwitchDelegate, 0.5f, false);
