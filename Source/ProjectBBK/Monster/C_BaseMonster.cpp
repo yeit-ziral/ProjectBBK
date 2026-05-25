@@ -63,6 +63,16 @@ void AC_BaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Blueprint에 None이 직렬화된 경우 컴포넌트 목록에서 복구
+	if (!attackManager)
+		attackManager = FindComponentByClass<UC_AttackManagerComponent>();
+	if (!dataComponent)
+		dataComponent = FindComponentByClass<UC_MonsterDataComponent>();
+	if (!groggyComponent)
+		groggyComponent = FindComponentByClass<UC_GroggyComponent>();
+	if (!hpDisplayComponent)
+		hpDisplayComponent = FindComponentByClass<UC_MonsterHPDisplayComponent>();
+
 	// GAS 초기화
 	if (monsterASC)
 	{
