@@ -6,10 +6,9 @@
 
 void UC_EndingScreenWidget::OnReturnToMainMenu()
 {
-	// StartGame()이 CurrentLevelIndex 리셋 + DA_LevelSequence Levels[0] 오픈을 함께 처리
 	if (UC_BBKGameInstance* GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
 	{
-		GI->StartGame();
+		GI->TravelToMainMenu();
 	}
 }
 
