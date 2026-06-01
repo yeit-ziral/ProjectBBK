@@ -122,3 +122,15 @@
 - **대안:** GameMode에서 플레이어 사망을 구독해 별도 처리
 - **선택 이유:** `HandleCharacterDeath`가 이미 "다음 생존 캐릭터 없음" 조건을 감지하고 있어 중복 로직 불필요. UI 표시도 PlayerController 책임 범위 안에 있음
 - **트레이드오프:** 멀티플레이어로 확장 시 서버-클라이언트 분리 필요. 싱글플레이어 전제이므로 현재 범위에서는 문제 없음
+
+### OnReturnToMainMenu — StartGame() 재사용 vs TravelToMainMenu() 분리
+- **선택:** `TravelToMainMenu()` 신규 추가 — `MainMenuLevel` TSoftObjectPtr을 직접 `OpenLevelBySoftObjectPtr`
+- **대안:** `StartGame()` 재사용 — `Levels[0]`(첫 번째 게임 레벨)을 열어 메인 메뉴처럼 활용
+- **선택 이유:** 메인 메뉴 레벨은 `UDA_LevelSequence` 배열 밖에 있어야 함. `StartGame()`은 로딩 오버레이 + `bIsTransitioning` 가드가 달린 게임 시작 전용 함수이므로 복귀 경로에 재사용하면 책임이 뒤섞임
+- **트레이드오프:** `BP_GameInstance`에 `MainMenuLevel` 슬롯 할당이 추가로 필요. 미할당 시 `TravelToMainMenu()`가 무동작으로 실패
+
+### TravelToMainMenu 로딩 오버레이 — 생략 vs Slate 폴백
+- **선택:** 로딩 오버레이 없이 바로 `OpenLevelBySoftObjectPtr`
+- **대안:** `FLevelEntry` 없이 단순 검정 Slate를 직접 생성해 표시
+- **선택 이유:** 메인 메뉴 레벨은 빈 레벨(Empty Level)이므로 로딩이 체감되지 않음. `ShowLoadingOverlay`는 `FLevelEntry`(텍스트·최소 시간·텍스처)를 요구하는데 메인 메뉴는 해당 데이터가 없음
+- **트레이드오프:** 메인 메뉴 레벨이 무거워질 경우 별도 Slate 폴백 추가 필요

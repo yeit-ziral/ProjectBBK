@@ -480,3 +480,38 @@ SwitchToCharacter(NextIndex)
     → savedIndex > 0 인 경우만 — 0번은 InitializeDefaultSkill이 이미 처리
     → OnCommonSkillSwitched 브로드캐스트 → HUD 아이콘 갱신
 ```
+
+### 메인 메뉴 GameMode 패턴 (AC_MainMenuGameMode 참고)
+전투 로직 없는 메뉴 전용 레벨의 GameMode. BeginPlay에서 위젯 생성 + 입력 모드 전환.
+```
+AC_MainMenuGameMode::BeginPlay()
+  → if (!MainMenuWidgetClass) return
+  → PC = GetWorld()->GetFirstPlayerController()
+  → CreateWidget<UC_MainMenuWidget>(PC, MainMenuWidgetClass)
+  → Widget->AddToViewport()
+  → PC->SetShowMouseCursor(true)
+  → PC->SetInputMode(FInputModeUIOnly())
+
+UPROPERTY(EditDefaultsOnly, Category = "UI")
+TSubclassOf<UC_MainMenuWidget> MainMenuWidgetClass
+  → BP_MainMenuGameMode에서 WBP_MainMenu 할당
+```
+- `AC_BBKGameMode`와 완전히 독립 — 포탈·몬스터·PlayerController 스폰 없음
+- 빈 레벨(Empty Level) World Settings → GameMode Override로 지정
+- 메인 메뉴 레벨은 `UDA_LevelSequence` 배열에 포함하지 않을 것 (시퀀스는 플레이 레벨부터 시작)
+
+### 서브 위젯 ZOrder 오버레이 패턴 (WBP_MainMenu + WBP_Settings 참고)
+부모 위젯을 유지한 채 자식 위젯을 위에 올리고, 닫으면 부모로 자연 복귀.
+```
+// 부모 위젯 (WBP_MainMenu, ZOrder 0)
+OnSettingsClicked()
+  → if (!SettingsWidgetClass) return   ← 미할당 시 크래시 방지
+  → CreateWidget(GetOwningPlayer(), SettingsWidgetClass)
+  → AddToViewport(ZOrder: 1)           ← 부모 위에 덮어씌움
+
+// 자식 위젯 (WBP_Settings, ZOrder 1)
+OnCloseClicked()
+  → RemoveFromParent()   ← 자신만 제거, 부모(ZOrder 0)가 다시 보임
+```
+- 부모를 숨기거나 재생성할 필요 없음
+- 자식 위젯 배경을 불투명하게 디자인해야 부모가 완전히 가려짐
