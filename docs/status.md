@@ -39,9 +39,11 @@
 | WBP_RockSpearAim | ✅ 완료 | 조준선 위젯, GA_RockSpear 생명주기 직접 관리, 마우스 위치 추적 |
 | WBP_SkillWheel | ✅ 완료 | Z키 토글, 마우스 각도 기반 섹터 판정, 호버 강조, 클릭 시 스킬 교체 |
 | WBP_HUD (캐릭터 교체 연동) | ✅ 완료 | OnCharacterSwitched 델리게이트로 교체 시 SkillIcon·UltimateGauge 재초기화 |
-| WBP_LoadingScreen | 🔧 C++ 완료 | UC_LoadingScreenWidget 기반. MoviePlayer 대신 Viewport Overlay 방식 사용. BP 미할당 시 Slate 폴백(검정+텍스트) 자동 사용 — BindWidget: LoadingBackground·DescriptionText·TipText·LoadingBar |
-| WBP_EndingScreen | 🔧 C++ 완료 | UC_EndingScreenWidget 기반, BP_PlayerController의 EndingScreenClass 슬롯에 할당 필요. OnReturnToMainMenu·OnQuitGame 버튼 포함 |
-| WBP_GameOverScreen | 🔧 C++ 완료 | UC_GameOverWidget 기반, BP_PlayerController의 GameOverScreenClass 슬롯에 할당 필요. 전원 사망 시 HandleCharacterDeath에서 자동 표시 |
+| WBP_LoadingScreen | ✅ 완료 | UC_LoadingScreenWidget 기반. MoviePlayer 대신 Viewport Overlay 방식 사용. BP 미할당 시 Slate 폴백(검정+텍스트) 자동 사용 — BindWidget: LoadingBackground·DescriptionText·TipText·LoadingBar |
+| WBP_EndingScreen | ✅ 완료 | UC_EndingScreenWidget 기반. OnReturnToMainMenu·OnQuitGame 버튼 포함 |
+| WBP_GameOverScreen | ✅ 완료 | UC_GameOverWidget 기반. 전원 사망 시 HandleCharacterDeath에서 자동 표시 |
+| WBP_MainMenu | ✅ 완료 | UC_MainMenuWidget 기반. BindWidget: StartButton·SettingsButton·QuitButton. 게임 시작: StartGame() 경유 로딩 오버레이 포함 |
+| WBP_Settings | ✅ 완료 | UC_SettingsWidget 기반. BindWidget: CloseButton. CloseButton → RemoveFromParent로 WBP_MainMenu 복귀. 기능 구현 시 이 클래스에 확장 |
 
 ### Effects
 | Effect | 상태 | 비고 |
@@ -78,8 +80,9 @@
 ### Level System
 | Class / Asset | 상태 | 비고 |
 |---------------|------|------|
-| UDA_LevelSequence (LevelSequenceData.h) | 🔧 C++ 완료 | 에디터에서 DA_LevelSequence 에셋 생성 후 Levels 배열에 레벨·BGM·텍스처 항목 채우기 필요 |
-| UC_BBKGameInstance (C_BBKGameInstance) | 🔧 C++ 완료 | 레벨 이동·로딩 오버레이·캐릭터 상태 저장/복원·에셋 프리로드 포함. BP_GameInstance: DA_LevelSequence·ActorClassesToPreload 슬롯 할당 필요 |
-| AC_BBKGameMode (C_BBKGameMode) | 🔧 C++ 완료 | DefaultPawnClass=nullptr 설정 완료. BeginPlay에서 AC_BaseMonster·AC_Portal 자동 수집. 각 레벨 GameMode로 설정 필요 |
-| AC_Portal (C_Portal) | 🔧 C++ 완료 | BP_Portal 생성 후 Niagara 에셋 할당, 각 레벨에 배치 필요. 기본 비활성화 → 몬스터 전멸 시 GameMode가 ActivatePortal() 호출 |
-| BGM 재생 로직 | 📋 계획 중 | StartGame() 내 TODO 주석으로 보존. 메인 메뉴 연동 시 구현 예정 |
+| UDA_LevelSequence (LevelSequenceData.h) | ✅ 완료 | 에디터에서 DA_LevelSequence 에셋 생성 후 Levels 배열에 레벨·BGM·텍스처 항목 채우기 필요 |
+| UC_BBKGameInstance (C_BBKGameInstance) | ✅ 완료 | 레벨 이동·로딩 오버레이·캐릭터 상태 저장/복원·에셋 프리로드·TravelToMainMenu 포함. BP_GameInstance: DA_LevelSequence·MainMenuLevel·ActorClassesToPreload 슬롯 할당 필요 |
+| AC_BBKGameMode (C_BBKGameMode) | ✅ 완료 | DefaultPawnClass=nullptr 설정 완료. BeginPlay에서 AC_BaseMonster·AC_Portal 자동 수집. 각 레벨 GameMode로 설정 필요 |
+| AC_Portal (C_Portal) | ✅ 완료 | BP_Portal 생성 후 Niagara 에셋 할당, 각 레벨에 배치 필요. 기본 비활성화 → 몬스터 전멸 시 GameMode가 ActivatePortal() 호출 |
+| AC_MainMenuGameMode (C_MainMenuGameMode) | ✅ 완료 | 메인 메뉴 레벨 전용 GameMode. BeginPlay에서 WBP_MainMenu 생성 + UIOnly 입력 모드 설정 |
+| BGM 재생 로직 | 📋 계획 중 | 구현 예정 |
