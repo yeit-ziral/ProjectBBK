@@ -44,13 +44,24 @@ void UC_BBKGameInstance::Init()
 
 void UC_BBKGameInstance::StartGame()
 {
+	if (bIsTransitioning) return;
+
 	UDA_LevelSequence* Sequence = LevelSequence.LoadSynchronous();
 	if (!Sequence || !Sequence->IsValidIndex(0)) return;
 
+	bIsTransitioning = true;
 	CurrentLevelIndex = 0;
 	const FLevelEntry& Entry = Sequence->Levels[0];
-	// TODO: 메인 메뉴 연동 시 ShowLoadingOverlay(Entry) 활성화
+	ShowLoadingOverlay(Entry);
 	UGameplayStatics::OpenLevelBySoftObjectPtr(GetWorld(), Entry.Level);
+}
+
+void UC_BBKGameInstance::TravelToMainMenu()
+{
+	if (!MainMenuLevel.IsNull())
+	{
+		UGameplayStatics::OpenLevelBySoftObjectPtr(GetWorld(), MainMenuLevel);
+	}
 }
 
 void UC_BBKGameInstance::TravelToNextLevel()

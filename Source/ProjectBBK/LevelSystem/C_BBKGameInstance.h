@@ -32,6 +32,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Level")
 	void TravelToNextLevel();
 
+	UFUNCTION(BlueprintCallable, Category = "Level")
+	void TravelToMainMenu();
+
 	UFUNCTION(BlueprintPure, Category = "Level")
 	int32 GetCurrentLevelIndex() const { return CurrentLevelIndex; }
 
@@ -63,6 +66,10 @@ private:
 	// ── 레벨 시퀀스 ──────────────────────────────────────
 	UPROPERTY(EditDefaultsOnly, Category = "Level")
 	TSoftObjectPtr<UDA_LevelSequence> LevelSequence;
+
+	// 메인 메뉴 레벨 — BP_GameInstance에서 할당
+	UPROPERTY(EditDefaultsOnly, Category = "Level")
+	TSoftObjectPtr<UWorld> MainMenuLevel;
 
 	int32 CurrentLevelIndex = 0;
 	bool  bIsTransitioning  = false;
