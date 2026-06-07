@@ -134,3 +134,15 @@
 - **대안:** `FLevelEntry` 없이 단순 검정 Slate를 직접 생성해 표시
 - **선택 이유:** 메인 메뉴 레벨은 빈 레벨(Empty Level)이므로 로딩이 체감되지 않음. `ShowLoadingOverlay`는 `FLevelEntry`(텍스트·최소 시간·텍스처)를 요구하는데 메인 메뉴는 해당 데이터가 없음
 - **트레이드오프:** 메인 메뉴 레벨이 무거워질 경우 별도 Slate 폴백 추가 필요
+
+### 볼륨 저장 위치 — UGameUserSettings vs USaveGame
+- **선택:** `UC_BBKGameUserSettings` (UGameUserSettings 서브클래스), `UPROPERTY(Config)`로 `GameUserSettings.ini`에 자동 직렬화
+- **대안:** `USaveGame`으로 세이브 슬롯에 저장
+- **선택 이유:** 볼륨처럼 게임 진행과 무관한 유저 환경 설정은 SaveGame(세이브 슬롯)보다 UserSettings가 의미적으로 적합. `SaveSettings()` 한 줄로 저장, `GetGameUserSettings()`로 어디서든 접근 가능
+- **트레이드오프:** `DefaultEngine.ini`에 `GameUserSettingsClassName` 등록 필요. 기존 `UGameUserSettings::Get()` 호출부를 서브클래스 `UC_BBKGameUserSettings::Get()`으로 교체해야 함
+
+### SoundMix/SoundClass ref 위치 — GameInstance vs SettingsWidget
+- **선택:** `UC_BBKGameInstance`에 `UPROPERTY(EditDefaultsOnly)` 4개로 보관
+- **대안:** `UC_SettingsWidget`에 보관
+- **선택 이유:** 레벨 로드 후 `LoadComplete()`에서 자동 볼륨 복원이 필요. SettingsWidget에 두면 설정창을 열지 않는 한 복원 불가. GameInstance는 항상 유효하므로 모든 시점에서 접근 가능
+- **트레이드오프:** `BP_GameInstance`에 Audio 슬롯 4개(`GameSoundMix`, `SC_Master`, `SC_BGM`, `SC_SFX`) 할당 필요. 미할당 시 `ApplyVolumeSettings()`가 무동작으로 실패

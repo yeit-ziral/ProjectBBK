@@ -515,3 +515,37 @@ OnCloseClicked()
 ```
 - 부모를 숨기거나 재생성할 필요 없음
 - 자식 위젯 배경을 불투명하게 디자인해야 부모가 완전히 가려짐
+
+### 볼륨 설정 패턴 (UC_BBKGameUserSettings / UC_SettingsWidget 참고)
+UGameUserSettings 서브클래스로 볼륨 저장, SoundMix/SoundClass로 적용. SoundMix/SoundClass ref는 GameInstance에 보관 → 레벨 로드마다 자동 복원.
+```
+UC_BBKGameUserSettings (config=GameUserSettings)
+  UPROPERTY(Config) float MasterVolume / BGMVolume / SFXVolume = 1.0f
+  static Get() → Cast<UC_BBKGameUserSettings>(UGameUserSettings::GetGameUserSettings())
+  ApplyVolumeSettings(WorldContext, SoundMix, SC_Master, SC_BGM, SC_SFX)
+    → PushSoundMixModifier
+    → SetSoundMixClassOverride × 3 (Volume, Pitch=1, FadeTime=0, bApplyToChildren=true)
+
+UC_BBKGameInstance
+  UPROPERTY(EditDefaultsOnly, Category="Audio") USoundMix* / USoundClass* × 3
+  ApplyVolumeSettings() → Settings->ApplyVolumeSettings(this, ...)
+  LoadComplete()에서 ApplyVolumeSettings() 호출 → 레벨 전환 후 자동 복원
+
+UC_SettingsWidget::NativeConstruct
+  → GameUserSettings에서 현재 값 읽어 슬라이더 초기화 + UpdateVolumeText
+  → OnXxxVolumeChanged 바인딩
+
+OnXxxVolumeChanged(float Value)
+  → Settings->SetXxxVolume(Value)
+  → UpdateVolumeText(TextBlock, Value)   // FString::Printf(TEXT("%d%%"), RoundToInt(Value*100))
+  → GI->ApplyVolumeSettings()           // 즉시 반영
+  → Settings->SaveSettings()            // 즉시 저장
+
+DefaultEngine.ini [/Script/Engine.Engine]
+  GameUserSettingsClassName=/Script/ProjectBBK.C_BBKGameUserSettings
+```
+에디터 설정:
+- SC_BGM / SC_SFX → Parent Class = SC_Master 설정
+- SM_GameSettings (Sound Class Mix 에셋)
+- BP_GameInstance Audio 슬롯에 4개 에셋 할당
+- 슬라이더 Height 조절: Bar Thickness 사용 (SizeBox Height Override 사용 금지 — Debugging Checklist 34번)

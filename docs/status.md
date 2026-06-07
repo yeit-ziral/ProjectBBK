@@ -43,7 +43,7 @@
 | WBP_EndingScreen | ✅ 완료 | UC_EndingScreenWidget 기반. OnReturnToMainMenu·OnQuitGame 버튼 포함 |
 | WBP_GameOverScreen | ✅ 완료 | UC_GameOverWidget 기반. 전원 사망 시 HandleCharacterDeath에서 자동 표시 |
 | WBP_MainMenu | ✅ 완료 | UC_MainMenuWidget 기반. BindWidget: StartButton·SettingsButton·QuitButton. 게임 시작: StartGame() 경유 로딩 오버레이 포함 |
-| WBP_Settings | ✅ 완료 | UC_SettingsWidget 기반. BindWidget: CloseButton. CloseButton → RemoveFromParent로 WBP_MainMenu 복귀. 기능 구현 시 이 클래스에 확장 |
+| WBP_Settings | ✅ 완료 | UC_SettingsWidget 기반. BindWidget: CloseButton·MasterVolumeSlider·BGMVolumeSlider·SFXVolumeSlider·MasterVolumeText·BGMVolumeText·SFXVolumeText. Master/BGM/SFX 볼륨 슬라이더 + 퍼센트 텍스트. UC_BBKGameUserSettings 연동, 슬라이더 조작 시 즉시 적용·저장 |
 
 ### Effects
 | Effect | 상태 | 비고 |
@@ -81,7 +81,8 @@
 | Class / Asset | 상태 | 비고 |
 |---------------|------|------|
 | UDA_LevelSequence (LevelSequenceData.h) | ✅ 완료 | 에디터에서 DA_LevelSequence 에셋 생성 후 Levels 배열에 레벨·BGM·텍스처 항목 채우기 필요 |
-| UC_BBKGameInstance (C_BBKGameInstance) | ✅ 완료 | 레벨 이동·로딩 오버레이·캐릭터 상태 저장/복원·에셋 프리로드·TravelToMainMenu 포함. BP_GameInstance: DA_LevelSequence·MainMenuLevel·ActorClassesToPreload 슬롯 할당 필요 |
+| UC_BBKGameInstance (C_BBKGameInstance) | ✅ 완료 | 레벨 이동·로딩 오버레이·캐릭터 상태 저장/복원·에셋 프리로드·TravelToMainMenu·볼륨 설정 적용 포함. BP_GameInstance: DA_LevelSequence·MainMenuLevel·ActorClassesToPreload·Audio(GameSoundMix·SC_Master·SC_BGM·SC_SFX) 슬롯 할당 필요 |
+| UC_BBKGameUserSettings (C_BBKGameUserSettings) | ✅ 완료 | UGameUserSettings 서브클래스. Master/BGM/SFX 볼륨 저장/로드/적용. DefaultEngine.ini GameUserSettingsClassName 등록 완료. BP_GameInstance Audio 슬롯 할당 필요 |
 | AC_BBKGameMode (C_BBKGameMode) | ✅ 완료 | DefaultPawnClass=nullptr 설정 완료. BeginPlay에서 AC_BaseMonster·AC_Portal 자동 수집. 각 레벨 GameMode로 설정 필요 |
 | AC_Portal (C_Portal) | ✅ 완료 | BP_Portal 생성 후 Niagara 에셋 할당, 각 레벨에 배치 필요. 기본 비활성화 → 몬스터 전멸 시 GameMode가 ActivatePortal() 호출 |
 | AC_MainMenuGameMode (C_MainMenuGameMode) | ✅ 완료 | 메인 메뉴 레벨 전용 GameMode. BeginPlay에서 WBP_MainMenu 생성 + UIOnly 입력 모드 설정 |
