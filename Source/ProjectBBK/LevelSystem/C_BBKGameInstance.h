@@ -12,6 +12,8 @@
 class AC_BasePlayerCharactor;
 class AC_PlayerController;
 class UAbilitySystemComponent;
+class USoundMix;
+class USoundClass;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameClearDelegate);
 
@@ -52,6 +54,8 @@ public:
 
 	bool HasSavedState()                const { return PersistedState.bHasSavedState;       }
 	int32 GetSavedActiveCharacterIndex() const { return PersistedState.activeCharacterIndex; }
+
+	void ApplyVolumeSettings();
 
 protected:
 	virtual void LoadComplete(const float LoadTime, const FString& MapName) override;
@@ -95,6 +99,19 @@ private:
 
 	// ── 캐릭터 상태 저장 ──────────────────────────────────
 	FPersistentGameState PersistedState;
+
+	// ── 볼륨 설정 ─────────────────────────────────────────
+	UPROPERTY(EditDefaultsOnly, Category = "Audio")
+	USoundMix* GameSoundMix = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Audio")
+	USoundClass* SC_Master = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Audio")
+	USoundClass* SC_BGM = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Audio")
+	USoundClass* SC_SFX = nullptr;
 
 	// ── 에셋 프리로드 (GC 방지) ───────────────────────────
 	UPROPERTY(EditDefaultsOnly, Category = "Preload")

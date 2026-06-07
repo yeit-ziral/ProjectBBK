@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BBKGameInstance.h"
+#include "C_BBKGameUserSettings.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Containers/Ticker.h"
@@ -99,10 +100,18 @@ void UC_BBKGameInstance::TravelToNextLevel()
 	UGameplayStatics::OpenLevelBySoftObjectPtr(GetWorld(), Entry->Level);
 }
 
+void UC_BBKGameInstance::ApplyVolumeSettings()
+{
+	if (UC_BBKGameUserSettings* Settings = UC_BBKGameUserSettings::Get())
+		Settings->ApplyVolumeSettings(this, GameSoundMix, SC_Master, SC_BGM, SC_SFX);
+}
+
 void UC_BBKGameInstance::LoadComplete(const float LoadTime, const FString& MapName)
 {
 	Super::LoadComplete(LoadTime, MapName);
 	bIsTransitioning = false;
+
+	ApplyVolumeSettings();
 
 	// Ticker를 먼저 중단 — 이후 시간 기반 계산이 100%를 덮어쓰는 것을 방지
 	FTSTicker::GetCoreTicker().RemoveTicker(ProgressTickerHandle);
