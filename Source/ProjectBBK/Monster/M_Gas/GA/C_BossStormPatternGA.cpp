@@ -108,7 +108,7 @@ void UC_BossStormPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 void UC_BossStormPatternGA::SpawnStorms()
 {
 	AC_BossMonster* boss = Cast<AC_BossMonster>(GetAvatarActorFromActorInfo());
-	const float attackValue = boss ? static_cast<float>(boss->GetAttack()) * 0.2f : 0.f;
+	const float attackValue = boss ? static_cast<float>(boss->GetAttack()) * damageMultiplier : 0.f;
 	UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo();
 
 	for (const FVector& spawnPos : cachedSpawnPoints)

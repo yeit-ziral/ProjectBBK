@@ -73,6 +73,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "StormPattern|Damage")
 	TSubclassOf<UGameplayEffect> damageEffectClass;
 
+	// DataTable Attack 스탯에 곱할 배율
+	UPROPERTY(EditDefaultsOnly, Category = "StormPattern|Damage")
+	float damageMultiplier = 0.2f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "StormPattern")
 	UMaterialInterface* magicCircleDecal;
 

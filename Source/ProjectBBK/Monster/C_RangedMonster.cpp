@@ -2,17 +2,9 @@
 
 
 #include "C_RangedMonster.h"
-#include "Object/C_SpecialProjectile.h"
 #include "Manager/C_AttackManagerComponent.h"
 #include "M_Gas/C_MonsterASC.h"
-#include "Data/AttackTypes.h"
-
-#include "GameFramework/Actor.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/GameplayStatics.h"
-#include "Engine/World.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "UI/C_NormalMonsterHPWidget.h"
 
 AC_RangedMonster::AC_RangedMonster()
 {
@@ -76,57 +68,10 @@ void AC_RangedMonster::RangedNormalAttack()
 
 void AC_RangedMonster::RangedSpecialAttack()
 {
-	if (!attackManager)
-		return;
+	if (!attackManager || !monsterASC || !specialAttackGAClass) return;
+	if (!attackManager->DoSpecialAttack()) return;
 
-	if (attackManager->DoSpecialAttack())
-	{
-		PlayAnimMontage(rangedSpecialMontage);
-		SpawnSpecialProjectile();
-	}
-}
-
-
-void AC_RangedMonster::SpawnSpecialProjectile()
-{
-	if (!specialProjectileClass)
-		return;
-
-	UWorld* world = GetWorld();
-	if (!world) return;
-
-	// 등 뒤 스폰 위치 결정
-	FVector spawnLocation = GetActorLocation() + GetActorForwardVector() * backOffset.X
-	                                           + GetActorRightVector()   * backOffset.Y
-	                                           + GetActorUpVector()      * backOffset.Z;
-
-	USkeletalMeshComponent* meshComp = GetMesh();
-	if (meshComp && meshComp->DoesSocketExist(backSocketName))
-	{
-		spawnLocation = meshComp->GetSocketLocation(backSocketName);
-	}
-
-	// 타겟(플레이어) 위치 획득
-	APawn* playerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
-	if (!playerPawn)
-		return;
-	const FVector targetPos = playerPawn->GetActorLocation();
-
-	// 스폰
-	FActorSpawnParameters spawnParams;
-	spawnParams.Owner = this;
-	spawnParams.Instigator = GetInstigator();
-
-	AActor* spawnedActor = world->SpawnActor<AActor>(specialProjectileClass, spawnLocation, FRotator::ZeroRotator, spawnParams);
-	if (!spawnedActor)
-		return;
-
-	AC_SpecialProjectile* specialProjectile = Cast<AC_SpecialProjectile>(spawnedActor);
-	if (!specialProjectile)
-		return;
-
-	specialProjectile->InitSpecialProjectile(targetPos, specialArcHeight, specialProjectileSpeed);
-	specialProjectile->InitGASDamage(GetMonsterASC(), specialDamageEffectClass, static_cast<float>(GetAttack()) * 0.2f);
+	monsterASC->TryActivateAbilityByClass(specialAttackGAClass);
 }
 
 void AC_RangedMonster::SpawnProjectile()

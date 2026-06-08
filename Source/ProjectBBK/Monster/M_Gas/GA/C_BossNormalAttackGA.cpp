@@ -97,7 +97,7 @@ void UC_BossNormalAttackGA::OnThrowEvent(FGameplayEventData Payload)
 		const FVector fireDir = (targetPos - socketTM.GetLocation()).GetSafeNormal();
 
 		AC_BaseMonster* bossMonster = Cast<AC_BaseMonster>(boss);
-		const float attackValue = bossMonster ? static_cast<float>(bossMonster->GetAttack()) * 0.1f : damage;
+		const float attackValue = bossMonster ? static_cast<float>(bossMonster->GetAttack()) * damageMultiplier : 0.f;
 		proj->InitProjectile(GetAbilitySystemComponentFromActorInfo(), damageGEClass, attackValue, fireDir);
 	}
 

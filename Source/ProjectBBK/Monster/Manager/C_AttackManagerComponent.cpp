@@ -74,7 +74,7 @@ bool UC_AttackManagerComponent::DoNormalAttack()
 	case MONSTER_ID_TANK:
 	{
 		if (!CanAttack()) return false;
-		DoMeleeNormalAttack();
+		StartCooldown(ownerMonster->GetAttackCooldown());
 		return true;
 	}
 	case MONSTER_ID_ROCKET:

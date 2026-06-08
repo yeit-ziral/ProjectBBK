@@ -5,12 +5,15 @@
 
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
-
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/Character.h"
+#include "../../C_BaseMonster.h"
 
 UC_MeleeMonsterNormalAttackGA::UC_MeleeMonsterNormalAttackGA()
 {
@@ -37,12 +40,12 @@ void UC_MeleeMonsterNormalAttackGA::PlayAttackMontageAndBindEvents()
 {
 	if (!attackMontage)
 	{
-		// ¸ùÅ¸ÁÖ°¡ ¾øÀ¸¸é ±×³É Á¾·á
+		// ï¿½ï¿½Å¸ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½×³ï¿½ ï¿½ï¿½ï¿½ï¿½
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, true);
 		return;
 	}
 
-	// 1) ¸ùÅ¸ÁÖ Àç»ý
+	// 1) ï¿½ï¿½Å¸ï¿½ï¿½ ï¿½ï¿½ï¿½
 	UAbilityTask_PlayMontageAndWait* montageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy
 	(
 		this, NAME_None, attackMontage, 1.0f, NAME_None, false
@@ -56,7 +59,7 @@ void UC_MeleeMonsterNormalAttackGA::PlayAttackMontageAndBindEvents()
 		montageTask->ReadyForActivation();
 	}
 
-	// 2) È÷Æ® Å¸ÀÌ¹Ö ÀÌº¥Æ® ´ë±â
+	// 2) ï¿½ï¿½Æ® Å¸ï¿½Ì¹ï¿½ ï¿½Ìºï¿½Æ® ï¿½ï¿½ï¿½
 	if (hitEventTag.IsValid())
 	{
 		UAbilityTask_WaitGameplayEvent* hitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, hitEventTag, nullptr, false, false);
@@ -81,53 +84,53 @@ void UC_MeleeMonsterNormalAttackGA::OnMontageCancelled()
 
 void UC_MeleeMonsterNormalAttackGA::OnHitEventReceived(FGameplayEventData Payload)
 {
-	TArray<AActor*> targetActors = UAbilitySystemBlueprintLibrary::GetActorsFromTargetData(Payload.TargetData, 0);
+	AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetAvatarActorFromActorInfo());
+	if (!monster) return;
 
-	if (targetActors.Num() > 0 && targetActors[0])
-	{
-		ApplyDamageToTarget(targetActors[0]);
-	}
+	const FVector start = monster->GetActorLocation();
+	const FVector end   = start + monster->GetActorForwardVector() * monster->GetAttackRange();
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> types;
+	types.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn));
+
+	TArray<AActor*> ignore;
+	ignore.Add(monster);
+	TArray<AActor*> allMonsters;
+	UGameplayStatics::GetAllActorsOfClass(monster->GetWorld(), AC_BaseMonster::StaticClass(), allMonsters);
+	for (AActor* m : allMonsters) ignore.Add(m);
+
+	FHitResult hit;
+	const bool hitOk = UKismetSystemLibrary::SphereTraceSingleForObjects(
+		monster, start, end, traceRadius, types, false, ignore,
+		EDrawDebugTrace::None, hit, true
+	);
+
+	if (hitOk && hit.GetActor())
+		ApplyDamageToTarget(hit.GetActor());
 }
 
 void UC_MeleeMonsterNormalAttackGA::ApplyDamageToTarget(AActor* TargetActor)
 {
-	if (!damageEffectClass)
-	{
-		return;
-	}
+	if (!damageEffectClass || !TargetActor) return;
 
 	UAbilitySystemComponent* sourceASC = GetAbilitySystemComponentFromActorInfo();
-	if (!sourceASC)
-	{
-		return;
-	}
+	if (!sourceASC) return;
 
-	// Å¸°Ù ASC ±¸ÇÏ±â
-	UAbilitySystemComponent* targetASC =
-		UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(TargetActor);
+	UAbilitySystemComponent* targetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(TargetActor);
+	if (!targetASC) return;
 
-	if (!targetASC)
-	{
-		return;
-	}
+	// DataTable Attack ìŠ¤íƒ¯ ì‚¬ìš©
+	AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetAvatarActorFromActorInfo());
+	const float attackValue = monster ? (float)monster->GetAttack() * damageMultiplier : 0.f;
 
 	FGameplayEffectContextHandle effectContext = sourceASC->MakeEffectContext();
 	effectContext.AddInstigator(CurrentActorInfo->AvatarActor.Get(), CurrentActorInfo->OwnerActor.Get());
 
-	FGameplayEffectSpecHandle specHandle =
-		sourceASC->MakeOutgoingSpec(damageEffectClass, GetAbilityLevel(), effectContext);
+	FGameplayEffectSpecHandle specHandle = sourceASC->MakeOutgoingSpec(damageEffectClass, GetAbilityLevel(), effectContext);
+	if (!specHandle.IsValid()) return;
 
-	if (!specHandle.IsValid())
-	{
-		return;
-	}
-
-	// SetByCaller·Î µ¥¹ÌÁö Àü´Þ
 	if (setByCallerDamageTag.IsValid())
-	{
-		specHandle.Data->SetSetByCallerMagnitude(setByCallerDamageTag, baseDamage);
-	}
+		specHandle.Data->SetSetByCallerMagnitude(setByCallerDamageTag, attackValue);
 
-	// ½ÇÁ¦ Àû¿ë
 	sourceASC->ApplyGameplayEffectSpecToTarget(*specHandle.Data.Get(), targetASC);
 }

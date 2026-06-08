@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "C_BaseMonster.h"
+#include "Abilities/GameplayAbility.h"
 #include "C_MeleeMonster.generated.h"
 
 /**
@@ -33,6 +34,14 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
+
+	// BP에서 BPC_MeleeMonsterNormalAttackGA 할당
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|GA")
+	TSubclassOf<UGameplayAbility> normalAttackGAClass;
+
+	// BP에서 BPC_MeleeMonsterSpecialAttackGA 할당
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|GA")
+	TSubclassOf<UGameplayAbility> specialAttackGAClass;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* meleeNormalMontage = nullptr;

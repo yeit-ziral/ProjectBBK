@@ -4,55 +4,56 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
-#include "C_MeleeMonsterNormalAttackGA.generated.h"
+#include "C_MeleeMonsterSpecialAttackGA.generated.h"
 
 class UAnimMontage;
 class UGameplayEffect;
 
-/**
- * 
- */
 UCLASS()
-class PROJECTBBK_API UC_MeleeMonsterNormalAttackGA : public UGameplayAbility
+class PROJECTBBK_API UC_MeleeMonsterSpecialAttackGA : public UGameplayAbility
 {
 	GENERATED_BODY()
-	
+
 public:
-	UC_MeleeMonsterNormalAttackGA();
+	UC_MeleeMonsterSpecialAttackGA();
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
-protected:
 
-	// ���� ��Ÿ��
+protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Animation")
 	UAnimMontage* attackMontage;
 
-	// ������ ����� GE (GE_Damage)
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Damage")
 	TSubclassOf<UGameplayEffect> damageEffectClass;
 
-	// AnimNotify���� ���� GameplayEvent �±� (��Ʈ Ÿ�̹�)
+	// AnimNotify에서 보내는 GameplayEvent 태그 (슬램 타이밍)
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|HitEvent")
 	FGameplayTag hitEventTag;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Damage")
 	FGameplayTag setByCallerDamageTag;
 
-	// 판정 구체 반경 (공격 사거리는 DataTable AttackRange 사용)
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Trace")
-	float traceRadius = 60.0f;
+	// 슬램 AOE 반경
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Slam")
+	float slamRadius = 250.0f;
 
-	// DataTable Attack 스탯에 곱할 배율
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Damage")
-	float damageMultiplier = 1.0f;
+	// 스페셜 공격 데미지 배율 (DataTable Attack 스탯 기준)
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Slam")
+	float slamDamageMultiplier = 2.0f;
 
-	void PlayAttackMontageAndBindEvents();
+	// 수평 넉백 강도
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Slam")
+	float knockbackStrength = 900.0f;
 
-	// ��������Ʈ�� �Լ���
+	// 수직(위로 뜨는) 강도
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Slam")
+	float verticalKnockbackStrength = 400.0f;
+
+private:
 	UFUNCTION()
 	void OnMontageCompleted();
 
@@ -62,7 +63,5 @@ protected:
 	UFUNCTION()
 	void OnHitEventReceived(FGameplayEventData Payload);
 
-	// ���� ������ ����
-	void ApplyDamageToTarget(AActor* TargetActor);
-
+	void ApplySlamDamageAndKnockback();
 };
