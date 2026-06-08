@@ -192,93 +192,6 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 		Setshield(FMath::Clamp(Getshield(), 0.0f, GetmaxShield()));
 	}
 
-	// ===== ⭐ Damage 처리 (기존 코드와 통합) =====
-	// 
-	//else if (Data.EvaluatedData.Attribute == GetdamageAttribute())
-	//{
-	//	const float LocalDamageDone = Getdamage();
-	//	Setdamage(0.0f);  // Reset
-
-	//	if (LocalDamageDone > 0.0f)
-	//	{
-	//		// Shield 먼저 감소
-	//		const float OldShield = Getshield();
-	//		const float NewShield = FMath::Max(0.0f, OldShield - LocalDamageDone);
-	//		Setshield(NewShield);
-
-	//		const float ShieldDamage = OldShield - NewShield;
-	//		const float RemainingDamage = LocalDamageDone - ShieldDamage;
-
-	//		// Health 감소
-	//		if (RemainingDamage > 0.0f)
-	//		{
-	//			const float NewHealth = Gethealth() - RemainingDamage;
-	//			Sethealth(FMath::Clamp(NewHealth, 0.0f, GetmaxHealth()));
-	//		}
-
-	//		// 데미지 델리게이트 호출
-	//		if (UC_CharacterASC* TargetASC = Cast<UC_CharacterASC>(Data.Target.AbilityActorInfo->AbilitySystemComponent.Get()))
-	//		{
-	//			UC_CharacterASC* SourceASCCasted = Cast<UC_CharacterASC>(SourceASC);
-	//			TargetASC->ReceiveDamage(SourceASCCasted, LocalDamageDone, LocalDamageDone);
-	//		}
-	//	}
-	//}
-
-	//else if (Data.EvaluatedData.Attribute == GetdamageAttribute())
-	//{
-	//	//Apply damage to shield first
-	//	float RemainingDamage = Getdamage();
-	//	if (RemainingDamage > 0.0f)
-	//	{
-	//		float CurrentShield = Getshield();
-
-	//		UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
-	//		if (ASC && ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active")))
-	//		{
-	//			// ���� ���� ���� ������ 0 ó��
-	//			Setdamage(0.0f);
-
-	//			// ������ �� �� ������ �ٷ� ����
-	//			ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Broken"));
-	//			ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag("State.Guard.Active"));
-
-	//			return;
-	//		}
-
-	//		//this is for shield, need to change with upper codes
-	//		if (CurrentShield > 0.0f)
-	//		{
-	//			if (RemainingDamage >= CurrentShield)
-	//			{
-	//				RemainingDamage -= CurrentShield;
-	//				Setshield(0.0f);
-	//			}
-	//			else
-	//			{
-	//				Setshield(CurrentShield - RemainingDamage);
-	//				RemainingDamage = 0.0f;
-	//			}
-	//		}
-	//		//End shield application
-	//	}
-	//	//Apply remaining damage to health
-	//	if (RemainingDamage > 0.0f)
-	//	{
-	//		float CurrentHealth = Gethealth();
-	//		if (RemainingDamage >= CurrentHealth)
-	//		{
-	//			Sethealth(0.0f);
-	//		}
-	//		else
-	//		{
-	//			Sethealth(CurrentHealth - RemainingDamage); // Sethealth(FMath::Clamp(Gethealth(), 0.0f, GetmaxHealth()));
-	//		}
-	//	}
-	//	//Reset damage to zero after applying
-	//	Setdamage(0.0f);
-	//}
-
 	else if (Data.EvaluatedData.Attribute == GetreceivedDamageAttribute()) // damage -> ReceivedDamage로 변경
 	{
 		float RemainingDamage = GetreceivedDamage();
@@ -296,36 +209,13 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 				// 실드 제거 (LooseTag를 사용 중이시라면 RemoveLooseGameplayTag 사용)
 				// 보통 GA에서 부여한 태그라면 RemoveActiveEffectsWithGrantedTags 등을 쓰기도 하지만, 
 				// 직접 태그를 제어하신다면 아래 방식이 유지됩니다.
-				ASC->RemoveLooseGameplayTag(ShieldTag);
+				//ASC->RemoveLooseGameplayTag(ShieldTag);
+
+				//GE에서 넣어준 태그라면 아래 방식으로 제거 (실드 효과 자체를 제거)
+				ASC->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(ShieldTag));
 
 				// 무효화되었으므로 이후 로직 중단
 				return;
-			}
-
-			// 2. 가드 상태 확인 (기존 로직 유지 필요 시)
-			FGameplayTag GuardTag = FGameplayTag::RequestGameplayTag(FName("State.Guard.Active"));
-			if (ASC->HasMatchingGameplayTag(GuardTag))
-			{
-				SetreceivedDamage(0.0f);
-				ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Guard.Broken")));
-				ASC->RemoveLooseGameplayTag(GuardTag);
-				return;
-			}
-
-			// 3. 실드 수치(Shield Attribute) 차감 로직
-			float CurrentShield = Getshield();
-			if (CurrentShield > 0.0f)
-			{
-				if (RemainingDamage >= CurrentShield)
-				{
-					RemainingDamage -= CurrentShield;
-					Setshield(0.0f);
-				}
-				else
-				{
-					Setshield(CurrentShield - RemainingDamage);
-					RemainingDamage = 0.0f;
-				}
 			}
 
 			// 4. 남은 데미지를 체력(Health)에 적용
