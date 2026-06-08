@@ -2,9 +2,7 @@
 
 
 #include "C_MonsterAIController.h"
-#include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
-#include "Kismet/GameplayStatics.h"
 #include "../C_BaseMonster.h"
 
 
@@ -22,20 +20,8 @@ void AC_MonsterAIController::OnPossess(APawn* InPawn)
         if (UBehaviorTree* BT = Monster->GetBehaviorTree())
         {
             RunBehaviorTree(BT);
-            // 다음 틱에 재시도 — OnPossess 시점에 플레이어가 아직 준비 안 됐을 수 있음
-            GetWorldTimerManager().SetTimer(initTargetTimer, this,
-                &AC_MonsterAIController::TrySetInitialTarget, 0.1f, false);
+            // BT 서비스(C_MonsterBTService)의 OnBecomeRelevant가 즉시 타겟 탐색을 처리하므로
+            // 별도 초기 타겟 설정 불필요
         }
     }
-}
-
-void AC_MonsterAIController::TrySetInitialTarget()
-{
-    APawn* player = UGameplayStatics::GetPlayerPawn(this, 0);
-    if (!player) return;
-
-    if (UBlackboardComponent* BB = GetBlackboardComponent())
-        BB->SetValueAsObject(TEXT("TargetActor"), player);
-
-    SetFocus(player);
 }

@@ -2,6 +2,7 @@
 
 #include "C_BTTaskRangedAutoAttack.h"
 #include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "../C_RangedMonster.h"
 
 UC_BTTaskRangedAutoAttack::UC_BTTaskRangedAutoAttack()
@@ -13,6 +14,15 @@ EBTNodeResult::Type UC_BTTaskRangedAutoAttack::ExecuteTask(UBehaviorTreeComponen
 {
 	AAIController* aiController = OwnerComp.GetAIOwner();
 	if (!aiController)
+		return EBTNodeResult::Failed;
+
+	UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent();
+	if (!BB)
+		return EBTNodeResult::Failed;
+
+	// 타겟 없으면 공격 안 함
+	UObject* target = BB->GetValueAsObject(TargetActorKey.SelectedKeyName);
+	if (!target)
 		return EBTNodeResult::Failed;
 
 	AC_RangedMonster* monster = Cast<AC_RangedMonster>(aiController->GetPawn());

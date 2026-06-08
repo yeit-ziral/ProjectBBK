@@ -1,2 +1,2 @@
 ﻿RawName,MonsterId,MaxHP,MaxGroggy,Attack,Defense,AttackRange,MoveSpeed,NormalCoolDown,SpecialCoolDown,RepositionDesiredRange,RepositionMinRange,RepositionSpeed,RepositionStrafeWeight,RepositionFlipInterval,bEnableReposition,RepositionBand,ExpReward
-BossMage,1011,3000,35,50,250,1100,500,3,10,500,300,350,0.9,3,TRUE,60,300
+BossMage,1011,1500,35,50,250,1100,500,3,10,500,300,350,0.9,3,TRUE,60,300

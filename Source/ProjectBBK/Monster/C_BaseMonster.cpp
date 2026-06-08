@@ -150,6 +150,7 @@ FName AC_BaseMonster::GetRowName() const
 
 bool AC_BaseMonster::CanAutoAttack() const
 {
+	if (!dataComponent || dataComponent->GetMonsterId() == 0) return false;
 	return attackManager && (attackManager->CanAttack() || attackManager->CanSpecialAttack());
 }
 

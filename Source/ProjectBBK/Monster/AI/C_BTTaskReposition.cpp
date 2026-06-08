@@ -4,7 +4,6 @@
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/GameplayStatics.h"
 #include "../C_BaseMonster.h"
 
 UC_BTTaskReposition::UC_BTTaskReposition()
@@ -27,7 +26,6 @@ EBTNodeResult::Type UC_BTTaskReposition::ExecuteTask(UBehaviorTreeComponent& Own
 
 	AActor* target = Cast<AActor>(BB->GetValueAsObject(TargetActorKey.SelectedKeyName));
 	if (!target) target = aiController->GetFocusActor();
-	if (!target) target = UGameplayStatics::GetPlayerPawn(aiController, 0);
 	if (!target) return EBTNodeResult::Failed;
 
 	if (UCharacterMovementComponent* move = monster->GetCharacterMovement())
@@ -62,7 +60,6 @@ void UC_BTTaskReposition::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 
 	AActor* target = Cast<AActor>(BB->GetValueAsObject(TargetActorKey.SelectedKeyName));
 	if (!target) target = aiController->GetFocusActor();
-	if (!target) target = UGameplayStatics::GetPlayerPawn(aiController, 0);
 	if (!target) { FinishLatentTask(OwnerComp, EBTNodeResult::Failed); return; }
 
 	// 공격 가능해지면 Succeeded → Selector가 루프하며 공격 브랜치 재시도

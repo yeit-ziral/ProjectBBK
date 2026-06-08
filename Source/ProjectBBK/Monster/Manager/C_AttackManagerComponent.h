@@ -50,7 +50,7 @@ private:
 #pragma region attack state(lastAttackTime, coolDownTime, traceRadius, debug)
 
 	float lastAttackTime = -9999.0f;
-	float lastSpecialAttackTime = -9999.0f;
+	float lastSpecialAttackTime = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	float coolDownTime = 1.0f;

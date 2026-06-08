@@ -25,6 +25,7 @@ AC_BossBeam::AC_BossBeam()
 
     beam = CreateDefaultSubobject<UNiagaraComponent>("Beam");
     beam->SetupAttachment(root);
+    beam->SetAutoActivate(false);
 }
 
 // Called when the game starts or when spawned

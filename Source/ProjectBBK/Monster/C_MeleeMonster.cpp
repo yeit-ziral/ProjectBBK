@@ -86,13 +86,7 @@ bool AC_MeleeMonster::MeleeSpecialAttack()
 			GetSpecialCooldown());
 		float len = PlayAnimMontage(meleeSpecialMontage);
 		UE_LOG(LogTemp, Warning, TEXT("[Melee] SpecialMontage played, length=%.3f"), len);
-
-		GetWorld()->GetTimerManager().SetTimer(
-			slamTimerHandle,
-			[this]() { if (attackManager) attackManager->DoSlam(); },
-			slamHitDelay,
-			false
-		);
+		// 데미지는 ANC_MeleeSpecialAttack AnimNotify에서만 처리
 		return true;
 	}
 	return false;
