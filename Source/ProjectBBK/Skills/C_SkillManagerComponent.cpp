@@ -2,6 +2,7 @@
 
 #include "C_SkillManagerComponent.h"
 #include "AbilitySystemComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "C_SkillBase.h"
 #include "../PlayerCharacter/C_BasePlayerCharactor.h"
 #include "../PlayerCharacter/C_PlayerState.h"
@@ -67,6 +68,8 @@ void UC_SkillManagerComponent::OpenSkillWheel()
 	// 다음 틱(~50ms)에 이 태그를 감지하고 스스로 cleanup → EndAbility 처리
 	ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen")));
 	bIsSkillWheelOpen = true;
+
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), skillWheelTimeDilation);
 }
 
 void UC_SkillManagerComponent::CloseSkillWheel()
@@ -78,6 +81,8 @@ void UC_SkillManagerComponent::CloseSkillWheel()
 
 	ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen")));
 	bIsSkillWheelOpen = false;
+
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
 }
 
 TSubclassOf<UC_SkillBase> UC_SkillManagerComponent::GetActiveSkillClass() const

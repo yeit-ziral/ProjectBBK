@@ -33,6 +33,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SkillManager")
 	bool bIsSkillWheelOpen;
 
+	// SkillWheel이 열려있는 동안 적용할 월드 시간 배율 (슬로우모션)
+	UPROPERTY(EditDefaultsOnly, Category = "SkillManager")
+	float skillWheelTimeDilation = 0.2f;
+
 	// AddCharacterAbilities 이후 호출 — index 0 스킬에 Ability.Skill.Common 태그 부여
 	UFUNCTION(BlueprintCallable, Category = "SkillManager")
 	void InitializeDefaultSkill();
