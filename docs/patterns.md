@@ -302,6 +302,25 @@ Branch: HoveredIndex == -1 → 아무것도 안 함
 - `TryActivateAbilitiesByTag`는 DynamicAbilityTags 미조회 → `GetActiveSkillClass + TryActivateAbilityByClass` 사용 (Debugging Checklist 14번 참고)
 - 조준 중인 GA(GA_StoneSpear 등) 취소: CheckCancelInput 폴링 루프에 `HasMatchingGameplayTag(State.SkillWheelOpen)` 조건 추가 + `GetAbilitySystemComponentFromActorInfo` 사용 (Debugging Checklist 15번 참고)
 
+### 캐릭터 사망 시 SkillWheel 강제 종료 패턴
+GA 차단 태그 제거 + 위젯 정리를 사망 경로에서도 동일하게 보장하는 구조.
+```
+// AC_PlayerController::HandleCharacterDeath
+if (UC_SkillManagerComponent* SM = DeadCharacter->FindComponentByClass<UC_SkillManagerComponent>())
+    SM->CloseSkillWheel();
+
+// UC_SkillManagerComponent::CloseSkillWheel() 말미
+if (AC_BasePlayerCharactor* Char = Cast<AC_BasePlayerCharactor>(GetOwner()))
+    Char->OnSkillWheelShouldClose();
+
+// 캐릭터 Blueprint — OnSkillWheelShouldClose override
+→ SkillWheelWidget → Remove from Parent
+→ SetShowMouseCursor(false) + ResetIgnoreLookInput + Set Input Mode Game Only
+```
+- `bIsSkillWheelOpen` 가드가 있으므로 SkillWheel이 이미 닫혀있으면 무동작 — 사망 시 무조건 호출해도 안전
+- Z키 닫기·캐릭터 사망 양쪽 경로에서 동일한 정리 코드 실행 보장
+- `OnSkillWheelShouldClose`는 `AC_BasePlayerCharactor`의 `BlueprintImplementableEvent` — 컴포넌트 `BlueprintImplementableEvent`/`BlueprintAssignable` 방식의 Blueprint 연동 문제를 우회 (Debugging Checklist 35·36번 참고)
+
 ### 3인칭 카메라 기반 Projectile 조준 패턴 (GA_RockSpear 참고)
 조준선(커서 대체 위젯)과 발사 방향을 완전히 일치시키는 방법.
 ```

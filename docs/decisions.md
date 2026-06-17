@@ -141,6 +141,13 @@
 - **선택 이유:** 볼륨처럼 게임 진행과 무관한 유저 환경 설정은 SaveGame(세이브 슬롯)보다 UserSettings가 의미적으로 적합. `SaveSettings()` 한 줄로 저장, `GetGameUserSettings()`로 어디서든 접근 가능
 - **트레이드오프:** `DefaultEngine.ini`에 `GameUserSettingsClassName` 등록 필요. 기존 `UGameUserSettings::Get()` 호출부를 서브클래스 `UC_BBKGameUserSettings::Get()`으로 교체해야 함
 
+### SkillWheel 닫기 이벤트 — Component BlueprintAssignable vs Actor BlueprintImplementableEvent
+- **선택:** `AC_BasePlayerCharactor`에 `OnSkillWheelShouldClose` `BlueprintImplementableEvent` 선언, `UC_SkillManagerComponent::CloseSkillWheel()`에서 `Cast<AC_BasePlayerCharactor>(GetOwner())->OnSkillWheelShouldClose()` 호출
+- **대안 1:** `UC_SkillManagerComponent`에 `DECLARE_DYNAMIC_MULTICAST_DELEGATE`(파라미터 없음) 델리게이트 추가 → Blueprint `Bind Event` 노드로 바인딩
+- **대안 2:** `UC_SkillManagerComponent`에 `BlueprintImplementableEvent` 선언 → 컴포넌트 Blueprint 서브클래싱으로 override
+- **선택 이유:** 파라미터 없는 `DECLARE_DYNAMIC_MULTICAST_DELEGATE`는 Blueprint `Bind Event` 노드에서 Signature Error 발생(Debugging #36). 컴포넌트 `BlueprintImplementableEvent`는 캐릭터 Blueprint의 Override 목록에 나타나지 않음(Debugging #35). Actor의 `BlueprintImplementableEvent`는 캐릭터 Blueprint에서 바로 override 가능하고 `OnASCInitialized` 기존 패턴과 일치.
+- **트레이드오프:** 위젯 정리 로직이 캐릭터 Blueprint에 위치해 SkillWheel 관련 로직이 `UC_SkillManagerComponent`와 캐릭터 Blueprint 두 곳에 분산됨.
+
 ### SoundMix/SoundClass ref 위치 — GameInstance vs SettingsWidget
 - **선택:** `UC_BBKGameInstance`에 `UPROPERTY(EditDefaultsOnly)` 4개로 보관
 - **대안:** `UC_SettingsWidget`에 보관
