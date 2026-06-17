@@ -108,7 +108,7 @@ void UC_RangedMonsterNormalAttackGA::OnFireProjectileEvent(FGameplayEventData Pa
 	{
 		const FVector dir = (targetActor->GetActorLocation() - proj->GetActorLocation()).GetSafeNormal();
 		AC_BaseMonster* monster = Cast<AC_BaseMonster>(character);
-		const float attackValue = monster ? static_cast<float>(monster->GetAttack()) * 0.1f : 10.f;
+		const float attackValue = monster ? static_cast<float>(monster->GetAttack()) * damageMultiplier : 0.f;
 		proj->InitProjectile(GetAbilitySystemComponentFromActorInfo(), damageEffectClass, attackValue, dir);
 	}
 

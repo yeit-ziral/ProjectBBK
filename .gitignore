@@ -14,3 +14,10 @@ CLAUDE.local.md
 *.suo
 *.xcodeproj
 *.xcworkspace
+
+# 개발 도구 (MCP) — 공유 repo에 포함 금지
+/.mcp.json
+/Plugins/UnrealMCP/
+
+# 작업용 스크린샷 — git status에서 제외 (한글 파일명이 UBT 빌드를 깨뜨림)
+/Data/*.png

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "C_BaseMonster.h"
+#include "Abilities/GameplayAbility.h"
 #include "C_MeleeMonster.generated.h"
 
 /**
@@ -34,15 +35,18 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
+	// BP에서 BPC_MeleeMonsterNormalAttackGA 할당
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|GA")
+	TSubclassOf<UGameplayAbility> normalAttackGAClass;
+
+	// BP에서 BPC_MeleeMonsterSpecialAttackGA 할당
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|GA")
+	TSubclassOf<UGameplayAbility> specialAttackGAClass;
+
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* meleeNormalMontage = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* meleeSpecialMontage = nullptr;
 
-	// 슬램 모션에서 실제 타격 프레임까지의 딜레이 (에디터에서 조절)
-	UPROPERTY(EditAnywhere, Category = "Attack")
-	float slamHitDelay = 0.8f;
-
-	FTimerHandle slamTimerHandle;
 };

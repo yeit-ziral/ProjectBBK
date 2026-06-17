@@ -1,11 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
-#include "ANC_MeleeSpecialAttack.h"
+#include "ANC_MeleeNormalAttack.h"
 #include "../C_BaseMonster.h"
 #include "AbilitySystemBlueprintLibrary.h"
 
-void UANC_MeleeSpecialAttack::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
+void UANC_MeleeNormalAttack::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
 	if (!MeshComp) return;
 
@@ -14,7 +13,7 @@ void UANC_MeleeSpecialAttack::Notify(USkeletalMeshComponent* MeshComp, UAnimSequ
 
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 		monster,
-		FGameplayTag::RequestGameplayTag(TEXT("Event.Monster.Melee.Slam")),
+		FGameplayTag::RequestGameplayTag(TEXT("Event.Monster.Melee.Hit")),
 		FGameplayEventData()
 	);
 }

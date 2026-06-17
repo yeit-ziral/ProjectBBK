@@ -37,4 +37,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
 	TSubclassOf<UGameplayEffect> damageEffectClass;
+
+	// DataTable Attack 스탯에 곱할 배율
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+	float damageMultiplier = 0.1f;
 };

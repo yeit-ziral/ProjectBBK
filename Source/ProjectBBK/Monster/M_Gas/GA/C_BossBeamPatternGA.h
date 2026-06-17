@@ -70,6 +70,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Beam|Damage")
 	float beamRange = 2000.f;
 
+	// DataTable Attack 스탯에 곱할 배율
+	UPROPERTY(EditDefaultsOnly, Category = "Beam|Damage")
+	float damageMultiplier = 0.2f;
+
 private:
 	void OnBeamDurationExpired();
 	void StartFiringPhase();

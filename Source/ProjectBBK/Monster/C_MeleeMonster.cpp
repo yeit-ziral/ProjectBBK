@@ -62,38 +62,16 @@ bool AC_MeleeMonster::MeleeAutoAttack()
 
 bool AC_MeleeMonster::MeleeNormalAttack()
 {
-	if (!attackManager) return false;
+	if (!attackManager || !monsterASC || !normalAttackGAClass) return false;
+	if (!attackManager->DoNormalAttack()) return false;
 
-	if (attackManager->DoNormalAttack())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Melee] NormalAttack — Montage=%s"),
-			meleeNormalMontage ? *meleeNormalMontage->GetName() : TEXT("NULL"));
-		float len = PlayAnimMontage(meleeNormalMontage);
-		UE_LOG(LogTemp, Warning, TEXT("[Melee] PlayAnimMontage returned %.3f"), len);
-		return true;
-	}
-	return false;
+	return monsterASC->TryActivateAbilityByClass(normalAttackGAClass);
 }
 
 bool AC_MeleeMonster::MeleeSpecialAttack()
 {
-	if (!attackManager) return false;
+	if (!attackManager || !monsterASC || !specialAttackGAClass) return false;
+	if (!attackManager->DoSpecialAttack()) return false;
 
-	if (attackManager->DoSpecialAttack())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Melee] SpecialAttack — Montage=%s  SpecialCooldown=%.2f"),
-			meleeSpecialMontage ? *meleeSpecialMontage->GetName() : TEXT("NULL"),
-			GetSpecialCooldown());
-		float len = PlayAnimMontage(meleeSpecialMontage);
-		UE_LOG(LogTemp, Warning, TEXT("[Melee] SpecialMontage played, length=%.3f"), len);
-
-		GetWorld()->GetTimerManager().SetTimer(
-			slamTimerHandle,
-			[this]() { if (attackManager) attackManager->DoSlam(); },
-			slamHitDelay,
-			false
-		);
-		return true;
-	}
-	return false;
+	return monsterASC->TryActivateAbilityByClass(specialAttackGAClass);
 }

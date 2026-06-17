@@ -13,6 +13,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
@@ -355,6 +356,7 @@ void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadChara
 	}
 	else
 	{
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
 		ShowGameOverScreen();
 	}
 }

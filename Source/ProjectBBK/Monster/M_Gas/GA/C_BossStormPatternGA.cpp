@@ -39,11 +39,12 @@ void UC_BossStormPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 	if (UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo())
 		asc->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")));
 
-	// 소환 몽타주 재생 (stormDelay에 맞춰 rate 조정)
+	// 소환 몽타주 재생 (stormDelay + stormLaunchDelay 전체에 맞춰 rate 조정)
 	if (summoningMontage && bossChar)
 	{
-		float montageLen = summoningMontage->GetPlayLength();
-		float rate = (montageLen > 0.f && stormDelay > 0.f) ? montageLen / stormDelay : 1.f;
+		float montageLen    = summoningMontage->GetPlayLength();
+		float totalDuration = stormDelay + stormLaunchDelay;
+		float rate = (montageLen > 0.f && totalDuration > 0.f) ? montageLen / totalDuration : 1.f;
 		bossChar->PlayAnimMontage(summoningMontage, rate);
 	}
 
@@ -107,7 +108,7 @@ void UC_BossStormPatternGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 void UC_BossStormPatternGA::SpawnStorms()
 {
 	AC_BossMonster* boss = Cast<AC_BossMonster>(GetAvatarActorFromActorInfo());
-	const float attackValue = boss ? static_cast<float>(boss->GetAttack()) * 0.2f : 0.f;
+	const float attackValue = boss ? static_cast<float>(boss->GetAttack()) * damageMultiplier : 0.f;
 	UAbilitySystemComponent* asc = GetAbilitySystemComponentFromActorInfo();
 
 	for (const FVector& spawnPos : cachedSpawnPoints)

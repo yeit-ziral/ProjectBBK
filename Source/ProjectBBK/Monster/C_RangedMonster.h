@@ -51,35 +51,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	FVector muzzleOffset = FVector(50.f, 0.f, 50.f);
 
-	// 노말 공격 GA (AnimNotify → GameplayEvent → 발사체 스폰 체인 유지)
+	// 노말 공격 GA
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> normalAttackGAClass;
 
-	// 스페셜 공격 발사체
-	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
-	TSubclassOf<AActor> specialProjectileClass = nullptr;
-
-	// 등 뒤 발사 소켓 (없으면 backOffset 사용)
-	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
-	FName backSocketName = TEXT("Back");
-
-	// 등 뒤 소켓 없을 때 스폰 오프셋 (몬스터 기준 뒤쪽)
-	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
-	FVector backOffset = FVector(-100.f, 0.f, 50.f);
-
-	// 포물선 호 높이 (cm)
-	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
-	float specialArcHeight = 1000.f;
-
-	// 스페셜 발사체 이동 속도 (cm/s)
-	UPROPERTY(EditAnywhere, Category = "Projectile|Special")
-	float specialProjectileSpeed = 800.f;
-
-	// 스페셜 공격 데미지 GE (GE_BasicDamage 설정 권장)
-	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Special")
-	TSubclassOf<UGameplayEffect> specialDamageEffectClass;
+	// 스페셜 공격 GA (BP에서 BPC_RangedMonsterSpecialAttackGA 할당)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TSubclassOf<UGameplayAbility> specialAttackGAClass;
 
 private:
 	void SpawnProjectile();
-	void SpawnSpecialProjectile();
 };

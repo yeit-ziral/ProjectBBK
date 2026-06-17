@@ -37,8 +37,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
 	TSubclassOf<UGameplayEffect> damageGEClass;
 
+	// DataTable Attack 스탯에 곱할 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
-	float damage = 10.f;
+	float damageMultiplier = 0.1f;
 
 	// AnimNotify(C_SpawnProjectile_AnimNotify)의 FireEventTag와 동일하게 설정
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
