@@ -83,6 +83,9 @@ void UC_SkillManagerComponent::CloseSkillWheel()
 	bIsSkillWheelOpen = false;
 
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
+
+	if (AC_BasePlayerCharactor* Char = Cast<AC_BasePlayerCharactor>(GetOwner()))
+		Char->OnSkillWheelShouldClose();
 }
 
 TSubclassOf<UC_SkillBase> UC_SkillManagerComponent::GetActiveSkillClass() const
