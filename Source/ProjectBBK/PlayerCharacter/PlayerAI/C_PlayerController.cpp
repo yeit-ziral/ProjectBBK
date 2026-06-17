@@ -333,6 +333,9 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 
 void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadCharacter)
 {
+	if (UC_SkillManagerComponent *SM = DeadCharacter->FindComponentByClass<UC_SkillManagerComponent>())
+		SM->CloseSkillWheel();
+
 	int32 NextLivingIndex = -1;
 	for (int32 i = 0; i < characterRoster.Num(); i++)
 	{
