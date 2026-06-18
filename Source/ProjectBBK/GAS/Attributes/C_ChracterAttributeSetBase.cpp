@@ -73,6 +73,11 @@ void UC_ChracterAttributeSetBase::OnRep_ReceivedDamage(const FGameplayAttributeD
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, receivedDamage, OldReceivedDamage);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_defense(const FGameplayAttributeData& OldDefense)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, defense, OldDefense);
+}
+
 void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
 	Super::PreAttributeChange(Attribute, NewValue);
@@ -101,6 +106,11 @@ void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& A
 	else if (Attribute == GetshieldAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxShield());
+	}
+	else if (Attribute == GetdefenseAttribute())
+	{
+		// 방어력은 음수가 될 수 없음 (장비 해제 등으로 0 미만이 되는 것 방지)
+		NewValue = FMath::Max(NewValue, 0.0f);
 	}
 }
 
@@ -218,7 +228,17 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 				return;
 			}
 
-			// 4. 남은 데미지를 체력(Health)에 적용
+			// 2. 방어력만큼 데미지 고정 차감 (Shield가 없을 때만 여기 도달함)
+			//    위 Shield 블록은 데미지를 완전 무효화하고 return하므로,
+			//    이 지점은 "Shield 없이 데미지를 받는" 경우만 실행됨 → 요구사항 그대로 충족
+			float Defense = Getdefense();
+			if (Defense > 0.0f)
+			{
+				// 방어력만큼 빼되, 최소 1의 데미지는 보장 (방어력이 데미지보다 커도 무적이 되지 않게)
+				RemainingDamage = FMath::Max(RemainingDamage - Defense, 1.0f);
+			}
+
+			// 3. 남은 데미지를 체력(Health)에 적용
 			if (RemainingDamage > 0.0f)
 			{
 				float CurrentHealth = Gethealth();
@@ -270,6 +290,8 @@ void UC_ChracterAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimePro
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, stamina, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxStamina, COND_None, REPNOTIFY_Always);
+
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, defense, COND_None, REPNOTIFY_Always);
 }
 
 void UC_ChracterAttributeSetBase::AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty)
