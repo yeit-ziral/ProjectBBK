@@ -4,6 +4,23 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 > **Claude Code에게:** `/패턴정리` 명령어 입력 시 현재 세션에서 작업한 내용을 검토하고 @docs/debugging.md 의 Debugging Checklist / @docs/patterns.md 의 Common Patterns / @docs/decisions.md 의 Design Decisions에 추가할 항목을 제안할 것. 또한 @docs/status.md 의 Current Development Status 섹션 각 테이블에서 상태 변경이 필요한 항목도 함께 제안할 것.
 
+> **Claude Code에게:** `/완료 작업명` 명령어 입력 시 아래 순서로 진행할 것.
+> 1. `tasks/task_작업명.md` 의 상태를 "완료"로 변경한다.
+> 2. 작업 로그에 완료 날짜를 기록한다. (예: `YYYY-MM-DD: 작업 완료`)
+> 3. 파일을 `tasks/done/task_작업명.md` 로 이동한다.
+> 4. 사용자에게 완료 처리되었음을 알린다.
+
+> **Claude Code에게:** `/태스크 작업명` 명령어 입력 시 아래 순서로 진행할 것.
+> 1. 사용자에게 다음 항목을 질문한다.
+>    - 작업 목표 (한 줄 요약)
+>    - 현재 상태 (관련 파일, 구현 현황)
+>    - 작업 범위 (체크리스트 형태로 작성할 항목들)
+>    - 이 작업에만 적용되는 제약 조건 (없으면 생략)
+>    - 완료 기준 (어떤 상태면 완료로 볼 것인지)
+>    - 참고할 클래스명, docs/ 문서 등
+> 2. 사용자 답변을 바탕으로 `tasks/_template.md` 형식에 맞춰 `tasks/task_작업명.md` 초안을 작성한다.
+> 3. 작성 후 사용자에게 수정이 필요한 항목이 있는지 확인한다.
+
 ---
 
 ## Project Overview

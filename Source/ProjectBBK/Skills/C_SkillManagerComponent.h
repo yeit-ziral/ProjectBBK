@@ -53,6 +53,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SkillManager")
 	void CloseSkillWheel();
 
+
 	// 현재 F키에 할당된 GA 클래스 반환 — TryActivateAbilityByClass에서 사용
 	UFUNCTION(BlueprintCallable, Category = "SkillManager")
 	TSubclassOf<UC_SkillBase> GetActiveSkillClass() const;

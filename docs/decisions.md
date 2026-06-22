@@ -141,6 +141,31 @@
 - **선택 이유:** 볼륨처럼 게임 진행과 무관한 유저 환경 설정은 SaveGame(세이브 슬롯)보다 UserSettings가 의미적으로 적합. `SaveSettings()` 한 줄로 저장, `GetGameUserSettings()`로 어디서든 접근 가능
 - **트레이드오프:** `DefaultEngine.ini`에 `GameUserSettingsClassName` 등록 필요. 기존 `UGameUserSettings::Get()` 호출부를 서브클래스 `UC_BBKGameUserSettings::Get()`으로 교체해야 함
 
+### SkillWheel 닫기 이벤트 — Component BlueprintAssignable vs Actor BlueprintImplementableEvent
+- **선택:** `AC_BasePlayerCharactor`에 `OnSkillWheelShouldClose` `BlueprintImplementableEvent` 선언, `UC_SkillManagerComponent::CloseSkillWheel()`에서 `Cast<AC_BasePlayerCharactor>(GetOwner())->OnSkillWheelShouldClose()` 호출
+- **대안 1:** `UC_SkillManagerComponent`에 `DECLARE_DYNAMIC_MULTICAST_DELEGATE`(파라미터 없음) 델리게이트 추가 → Blueprint `Bind Event` 노드로 바인딩
+- **대안 2:** `UC_SkillManagerComponent`에 `BlueprintImplementableEvent` 선언 → 컴포넌트 Blueprint 서브클래싱으로 override
+- **선택 이유:** 파라미터 없는 `DECLARE_DYNAMIC_MULTICAST_DELEGATE`는 Blueprint `Bind Event` 노드에서 Signature Error 발생(Debugging #36). 컴포넌트 `BlueprintImplementableEvent`는 캐릭터 Blueprint의 Override 목록에 나타나지 않음(Debugging #35). Actor의 `BlueprintImplementableEvent`는 캐릭터 Blueprint에서 바로 override 가능하고 `OnASCInitialized` 기존 패턴과 일치.
+- **트레이드오프:** 위젯 정리 로직이 캐릭터 Blueprint에 위치해 SkillWheel 관련 로직이 `UC_SkillManagerComponent`와 캐릭터 Blueprint 두 곳에 분산됨.
+
+### 장비 스탯 적용 — 공용 GE + SetByCaller vs 장비별 개별 GE
+- **선택:** `GE_EquipBonus` 1개에 Modifier 5개 (SetByCaller), DT에서 수치만 변경
+- **대안:** 장비마다 개별 GE 에셋 생성 (Modifier 값 하드코딩)
+- **선택 이유:** 장비 추가 시 GE 에셋 생성 불필요. DT Row 추가만으로 신규 장비 등록 가능. 프로젝트의 기존 SetByCaller 패턴(GE_BasicDamage 등)과 일치
+- **트레이드오프:** 미적용 스탯에도 0 값을 넣어야 함. 장비별로 다른 Duration 정책(예: 일시 버프)이 필요하면 별도 GE 필요
+
+### 아이템 픽업 — 상호작용 키 입력 vs 즉시 Overlap 픽업
+- **선택:** Overlap 시 상호작용 UI 표시, 키 입력(E) 시 획득 처리
+- **대안:** C_ExpOrb처럼 Overlap 즉시 획득
+- **선택 이유:** 인벤토리 시스템 추가 시 아이템 정보 확인 후 선택적 획득이 필요. 상호작용 UI에 아이템 이름을 표시해 플레이어에게 정보 제공
+- **트레이드오프:** Tick에서 키 입력을 폴링 (Overlap 중에만 Tick 활성화로 성능 영향 최소화)
+
+### 아이템 데이터 구조 — FBaseItemData 상속 vs 별도 구조체
+- **선택:** `FConsumableItemData : FBaseItemData`, `FEquipmentItemData : FBaseItemData` 상속 구조
+- **대안:** 각각 독립 구조체로 공통 필드 중복 정의
+- **선택 이유:** itemID, itemName, description, itemIcon, worldMesh 등 공통 필드를 한 곳에서 관리. DataTable Row 구조체 상속은 UE5에서 지원됨
+- **트레이드오프:** 소비/장비 DT가 각각 별도 DataTable이므로 통합 아이템 조회 시 두 테이블을 모두 검색해야 함
+
 ### SoundMix/SoundClass ref 위치 — GameInstance vs SettingsWidget
 - **선택:** `UC_BBKGameInstance`에 `UPROPERTY(EditDefaultsOnly)` 4개로 보관
 - **대안:** `UC_SettingsWidget`에 보관

@@ -100,6 +100,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAS")
 	void OnASCInitialized();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "ProjectBBK|SkillWheel")
+	void OnSkillWheelShouldClose();
+
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetCharacterLevel() const;
 

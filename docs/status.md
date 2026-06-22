@@ -71,11 +71,16 @@
 | GE_Recover_Stamina | ✅ 완료 | |
 | GE_Slowed | ✅ 완료 | 상태이상: 감속 — State.Slowed 태그 부여 + MoveSpeed × 0.2, Duration 5초, GA_RockSpear 사용 |
 | GE_GainExperience | ✅ 완료 | Set by Caller, Data.Exp 태그, experience 어트리뷰트 가산 |
+| GE_EquipBonus | ✅ 완료 | 장비 공용 GE. Infinite Duration, SetByCaller Modifier 5개 (MaxHealth, MaxStamina, MoveSpeed, Defense, Damage) |
 
 ### Objects
 | Object | 상태 | 비고 |
 |--------|------|------|
 | C_ExpOrb / BP_ExpOrb | ✅ 완료 (C++ 구현) | Overlap → GE_GainExperience 적용 후 Destroy, 스폰 주체 미구현 |
+| C_BaseItem / ItemData.h | ✅ 완료 | 상호작용형 픽업 기반 클래스, FBaseItemData·FConsumableItemData·FEquipmentItemData·EEquipmentSlot 정의 |
+| C_ConsumableItem / BP_ConsumableItem | ✅ 완료 | DT 기반 소비 아이템. 상호작용 시 GE 적용 → Destroy (임시, 인벤토리 구현 후 교체) |
+| C_EquipmentItem / BP_EquipItem | ✅ 완료 | DT 기반 장비 아이템. GE_EquipBonus SetByCaller 5종 (임시, 인벤토리 구현 후 Handle 관리 추가) |
+| C_InteractionWidget / WBP_Interaction | ✅ 완료 | 상호작용 UI 위젯. BindWidget: InteractionText |
 
 ### Level System
 | Class / Asset | 상태 | 비고 |
