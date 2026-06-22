@@ -56,6 +56,11 @@ public:
 	FGameplayAttributeData damage;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, damage)
 
+	// 방어력 — 장비(갑옷)로 부여받아 받는 데미지를 고정 차감. 영구 스탯이므로 복제됨.
+	UPROPERTY(BlueprintReadOnly, Category = "defense", ReplicatedUsing = OnRep_defense)
+	FGameplayAttributeData defense;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, defense)
+
 	UPROPERTY(BlueprintReadOnly, Category = "mana", ReplicatedUsing = OnRep_mana)
 	FGameplayAttributeData mana;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, mana)
@@ -115,6 +120,9 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_ReceivedDamage(const FGameplayAttributeData& OldReceivedDamage);
+
+	UFUNCTION()
+	virtual void OnRep_defense(const FGameplayAttributeData& OldDefense);
 
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
