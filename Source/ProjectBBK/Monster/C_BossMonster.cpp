@@ -136,7 +136,8 @@ bool AC_BossMonster::CanPatternAttack() const
 
 void AC_BossMonster::BossNormalAttack()
 {
-    if (!monsterASC || !bossNormalAttackGA) return;
+    if (!monsterASC || !bossNormalAttackGA)
+        return;
     if (!CanNormalAttack()) return;
 
     lastNormalAttackTime = GetWorld()->GetTimeSeconds();
@@ -191,6 +192,18 @@ void AC_BossMonster::InitializeBossHpWidget()
     bossHpWidget->SetCurrentGroggy(GetcurGroggy());
     bossHpWidget->SetMonsterLevel(50);
     bossHpWidget->SetMonsterName(FText::FromName(GetRowName()));
+
+    // 컷신 트리거가 미리 숨김을 요청했다면 생성 직후 숨김 적용
+    if (bSuppressHpWidget)
+        bossHpWidget->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void AC_BossMonster::SetHpWidgetSuppressed(bool bSuppressed)
+{
+    bSuppressHpWidget = bSuppressed;
+
+    if (bossHpWidget)
+        bossHpWidget->SetVisibility(bSuppressed ? ESlateVisibility::Hidden : ESlateVisibility::Visible);
 }
 
 void AC_BossMonster::RemoveBossHpWidget()

@@ -8,6 +8,7 @@
 #include "AIController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "../../Object/C_BossProjectile.h"
 #include "../../C_BaseMonster.h"
 
@@ -49,7 +50,16 @@ void UC_BossNormalAttackGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 		boss->SetActorRotation(FRotator(0.f, toTarget.Rotation().Yaw, 0.f));
 	}
 
-	boss->PlayAnimMontage(attackMontage);
+	// 몽타주를 Ability Task로 재생 — 완료/중단/취소 어느 경로로 끝나든 반드시 EndAbility 호출.
+	// (throw 이벤트만으로 종료하면 몽타주가 중간에 끊겼을 때 GA가 active 상태로 박혀
+	//  이후 모든 노말 어택이 TryActivate=FAILED가 됨)
+	UAbilityTask_PlayMontageAndWait* montageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, attackMontage);
+	montageTask->OnCompleted.AddDynamic(this, &UC_BossNormalAttackGA::OnMontageEnded);
+	montageTask->OnInterrupted.AddDynamic(this, &UC_BossNormalAttackGA::OnMontageEnded);
+	montageTask->OnCancelled.AddDynamic(this, &UC_BossNormalAttackGA::OnMontageEnded);
+	montageTask->OnBlendOut.AddDynamic(this, &UC_BossNormalAttackGA::OnMontageEnded);
+	montageTask->ReadyForActivation();
 
 	// AnimNotify(C_SpawnProjectile_AnimNotify)가 throwEventTag 이벤트를 보내면 투사체 스폰
 	UAbilityTask_WaitGameplayEvent* waitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
@@ -60,19 +70,14 @@ void UC_BossNormalAttackGA::ActivateAbility(const FGameplayAbilitySpecHandle Han
 
 void UC_BossNormalAttackGA::OnThrowEvent(FGameplayEventData Payload)
 {
+	// 종료는 몽타주 종료 콜백(OnMontageEnded)이 담당 — 여기서 EndAbility 하면 던지기 애니가 중간에 잘림
 	ACharacter* boss = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!boss || !projectileClass)
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
 		return;
-	}
 
 	USkeletalMeshComponent* bossMesh = boss->GetMesh();
 	if (!bossMesh || !bossMesh->DoesSocketExist(throwSocketName))
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
 		return;
-	}
 
 	const FTransform socketTM = bossMesh->GetSocketTransform(throwSocketName);
 
@@ -100,6 +105,12 @@ void UC_BossNormalAttackGA::OnThrowEvent(FGameplayEventData Payload)
 		const float attackValue = bossMonster ? static_cast<float>(bossMonster->GetAttack()) * damageMultiplier : 0.f;
 		proj->InitProjectile(GetAbilitySystemComponentFromActorInfo(), damageGEClass, attackValue, fireDir);
 	}
+}
+
+void UC_BossNormalAttackGA::OnMontageEnded()
+{
+	if (!IsActive())
+		return;
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
 }

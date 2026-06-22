@@ -66,9 +66,6 @@ bool UC_AttackManagerComponent::DoNormalAttack()
 
 	const int32 id = ownerMonster->GetMonsterID();
 
-	UE_LOG(LogTemp, Warning, TEXT("[AttackMgr] DoNormalAttack — ID=%d  CanAttack=%s  NormalCooldown=%.2f"),
-		id, CanAttack() ? TEXT("true") : TEXT("false"), ownerMonster->GetAttackCooldown());
-
 	switch (id)
 	{
 	case MONSTER_ID_TANK:
@@ -95,9 +92,6 @@ bool UC_AttackManagerComponent::DoSpecialAttack()
 	if (!ownerMonster) return false;
 
 	const int32 id = ownerMonster->GetMonsterID();
-
-	UE_LOG(LogTemp, Warning, TEXT("[AttackMgr] DoSpecialAttack — ID=%d  CanSpecial=%s  SpecialCooldown=%.2f"),
-		id, CanSpecialAttack() ? TEXT("true") : TEXT("false"), ownerMonster->GetSpecialCooldown());
 
 	switch (id)
 	{

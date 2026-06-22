@@ -109,8 +109,6 @@ void AC_BaseMonster::BeginPlay()
 		groggyComponent->Initialize(this, hpDisplayComponent);
 
 	// 어택 매니저 초기화
-	UE_LOG(LogTemp, Warning, TEXT("[BaseMonster] BeginPlay — AttackMgr=%s  %s"),
-		attackManager ? TEXT("valid") : TEXT("NULL"), *GetName());
 	if (attackManager)
 		attackManager->Initialize(this);
 

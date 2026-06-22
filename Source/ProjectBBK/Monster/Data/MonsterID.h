@@ -3,7 +3,8 @@
 #pragma once
 #include "CoreMinimal.h"
 
-// ÇÁ·ÎÁ§Æ® Àü¿ª¿¡¼­ ¾µ ¸ó½ºÅÍ ID (CSVÀÇ Id¿Í µ¿ÀÏÇÏ°Ô ¸ÂÃß±â)
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ID (CSVï¿½ï¿½ Idï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ß±ï¿½)
 constexpr int32 MONSTER_ID_TANK   = 1001;
 constexpr int32 MONSTER_ID_ROCKET = 1002;
 constexpr int32 MONSTER_ID_BOSSMAGE = 1011;
+constexpr int32 MONSTER_ID_ELITE  = 1021;
