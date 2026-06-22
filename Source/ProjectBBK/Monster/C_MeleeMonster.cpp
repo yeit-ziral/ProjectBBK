@@ -6,6 +6,8 @@
 #include "Data/AttackTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Animation/AnimInstance.h"
+#include "M_Gas/C_MonsterASC.h"
+#include "AbilitySystemComponent.h"
 
 AC_MeleeMonster::AC_MeleeMonster()
 {
@@ -27,8 +29,14 @@ void AC_MeleeMonster::BeginPlay()
 
 	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
 
-	//MeleeSpecialAttack();
-	//MeleeNormalAttack();
+	// 공격 GA를 ASC에 등록 — TryActivateAbilityByClass는 GiveAbility된 어빌리티만 발동 가능
+	if (monsterASC)
+	{
+		if (normalAttackGAClass && !monsterASC->FindAbilitySpecFromClass(normalAttackGAClass))
+			monsterASC->GiveAbility(FGameplayAbilitySpec(normalAttackGAClass, 1, 0));
+		if (specialAttackGAClass && !monsterASC->FindAbilitySpecFromClass(specialAttackGAClass))
+			monsterASC->GiveAbility(FGameplayAbilitySpec(specialAttackGAClass, 1, 0));
+	}
 }
 
 bool AC_MeleeMonster::IsPlayingAttackAnimation() const
@@ -50,10 +58,6 @@ bool AC_MeleeMonster::MeleeAutoAttack()
 	if (!attackManager) return false;
 
 	const bool bCanSpecial = attackManager->CanSpecialAttack();
-	UE_LOG(LogTemp, Warning, TEXT("[Melee] AutoAttack — CanSpecial=%s  CanNormal=%s"),
-		bCanSpecial ? TEXT("true") : TEXT("false"),
-		attackManager->CanAttack() ? TEXT("true") : TEXT("false"));
-
 	if (bCanSpecial)
 		return MeleeSpecialAttack();
 	else

@@ -4,6 +4,7 @@
 #include "C_RangedMonster.h"
 #include "Manager/C_AttackManagerComponent.h"
 #include "M_Gas/C_MonsterASC.h"
+#include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AC_RangedMonster::AC_RangedMonster()
@@ -35,6 +36,14 @@ void AC_RangedMonster::BeginPlay()
 
 	monsterTypeTag = FGameplayTag::RequestGameplayTag(TEXT("Monster.Type.Normal"));
 
+	// 공격 GA를 ASC에 등록 — TryActivateAbilityByClass는 GiveAbility된 어빌리티만 발동 가능
+	if (monsterASC)
+	{
+		if (normalAttackGAClass && !monsterASC->FindAbilitySpecFromClass(normalAttackGAClass))
+			monsterASC->GiveAbility(FGameplayAbilitySpec(normalAttackGAClass, 1, 0));
+		if (specialAttackGAClass && !monsterASC->FindAbilitySpecFromClass(specialAttackGAClass))
+			monsterASC->GiveAbility(FGameplayAbilitySpec(specialAttackGAClass, 1, 0));
+	}
 }
 
 void AC_RangedMonster::RangedAutoAttack()
@@ -60,15 +69,14 @@ void AC_RangedMonster::RangedNormalAttack()
 	{
 		// GA를 직접 활성화 → GA가 몽타주 재생 → AnimNotify → GameplayEvent → 발사체 스폰
 		if (normalAttackGAClass && monsterASC)
-		{
 			monsterASC->TryActivateAbilityByClass(normalAttackGAClass);
-		}
 	}
 }
 
 void AC_RangedMonster::RangedSpecialAttack()
 {
-	if (!attackManager || !monsterASC || !specialAttackGAClass) return;
+	if (!attackManager || !monsterASC || !specialAttackGAClass)
+		return;
 	if (!attackManager->DoSpecialAttack()) return;
 
 	monsterASC->TryActivateAbilityByClass(specialAttackGAClass);

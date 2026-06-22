@@ -25,6 +25,10 @@ protected:
 	UFUNCTION()
 	void OnThrowEvent(FGameplayEventData Payload);
 
+	// 몽타주 종료/중단 시 호출 — throw 이벤트 미수신으로 GA가 active 상태로 박히는 것 방지
+	UFUNCTION()
+	void OnMontageEnded();
+
 	// 던지기 애니메이션 몽타주
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
 	UAnimMontage* attackMontage;
