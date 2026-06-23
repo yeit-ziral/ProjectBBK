@@ -20,13 +20,6 @@ EBTNodeResult::Type UC_BTTaskMeleeAutoAttack::ExecuteTask(UBehaviorTreeComponent
 	if (!monster)
 		return EBTNodeResult::Failed;
 
-	UC_AttackManagerComponent* am = monster->GetAttackManager();
-	UE_LOG(LogTemp, Warning, TEXT("[BTMelee] ExecuteTask — AttackMgr=%s  CanAttack=%s  CanSpecial=%s  MonsterID=%d"),
-		am ? TEXT("valid") : TEXT("NULL"),
-		(am && am->CanAttack()) ? TEXT("true") : TEXT("false"),
-		(am && am->CanSpecialAttack()) ? TEXT("true") : TEXT("false"),
-		monster->GetMonsterID());
-
 	if (!monster->CanAutoAttack())
 		return EBTNodeResult::Failed;
 

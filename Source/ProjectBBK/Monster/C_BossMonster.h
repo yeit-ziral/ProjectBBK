@@ -24,6 +24,10 @@ public:
 
     virtual bool CanAutoAttack() const override;
 
+    // 보스 HP UI 숨김/표시 (컷신 트리거에서 호출 — 컷신 종료 후 표시).
+    // 위젯이 아직 생성되지 않았어도 플래그가 InitializeBossHpWidget에 반영됨
+    void SetHpWidgetSuppressed(bool bSuppressed);
+
 protected:
     virtual void BeginPlay() override;
     virtual void ExecuteDeathSequence() override;
@@ -58,6 +62,9 @@ protected:
 
 
 private:
+    // true면 보스 HP UI를 숨김 — 컷신 동안 유지, 종료 시 false로 표시
+    bool bSuppressHpWidget = false;
+
     bool bPhase2Triggered = false;
     bool bNextPatternIsStorm = true; // Storm → Beam → Storm 교대
 
