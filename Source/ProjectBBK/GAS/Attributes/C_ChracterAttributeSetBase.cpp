@@ -261,10 +261,12 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 			currentExp -= GetmaxExperience();
 			Setlevel(Getlevel() + 1);
 			SetmaxExperience(FMath::RoundToFloat(GetmaxExperience() * 1.1f));
-			SetmaxHealth(GetmaxHealth() + 50.f);
-			Sethealth(FMath::Min(Gethealth() + 50.f, GetmaxHealth()));
-			SetmaxStamina(GetmaxStamina() + 20.f);
-			Setdamage(Getdamage() + 30.f);
+			// 레벨업 자동 성장(베이스라인). 나머지 성장은 레벨업 특전(선택 보상)이 담당하므로
+			// 자동 수치는 기존의 절반 수준으로 낮춤. → 특전 한 번의 가치가 커짐.
+			SetmaxHealth(GetmaxHealth() + 25.f);
+			Sethealth(FMath::Min(Gethealth() + 25.f, GetmaxHealth()));
+			SetmaxStamina(GetmaxStamina() + 10.f);
+			Setdamage(Getdamage() + 15.f);
 		}
 
 		Setexperience(FMath::Max(currentExp, 0.f));

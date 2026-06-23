@@ -4,6 +4,7 @@
 #include "C_PlayerState.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "../GAS/Abilities/C_CharacterASC.h"
+#include "C_LevelUpPerkComponent.h"
 
 AC_PlayerState::AC_PlayerState()
 {
@@ -12,6 +13,9 @@ AC_PlayerState::AC_PlayerState()
 	abilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	attributeSetBase = CreateDefaultSubobject<UC_ChracterAttributeSetBase>(TEXT("AttributeSetBase"));
+
+	// 레벨업 특전 컴포넌트 부착. 실제 보상 목록(DataTable)은 BP 디폴트에서 지정한다.
+	perkComponent = CreateDefaultSubobject<UC_LevelUpPerkComponent>(TEXT("PerkComponent"));
 
 	SetNetUpdateFrequency(100.0f);
 }
@@ -122,7 +126,11 @@ void AC_PlayerState::MaxStaminaChanged(const FOnAttributeChangeData& Data)
 
 void AC_PlayerState::CharacterLevelChanged(const FOnAttributeChangeData& Data)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Character Level Changed!"));
+	// level 어트리뷰트가 바뀌면 호출됨. 실제 상승 판정/후보 추출은 컴포넌트가 담당.
+	if (perkComponent)
+	{
+		perkComponent->HandleLevelUp((int32)Data.NewValue, (int32)Data.OldValue);
+	}
 }
 
 void AC_PlayerState::StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
