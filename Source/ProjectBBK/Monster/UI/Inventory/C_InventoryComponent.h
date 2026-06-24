@@ -30,6 +30,7 @@ struct FInventorySlot
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMoneyChanged, int32, NewAmount);
 
 /**
  * 인벤토리 코어 컴포넌트 (UI/화폐/장착/플레이어 통합 제외).
@@ -66,6 +67,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	TArray<FInventorySlot> GetSlots() const { return slots; }
 
+	// 슬롯 간 이동(드래그&드롭) — From의 아이템을 To로. 빈칸이면 이동, 같은 아이템이면 병합, 그 외엔 교환.
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool MoveSlot(int32 FromIndex, int32 ToIndex);
+
 	// itemID의 최대 스택 수 — 소비: FConsumableItemData.maxStack, 장비: 1, 미등록: 0(유효하지 않음).
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	int32 GetMaxStack(FName itemID) const;
@@ -83,6 +88,24 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnInventoryChanged OnInventoryChanged;
 
+	// ===== 돈(골드) =====
+
+	// 보유 금액 조회
+	UFUNCTION(BlueprintPure, Category = "Inventory|Money")
+	int32 GetMoney() const { return money; }
+
+	// 금액 추가 (amount > 0)
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Money")
+	void AddMoney(int32 amount);
+
+	// 금액 차감 — 보유액이 부족하면 아무것도 안 하고 false
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Money")
+	bool RemoveMoney(int32 amount);
+
+	// 보유 금액 변경 시 브로드캐스트 (UI 바인딩용, 변경 후 금액 전달)
+	UPROPERTY(BlueprintAssignable, Category = "Inventory|Money")
+	FOnMoneyChanged OnMoneyChanged;
+
 protected:
 	// itemID 조회용 DataTable — 소유자/BP에서 지정 (DT_ConsumableItem / DT_EquipmentItem)
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
@@ -93,12 +116,22 @@ protected:
 
 	// 최대 슬롯(칸) 수
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory", meta = (ClampMin = "1"))
-	int32 maxSlots = 30;
+	int32 maxSlots = 32;
 
+	// 보유 금액 (시작값 — EditDefaultsOnly로 초기 금액 지정 가능)
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory|Money", meta = (ClampMin = "0"))
+	int32 money = 0;
+
+	// 고정 크기(maxSlots) 슬롯 배열 — 빈칸은 itemID=None. 인덱스 = 격자 위치(자유 배치).
 	UPROPERTY()
 	TArray<FInventorySlot> slots;
+
+	virtual void BeginPlay() override;
 
 private:
 	// 소비/장비 DT 어디에 있는지 확인 — 미등록이면 false
 	bool IsValidItem(FName itemID) const;
+
+	// slots 배열을 maxSlots 고정 크기로 보장 (빈칸 포함). 모든 변경 함수 진입 시 호출.
+	void EnsureSlots();
 };

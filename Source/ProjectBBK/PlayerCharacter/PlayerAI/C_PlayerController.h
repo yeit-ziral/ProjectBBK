@@ -12,6 +12,9 @@ class AC_BasePlayerCharactor;
 class UInputAction;
 class UC_EndingScreenWidget;
 class UC_GameOverWidget;
+class UC_InventoryComponent;
+class UC_InventoryWidget;
+class UDataTable;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterSwitched, int32, NewCharacterIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSwitchCooldownStarted, float, Duration, int32, CharacterIndex);
@@ -21,6 +24,8 @@ class PROJECTBBK_API AC_PlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
+	AC_PlayerController();
+
 	// 캐릭터 교체 완료 시 브로드캐스트 — WBP_HUD에서 바인딩해 위젯 재초기화에 사용
 	UPROPERTY(BlueprintAssignable, Category = "ProjectBBK|CharacterRoster")
 	FOnCharacterSwitched OnCharacterSwitched;
@@ -54,6 +59,23 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|CharacterRoster")
 	float GetSwitchCooldownRemaining() const;
 
+	// 인벤토리 컴포넌트 접근 (아이템 픽업 등에서 AddItem 호출용)
+	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Inventory")
+	UC_InventoryComponent* GetInventory() const { return inventory; }
+
+	// 인벤토리 열기/닫기/토글 — I키 입력 또는 다른 시스템에서 호출 가능
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Inventory")
+	void OpenInventory();
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Inventory")
+	void CloseInventory();
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Inventory")
+	void ToggleInventory();
+
+	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Inventory")
+	bool IsInventoryOpen() const { return bInventoryOpen; }
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;
@@ -82,6 +104,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_SwitchCharNext;
 
+	// I키로 인벤토리 토글
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
+	UInputAction* IA_Inventory;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputMappingContext* playerMappingContext;
 
@@ -92,6 +118,29 @@ protected:
 	// BP_PlayerController에서 WBP_GameOverScreen 할당
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UC_GameOverWidget> GameOverScreenClass;
+
+	// BP_PlayerController에서 WBP_Inventory 할당
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UC_InventoryWidget> inventoryWidgetClass;
+
+	// 캐릭터 교체와 무관하게 유지되는 인벤토리 보관소
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectBBK|Inventory")
+	UC_InventoryComponent* inventory;
+
+	// 인벤토리 컴포넌트에 주입할 아이템 조회용 DataTable (BP에서 DT_ConsumableItem / DT_EquipmentItem 지정)
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Inventory")
+	UDataTable* consumableTable;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Inventory")
+	UDataTable* equipmentTable;
+
+	// 시작 시 인벤토리에 미리 넣을 아이템 (테스트/디버그용) — Key: itemID(Row Name), Value: 개수
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Inventory")
+	TMap<FName, int32> startingItems;
+
+	// 시작 보유 금액 (테스트/디버그용)
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Inventory", meta = (ClampMin = "0"))
+	int32 startingMoney = 0;
 
 	UFUNCTION()
 	void ShowEndingScreen();
@@ -106,6 +155,12 @@ private:
 	void OnSwitchChar0Input();
 	void OnSwitchChar1Input();
 	void ExecuteCharacterSwitch(int32 NextIndex);
+
+	// 인벤토리 위젯 인스턴스 (최초 열 때 생성, 닫아도 유지 — 드래그 위치 보존)
+	UPROPERTY()
+	UC_InventoryWidget* inventoryWidget = nullptr;
+
+	bool bInventoryOpen = false;
 
 	bool bIsSwitching = false;
 

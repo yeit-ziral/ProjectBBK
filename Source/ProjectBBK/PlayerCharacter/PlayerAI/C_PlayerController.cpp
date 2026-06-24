@@ -7,6 +7,8 @@
 #include "../../LevelSystem/C_GameOverWidget.h"
 #include "../C_PlayerState.h"
 #include "../C_BasePlayerCharactor.h"
+#include "../../Monster/UI/Inventory/C_InventoryComponent.h"
+#include "../../Monster/UI/Inventory/C_InventoryWidget.h"
 #include "AbilitySystemComponent.h"
 #include "../../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "EnhancedInputComponent.h"
@@ -19,6 +21,12 @@
 #include "NiagaraComponent.h"
 #include "Components/CapsuleComponent.h"
 
+
+AC_PlayerController::AC_PlayerController()
+{
+	// 캐릭터 교체와 무관하게 유지되도록 컨트롤러에 부착 (DataTable은 BP 컴포넌트 디테일에서 지정)
+	inventory = CreateDefaultSubobject<UC_InventoryComponent>(TEXT("Inventory"));
+}
 
 float AC_PlayerController::GetSwitchCooldownRemaining() const
 {
@@ -35,6 +43,20 @@ void AC_PlayerController::BeginPlay()
 	// 레벨 재시작·전환 후 항상 게임 입력 모드로 초기화 (엔딩 화면 이후 되돌아올 때 대비)
 	SetInputMode(FInputModeGameOnly());
 	SetShowMouseCursor(false);
+
+	// 인벤토리 컴포넌트에 아이템 조회용 DataTable 주입 (AddItem의 유효성 검사에 필요)
+	if (inventory)
+	{
+		inventory->SetItemTables(consumableTable, equipmentTable);
+
+		// 테스트/디버그용 시작 아이템 적재
+		for (const TPair<FName, int32>& it : startingItems)
+			inventory->AddItem(it.Key, it.Value);
+
+		// 테스트/디버그용 시작 금액
+		if (startingMoney > 0)
+			inventory->AddMoney(startingMoney);
+	}
 
 	// 서버(싱글플레이어 포함)에서만 스폰
 	if (!HasAuthority())
@@ -143,7 +165,61 @@ void AC_PlayerController::SetupInputComponent()
 
 		if (IA_SwitchCharNext)
 			EIC->BindAction(IA_SwitchCharNext, ETriggerEvent::Started, this, &AC_PlayerController::SwitchToNextCharacter);
+
+		if (IA_Inventory)
+			EIC->BindAction(IA_Inventory, ETriggerEvent::Started, this, &AC_PlayerController::ToggleInventory);
 	}
+}
+
+void AC_PlayerController::ToggleInventory()
+{
+	if (bInventoryOpen)
+		CloseInventory();
+	else
+		OpenInventory();
+}
+
+void AC_PlayerController::OpenInventory()
+{
+	if (bInventoryOpen || !inventoryWidgetClass)
+		return;
+
+	// 최초 1회만 생성 — 닫아도 인스턴스 유지(드래그한 위치 보존)
+	if (!inventoryWidget)
+	{
+		inventoryWidget = CreateWidget<UC_InventoryWidget>(this, inventoryWidgetClass);
+		if (!inventoryWidget)
+			return;
+		inventoryWidget->SetInventory(inventory);
+	}
+
+	inventoryWidget->AddToViewport();
+	bInventoryOpen = true;
+
+	// 커서 ON + 카메라 회전 차단 + UMG가 마우스(드래그) 입력 받도록 GameAndUI
+	SetShowMouseCursor(true);
+	SetIgnoreLookInput(true);
+
+	FInputModeGameAndUI inputMode;
+	inputMode.SetWidgetToFocus(inventoryWidget->TakeWidget());
+	inputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(inputMode);
+}
+
+void AC_PlayerController::CloseInventory()
+{
+	if (!bInventoryOpen)
+		return;
+
+	if (inventoryWidget)
+		inventoryWidget->RemoveFromParent();
+
+	bInventoryOpen = false;
+
+	// 커서 OFF + 카메라 회전 복원 + 게임 입력 모드 복귀
+	SetShowMouseCursor(false);
+	ResetIgnoreLookInput();
+	SetInputMode(FInputModeGameOnly());
 }
 
 void AC_PlayerController::OnSwitchChar0Input()
@@ -163,6 +239,10 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	if (NextIndex == currentCharacterIndex)
 		return;
 	if (!characterRoster.IsValidIndex(NextIndex))
+		return;
+
+	// 인벤토리가 열려 있으면 캐릭터 교체 차단 (강제 교체는 허용)
+	if (!bForce && bInventoryOpen)
 		return;
 
 	// SkillWheel이 열려 있으면 캐릭터 교체 차단
@@ -337,6 +417,9 @@ void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadChara
 {
 	if (UC_SkillManagerComponent* SM = DeadCharacter->FindComponentByClass<UC_SkillManagerComponent>())
 		SM->CloseSkillWheel();
+
+	// 인벤토리 열린 채 사망 시 입력 모드 복원
+	CloseInventory();
 
 	int32 NextLivingIndex = -1;
 	for (int32 i = 0; i < characterRoster.Num(); i++)
