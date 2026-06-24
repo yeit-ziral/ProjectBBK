@@ -75,6 +75,10 @@ protected:
 	UPROPERTY()
 	class UC_ChracterAttributeSetBase* attributeSetBase;
 
+	// 레벨업 특전(선택 보상) 로직 담당. 생성자에서 부착하고, DataTable은 BP 디폴트에서 지정한다.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Perk", meta = (AllowPrivateAccess = "true"))
+	class UC_LevelUpPerkComponent* perkComponent;
+
 	FDelegateHandle healthChangedDelegateHandle;
 	FDelegateHandle maxHealthChangedDelegateHandle;
 

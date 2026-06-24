@@ -85,6 +85,11 @@ public:
 	FGameplayAttributeData receivedDamage;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, receivedDamage)
 
+	// 방어력을 무시하는 고정 데미지 (DoT, 상태이상 전용)
+	UPROPERTY(BlueprintReadOnly, Category = "Meta")
+	FGameplayAttributeData receivedTrueDamage;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, receivedTrueDamage)
+
 	UFUNCTION()
 	virtual void OnRep_level(const FGameplayAttributeData& OldLevel);
 
@@ -120,6 +125,9 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_ReceivedDamage(const FGameplayAttributeData& OldReceivedDamage);
+
+	UFUNCTION()
+	virtual void OnRep_ReceivedTrueDamage(const FGameplayAttributeData& OldReceivedTrueDamage);
 
 	UFUNCTION()
 	virtual void OnRep_defense(const FGameplayAttributeData& OldDefense);
