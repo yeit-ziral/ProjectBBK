@@ -73,6 +73,11 @@ void UC_ChracterAttributeSetBase::OnRep_ReceivedDamage(const FGameplayAttributeD
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, receivedDamage, OldReceivedDamage);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_ReceivedTrueDamage(const FGameplayAttributeData& OldReceivedTrueDamage)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, receivedTrueDamage, OldReceivedTrueDamage);
+}
+
 void UC_ChracterAttributeSetBase::OnRep_defense(const FGameplayAttributeData& OldDefense)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, defense, OldDefense);
@@ -250,7 +255,20 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 
 		// 데미지 처리 완료 후 초기화
 		SetreceivedDamage(0.0f);
-		}
+	}
+
+	// True Damage (DoT/상태이상) — 방어력 무시
+	if (Data.EvaluatedData.Attribute == GetreceivedTrueDamageAttribute())
+	{
+		const float TrueDamage = GetreceivedTrueDamage();
+
+		const float NewHP = FMath::Clamp(Gethealth() - TrueDamage, 0.f, GetmaxHealth());
+		Sethealth(NewHP);
+		SetreceivedTrueDamage(0.0f);
+
+		// 데미지 처리 완료 후 초기화
+		SetreceivedTrueDamage(0.0f);
+	}
 
 	if (Data.EvaluatedData.Attribute == GetexperienceAttribute())
 	{
@@ -261,10 +279,12 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 			currentExp -= GetmaxExperience();
 			Setlevel(Getlevel() + 1);
 			SetmaxExperience(FMath::RoundToFloat(GetmaxExperience() * 1.1f));
-			SetmaxHealth(GetmaxHealth() + 50.f);
-			Sethealth(FMath::Min(Gethealth() + 50.f, GetmaxHealth()));
-			SetmaxStamina(GetmaxStamina() + 20.f);
-			Setdamage(Getdamage() + 30.f);
+			// 레벨업 자동 성장(베이스라인). 나머지 성장은 레벨업 특전(선택 보상)이 담당하므로
+			// 자동 수치는 기존의 절반 수준으로 낮춤. → 특전 한 번의 가치가 커짐.
+			SetmaxHealth(GetmaxHealth() + 25.f);
+			Sethealth(FMath::Min(Gethealth() + 25.f, GetmaxHealth()));
+			SetmaxStamina(GetmaxStamina() + 10.f);
+			Setdamage(Getdamage() + 15.f);
 		}
 
 		Setexperience(FMath::Max(currentExp, 0.f));
