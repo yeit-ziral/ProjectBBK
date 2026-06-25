@@ -135,6 +135,12 @@
 - **선택 이유:** 메인 메뉴 레벨은 빈 레벨(Empty Level)이므로 로딩이 체감되지 않음. `ShowLoadingOverlay`는 `FLevelEntry`(텍스트·최소 시간·텍스처)를 요구하는데 메인 메뉴는 해당 데이터가 없음
 - **트레이드오프:** 메인 메뉴 레벨이 무거워질 경우 별도 Slate 폴백 추가 필요
 
+### AC_ConsumableItem / AC_EquipmentItem 유지 결정
+- **선택:** 두 C++ 클래스 현행 유지
+- **대안:** 삭제 후 BP_ConsumableItem · BP_EquipItem을 AC_BaseItem 직속 상속으로 전환, `InitItem`을 `BlueprintNativeEvent`로 변경해 BP에서 DT 조회 구현
+- **선택 이유:** 삭제 시 `InitItem` BlueprintNativeEvent 전환 + 두 BP Reparent + DT 변수 재추가 + InitItem 이벤트 구현이 필요. 현재 이득(파일 4개 제거) 대비 비용이 큼
+- **트레이드오프:** `InitItem`을 `BlueprintNativeEvent`로 전환할 시점에 함께 정리 권장
+
 ### 볼륨 저장 위치 — UGameUserSettings vs USaveGame
 - **선택:** `UC_BBKGameUserSettings` (UGameUserSettings 서브클래스), `UPROPERTY(Config)`로 `GameUserSettings.ini`에 자동 직렬화
 - **대안:** `USaveGame`으로 세이브 슬롯에 저장

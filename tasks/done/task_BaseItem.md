@@ -56,6 +56,13 @@
 - OnInteract 제거 — 베이스 클래스가 인벤토리 추가 처리
 - 사용/장착/해제 로직은 `UC_InventoryComponent` 태스크에서 구현
 
+### 6. 돈(골드) 아이템 클래스
+- [x] `C_MoneyItem` (C_BaseItem 상속) 클래스 생성
+- [x] `moneyAmount` (EditAnywhere int32) — 인스턴스별 금액 설정
+- [x] `BeginPlay` — `FText::Format("{0} gold", moneyAmount)`로 cachedItemName 포맷 후 Super 호출, ApplyWorldMesh(nullptr)로 defaultMesh 적용
+- [x] `OnInteract` — `Inv->AddMoney(moneyAmount)` + Destroy
+- itemID·DataTable 불필요. BP_Money에서 defaultMesh + moneyAmount만 설정
+
 ### 6. 테스트
 - [x] 소비 아이템 1종 DataTable 등록 + 필드 드롭 → Overlap → 상호작용 UI 표시 → 키 입력 → 효과 적용 + Destroy 확인
 
@@ -113,3 +120,4 @@
   - 에디터 작업 필요: BP_PlayerController에 IA_Interact 할당, DT_ConsumableItem 데이터 새 구조에 맞게 수정
 - 2026-06-25: 다중 Overlap 대응 — PlayerController의 currentInteractableItem(단일 WeakPtr) → overlappingItems(TArray) 변경. bConsumed 제거
 - 2026-06-25: 작업 완료
+- 2026-06-26: C_MoneyItem 추가 — AC_BaseItem 상속, moneyAmount + BeginPlay 포맷 + OnInteract AddMoney + Destroy

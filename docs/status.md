@@ -80,6 +80,7 @@
 | C_BaseItem / ItemData.h | ✅ 완료 | 상호작용 시 인벤토리에 itemID 추가 + Destroy. EnhancedInput(IA_Interact) 기반, 다중 Overlap 배열 관리. FBaseItemData·FConsumableItemData·FConsumableEffectEntry·FEquipmentItemData·EEquipmentSlot 정의 |
 | C_ConsumableItem / BP_ConsumableItem | ✅ 완료 | InitItem만 담당 (DT 로드 + Mesh). FConsumableEffectEntry 배열로 다중 GE 지원. 효과 적용은 인벤토리에서 처리 |
 | C_EquipmentItem / BP_EquipItem | ✅ 완료 | InitItem만 담당 (DT 로드 + Mesh). 장착/해제는 인벤토리에서 처리 (미구현) |
+| C_MoneyItem / BP_Money | ✅ 완료 | AC_BaseItem 상속. moneyAmount(EditAnywhere), BeginPlay에서 cachedItemName 포맷, OnInteract에서 AddMoney + Destroy |
 | C_InteractionWidget / WBP_Interaction | ✅ 완료 | 상호작용 UI 위젯. BindWidget: InteractionText |
 
 ### Level System

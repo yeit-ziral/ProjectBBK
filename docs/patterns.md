@@ -459,6 +459,27 @@ GE_EquipBonus (Duration: Infinite, Modifier 5개)
   → defense:    SetByCaller Tag = Data.Equip.Defense
 ```
 
+### 돈(골드) 픽업 아이템 패턴 (C_MoneyItem 참고)
+GA 없이 AC_BaseItem 상속으로 Overlap → 상호작용 → AddMoney → Destroy하는 구조. itemID·DataTable 불필요.
+```
+AC_MoneyItem (AC_BaseItem 상속)
+  BeginPlay
+    → cachedItemName = FText::Format("{0} gold", moneyAmount)   ← 포맷 후 Super 호출
+    → Super::BeginPlay()
+    → ApplyWorldMesh(nullptr)   ← itemID 없어도 defaultMesh 적용
+
+  OnInteract(Player)
+    → PC->GetInventory()->AddMoney(moneyAmount)
+    → Destroy()
+
+BP_Money
+  → C_MoneyItem 상속
+  → defaultMesh: 코인 메시 할당
+  → moneyAmount: 인스턴스별 EditAnywhere 설정
+```
+- `cachedItemName`은 `protected`이므로 서브클래스에서 직접 포맷 가능
+- OnItemBeginOverlap이 `private UFUNCTION()`이므로 override 불가 → BeginPlay에서 cachedItemName을 미리 포맷하면 위젯 텍스트가 자동 반영됨
+
 ### 스폰형 픽업 아이템 패턴 (C_ExpOrb 참고)
 GA 없이 AActor 단독으로 Overlap → GE 적용 → Destroy하는 픽업 구조.
 ```
