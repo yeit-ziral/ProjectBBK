@@ -1,6 +1,6 @@
 # Task: BaseItem
 
-> **상태:** 진행 중  
+> **상태:** 완료  
 > **작성일:** 2026-06-18  
 > **담당:** 기용
 
@@ -36,7 +36,7 @@
 - [x] 플레이어 Overlap 시 상호작용 UI(WidgetComponent) 표시
 - [x] 플레이어 Overlap 해제 시 상호작용 UI 숨김
 - [x] ~~상호작용 키 입력 시 `OnInteract` 호출 (Tick에서 키 체크, Overlap 시에만 Tick 활성화)~~ → 개선 사항으로 대체
-- [x] **[임시]** 서브클래스에서 효과 적용 후 Destroy
+- [x] `OnInteract` — 인벤토리에 itemID 추가 + Destroy (효과 적용은 인벤토리에서 담당)
 - 월드 스폰은 `BP_ConsumableItem` / `BP_EquipItem`만 사용 (C++ 직접 스폰 금지)
 - 스폰 주체(인벤토리 드롭, 몬스터 사망 등)가 `SpawnActor` → `InitItem(ItemID)` 호출하는 구조
 
@@ -47,24 +47,16 @@
 
 ### 4. 소비 아이템 클래스
 - [x] `C_ConsumableItem` (C_BaseItem 상속) 클래스 생성
-- [x] `InitItem` — consumableDataTable에서 FConsumableItemData 로드 + Mesh 적용
-- [x] `OnInteract` — GE Spec 생성 + SetByCaller 주입 + Apply + Destroy (임시)
+- [x] `InitItem` — consumableDataTable에서 FConsumableItemData 로드 + itemName/Mesh 적용
+- OnInteract 제거 — 베이스 클래스가 인벤토리 추가 처리
 
 ### 5. 장비 아이템 클래스
 - [x] `C_EquipmentItem` (C_BaseItem 상속) 클래스 생성
-- [x] `InitItem` — equipmentDataTable에서 FEquipmentItemData 로드 + Mesh 적용
-- [x] **[임시]** `OnInteract` — `GE_EquipBonus` Apply + 5개 스탯 SetByCaller 주입 + Destroy
-- [ ] 장착(Equip) — `FActiveGameplayEffectHandle` 저장 (인벤토리 구현 후)
-- [ ] 해제(Unequip) — Handle로 `RemoveActiveGameplayEffect` (인벤토리 구현 후)
-- [ ] `EEquipmentSlot` 기반 부위 중복 장착 방지 (인벤토리 구현 후)
+- [x] `InitItem` — equipmentDataTable에서 FEquipmentItemData 로드 + itemName/Mesh 적용
+- OnInteract 제거 — 베이스 클래스가 인벤토리 추가 처리
+- 사용/장착/해제 로직은 `UC_InventoryComponent` 태스크에서 구현
 
-### 6. 인벤토리 시스템 (후속 태스크)
-- [ ] 인벤토리 컴포넌트 또는 관리 구조 구현 (아이템 추가/제거/조회)
-- [ ] 인벤토리 UI 위젯 연동
-- [ ] BaseItem의 임시 Destroy 로직을 인벤토리 등록으로 교체
-- [ ] 소비 아이템 스택 감소 / 0이면 인벤토리에서 제거
-
-### 7. 테스트
+### 6. 테스트
 - [x] 소비 아이템 1종 DataTable 등록 + 필드 드롭 → Overlap → 상호작용 UI 표시 → 키 입력 → 효과 적용 + Destroy 확인
 
 ---
@@ -88,18 +80,18 @@
 ## 개선 사항
 
 ### 1. 상호작용 입력 방식 변경 (Tick → EnhancedInput)
-- [ ] `C_BaseItem`에서 Tick 기반 키 체크 제거
-- [ ] `PlayerController`에 `IA_Interact` InputAction 등록
-- [ ] Overlap 시 `PlayerController`에 현재 아이템 참조 전달, 해제 시 초기화
-- [ ] `PlayerController`가 상호작용 키 입력 감지 → 참조 중인 아이템의 `OnInteract()` 호출
+- [x] `C_BaseItem`에서 Tick 기반 키 체크 제거
+- [x] `PlayerController`에 `IA_Interact` InputAction 등록
+- [x] Overlap 시 `PlayerController`에 현재 아이템 참조 전달, 해제 시 초기화
+- [x] `PlayerController`가 상호작용 키 입력 감지 → 참조 중인 아이템의 `OnInteract()` 호출
+- [x] 다중 Overlap 대응: 단일 포인터 → `overlappingItems` 배열로 변경. 가장 최근 진입 아이템과 상호작용, Destroy 시 다음 아이템으로 자동 전환
 
 ### 2. 소비 아이템 다중 GE 지원
-- [ ] `FConsumableItemData` 구조체 수정
-  - `consumeEffect` → `TArray<TSubclassOf<UGameplayEffect>> consumeEffects`
-  - `magnitudeTag` → `TArray<FGameplayTag> magnitudeTags`
-  - `magnitude` → `TArray<float> magnitudes`
-- [ ] `C_ConsumableItem::OnInteract` — 배열 순회하며 GE Spec 생성 + SetByCaller 주입 + Apply
-- [ ] DT_ConsumableItem 에디터에서 기존 데이터 새 구조에 맞게 수정
+- [x] `FConsumableEffectEntry` 구조체 추가 (Effect, MagnitudeTag, Magnitude 묶음)
+- [x] `FConsumableItemData` 구조체 수정
+  - 단일 `consumeEffect` / `magnitudeTag` / `magnitude` → `TArray<FConsumableEffectEntry> consumeEffects`
+- [x] `C_ConsumableItem::OnInteract` — 배열 순회하며 GE Spec 생성 + SetByCaller 주입 + Apply
+- [x] DT_ConsumableItem 에디터에서 기존 데이터 새 구조에 맞게 수정
 
 ---
 
@@ -114,3 +106,10 @@
   - GE_EquipBonus, DT_ConsumableItem, DT_EquipmentItem, WBP_Interaction, BP_ConsumableItem, BP_EquipItem 생성
   - 소비 아이템 상호작용 동작 확인 완료
 - 2026-06-22: 개선 사항 도출 — 상호작용 입력 방식 및 소비 아이템 다중 GE 지원
+- 2026-06-25: 개선 사항 C++ 구현 완료 (빌드 성공)
+  - 개선 1: Tick 키 체크 제거, PlayerController에 IA_Interact 바인딩 + SetCurrentInteractable/ClearCurrentInteractable 추가, C_BaseItem Overlap에서 PlayerController에 참조 전달
+  - 개선 2: FConsumableEffectEntry 구조체 추가 + FConsumableItemData를 TArray<FConsumableEffectEntry>로 변경
+  - OnInteract를 인벤토리 등록 방식으로 변경: BaseItem이 인벤토리에 itemID 추가 + Destroy. 서브클래스(C_ConsumableItem, C_EquipmentItem)에서 OnInteract 제거 — InitItem(DT 로드 + Mesh)만 담당
+  - 에디터 작업 필요: BP_PlayerController에 IA_Interact 할당, DT_ConsumableItem 데이터 새 구조에 맞게 수정
+- 2026-06-25: 다중 Overlap 대응 — PlayerController의 currentInteractableItem(단일 WeakPtr) → overlappingItems(TArray) 변경. bConsumed 제거
+- 2026-06-25: 작업 완료

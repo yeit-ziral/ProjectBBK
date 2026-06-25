@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_PlayerController.h"
+#include "../../Items/C_BaseItem.h"
 #include "../../Skills/C_SkillManagerComponent.h"
 #include "../../LevelSystem/C_BBKGameInstance.h"
 #include "../../LevelSystem/C_EndingScreenWidget.h"
@@ -168,6 +169,9 @@ void AC_PlayerController::SetupInputComponent()
 
 		if (IA_Inventory)
 			EIC->BindAction(IA_Inventory, ETriggerEvent::Started, this, &AC_PlayerController::ToggleInventory);
+
+		if (IA_Interact)
+			EIC->BindAction(IA_Interact, ETriggerEvent::Started, this, &AC_PlayerController::OnInteractInput);
 	}
 }
 
@@ -489,4 +493,26 @@ void AC_PlayerController::ShowGameOverScreen()
 	Widget->AddToViewport(10);
 	SetInputMode(FInputModeUIOnly());
 	SetShowMouseCursor(true);
+}
+
+void AC_PlayerController::OnInteractInput()
+{
+	// 무효화된 항목 정리 후 마지막(가장 최근 진입) 아이템과 상호작용
+	overlappingItems.RemoveAll([](const TWeakObjectPtr<AC_BaseItem>& Ptr) { return !Ptr.IsValid(); });
+	if (overlappingItems.Num() == 0) return;
+
+	AC_BasePlayerCharactor* PlayerChar = Cast<AC_BasePlayerCharactor>(GetPawn());
+	if (!PlayerChar) return;
+
+	overlappingItems.Last()->OnInteract(PlayerChar);
+}
+
+void AC_PlayerController::SetCurrentInteractable(AC_BaseItem* Item)
+{
+	overlappingItems.AddUnique(Item);
+}
+
+void AC_PlayerController::ClearCurrentInteractable(AC_BaseItem* Item)
+{
+	overlappingItems.RemoveAll([Item](const TWeakObjectPtr<AC_BaseItem>& Ptr) { return Ptr.Get() == Item; });
 }

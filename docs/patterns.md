@@ -406,8 +406,9 @@ IsValid(CurrentSkillManager)
 - CommonSkill 위젯의 `SkillTag`는 에디터에서 설정하지 않고 `InitializeFromCommonSkill` 내부에서 동적 설정
 - WBP_HUD는 캐릭터 교체 시마다 이전 `OnCommonSkillSwitched` 바인딩을 해제하고 새 캐릭터의 컴포넌트에 재등록
 
-### 상호작용형 픽업 아이템 패턴 (C_BaseItem / C_ConsumableItem 참고)
-기존 C_ExpOrb(즉시 Overlap 픽업)와 달리, Overlap → 상호작용 UI 표시 → 키 입력 → 효과 적용 구조.
+### 상호작용형 픽업 아이템 패턴 (C_BaseItem / C_ConsumableItem / C_EquipmentItem 참고)
+Overlap → 상호작용 UI 표시 → EnhancedInput(IA_Interact) → 인벤토리 등록 + Destroy 구조.
+효과 적용(사용/장착)은 `UC_InventoryComponent`에서 담당.
 ```
 AC_BaseItem (AActor, Abstract)
   생성자
@@ -420,32 +421,35 @@ AC_BaseItem (AActor, Abstract)
     → itemID != NAME_None → InitItem(itemID)  // 에디터 배치 시 자동 초기화
 
   OnItemBeginOverlap
-    → Cast<AC_BasePlayerCharactor> → overlappingPlayer 저장
+    → Cast<AC_BasePlayerCharactor> → PlayerController 취득
+    → PC->SetCurrentInteractable(this)   // overlappingItems 배열에 추가
     → InteractionWidget에 cachedItemName 설정
-    → WidgetComponent 표시 + Tick 활성화
-
-  Tick (Overlap 중에만 활성화)
-    → WasInputKeyJustPressed(interactKey) → OnInteract(Player)
+    → WidgetComponent 표시
 
   OnItemEndOverlap
-    → overlappingPlayer 리셋 + WidgetComponent 숨김 + Tick 비활성화
+    → PC->ClearCurrentInteractable(this)   // 배열에서 제거
+    → WidgetComponent 숨김
 
-AC_ConsumableItem::InitItem(ItemID)
-  → consumableDataTable->FindRow<FConsumableItemData>(ItemID)
-  → cachedItemName = Data.itemName
-  → ApplyWorldMesh(Data.worldMesh)   // None 시 defaultMesh 폴백
+  OnInteract(Player)   ← PlayerController의 IA_Interact에서 호출
+    → PC->GetInventory()->AddItem(itemID)
+    → 성공(잔여 0) 시 Destroy()
 
-AC_ConsumableItem::OnInteract(Player)
-  → ASC->MakeOutgoingSpec(consumeEffect)
-  → SetSetByCallerMagnitude(magnitudeTag, magnitude)   // 태그 Valid 시에만
-  → ApplyGameplayEffectSpecToSelf → Destroy()
+AC_PlayerController (상호작용 관리)
+  overlappingItems: TArray<TWeakObjectPtr<AC_BaseItem>>
+  IA_Interact (ETriggerEvent::Started) → OnInteractInput
+    → 무효 항목 정리 후 배열 마지막(가장 최근 진입) 아이템의 OnInteract 호출
+    → Destroy 시 EndOverlap → 배열에서 제거 → 나머지 아이템과 자동 전환
+
+AC_ConsumableItem / AC_EquipmentItem
+  → InitItem만 override: DT에서 itemName + worldMesh 로드
+  → OnInteract 미override — 베이스가 인벤토리 추가 처리
 ```
 - `itemID`는 `EditAnywhere` — 에디터에서 인스턴스마다 다른 아이템 지정 가능
 - 월드 스폰은 `BP_ConsumableItem` / `BP_EquipItem`만 사용
-- Tick은 Overlap 중에만 활성화 (`bStartWithTickEnabled = false`)
 
-### 장비 아이템 공용 GE + SetByCaller 패턴 (C_EquipmentItem 참고)
+### 장비 아이템 공용 GE + SetByCaller 패턴 (GE_EquipBonus 참고)
 장비마다 GE를 만들지 않고 `GE_EquipBonus` 하나로 모든 장비를 처리.
+장착/해제 로직은 `UC_InventoryComponent`에서 담당.
 ```
 GE_EquipBonus (Duration: Infinite, Modifier 5개)
   → maxHealth:  SetByCaller Tag = Data.Equip.MaxHealth
@@ -453,12 +457,6 @@ GE_EquipBonus (Duration: Infinite, Modifier 5개)
   → moveSpeed:  SetByCaller Tag = Data.Equip.MoveSpeed
   → damage:     SetByCaller Tag = Data.Equip.Damage
   → defense:    SetByCaller Tag = Data.Equip.Defense
-
-AC_EquipmentItem::OnInteract(Player)
-  → MakeOutgoingSpec(GE_EquipBonus)
-  → SetSetByCallerMagnitude × 5 (DT 수치 주입, 미적용 스탯은 0)
-  → ApplyGameplayEffectSpecToSelf
-  // 인벤토리 구현 후: Handle 저장 → 해제 시 RemoveActiveGameplayEffect
 ```
 
 ### 스폰형 픽업 아이템 패턴 (C_ExpOrb 참고)

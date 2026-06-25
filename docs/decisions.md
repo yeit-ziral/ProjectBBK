@@ -166,6 +166,24 @@
 - **선택 이유:** itemID, itemName, description, itemIcon, worldMesh 등 공통 필드를 한 곳에서 관리. DataTable Row 구조체 상속은 UE5에서 지원됨
 - **트레이드오프:** 소비/장비 DT가 각각 별도 DataTable이므로 통합 아이템 조회 시 두 테이블을 모두 검색해야 함
 
+### 상호작용 대상 관리 — overlappingItems 배열 vs 단일 포인터
+- **선택:** `TArray<TWeakObjectPtr<AC_BaseItem>> overlappingItems` 배열로 Overlap 중인 아이템 전체 관리
+- **대안:** 단일 `TWeakObjectPtr<AC_BaseItem>` 포인터
+- **선택 이유:** 단일 포인터는 A→B 순서로 Overlap 시 A를 덮어쓰고, B Destroy 후 A와 상호작용 불가. 배열은 Destroy 시 해당 항목만 제거되어 나머지 아이템과 자동 전환
+- **트레이드오프:** 배열 관리 + RemoveAll 비용 (아이템 수가 적으므로 무시 가능)
+
+### OnInteract 책임 분리 — 인벤토리 등록 vs 직접 효과 적용
+- **선택:** BaseItem의 OnInteract는 인벤토리에 itemID 추가 + Destroy만 담당. 효과 적용(사용/장착)은 `UC_InventoryComponent`에서 처리
+- **대안:** 서브클래스별 OnInteract에서 GE 직접 적용 후 Destroy
+- **선택 이유:** 아이템 픽업과 사용을 분리하면 인벤토리 시스템과 자연스럽게 통합. 서브클래스의 OnInteract 중복 제거
+- **트레이드오프:** 효과 적용 로직이 인벤토리 컴포넌트에 의존 (UseItem/EquipItem 구현 필요)
+
+### 소비 아이템 GE 데이터 — FConsumableEffectEntry 구조체 vs 병렬 배열
+- **선택:** `FConsumableEffectEntry` (effect, magnitudeTag, magnitude 묶음)의 `TArray`
+- **대안:** `TArray<TSubclassOf<UGameplayEffect>>`, `TArray<FGameplayTag>`, `TArray<float>` 병렬 배열 3개
+- **선택 이유:** 한 효과의 GE/태그/수치가 한 구조체에 묶여 인덱스 불일치 오류 원천 차단. 에디터에서 항목 단위로 추가/제거 가능
+- **트레이드오프:** 구조체 하나 추가됨 (복잡도 미미)
+
 ### SoundMix/SoundClass ref 위치 — GameInstance vs SettingsWidget
 - **선택:** `UC_BBKGameInstance`에 `UPROPERTY(EditDefaultsOnly)` 4개로 보관
 - **대안:** `UC_SettingsWidget`에 보관

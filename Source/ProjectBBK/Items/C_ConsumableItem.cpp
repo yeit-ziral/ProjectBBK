@@ -1,7 +1,6 @@
 #include "C_ConsumableItem.h"
-#include "AbilitySystemComponent.h"
-#include "GameplayEffectTypes.h"
-#include "../PlayerCharacter/C_BasePlayerCharactor.h"
+#include "ItemData.h"
+#include "Engine/DataTable.h"
 
 void AC_ConsumableItem::InitItem(FName InItemID)
 {
@@ -12,25 +11,6 @@ void AC_ConsumableItem::InitItem(FName InItemID)
 	FConsumableItemData* Data = consumableDataTable->FindRow<FConsumableItemData>(InItemID, TEXT("ConsumableItem"));
 	if (!Data) return;
 
-	cachedData = *Data;
-	bDataLoaded = true;
-	cachedItemName = cachedData.itemName;
-	ApplyWorldMesh(cachedData.worldMesh);
-}
-
-void AC_ConsumableItem::OnInteract(AC_BasePlayerCharactor* Player)
-{
-	if (!bDataLoaded || !Player) return;
-
-	UAbilitySystemComponent* ASC = Player->GetAbilitySystemComponent();
-	if (!ASC || !cachedData.consumeEffect) return;
-
-	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(cachedData.consumeEffect, 1.f, ASC->MakeEffectContext());
-	if (cachedData.magnitudeTag.IsValid())
-	{
-		SpecHandle.Data->SetSetByCallerMagnitude(cachedData.magnitudeTag, cachedData.magnitude);
-	}
-	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-
-	Destroy();
+	cachedItemName = Data->itemName;
+	ApplyWorldMesh(Data->worldMesh);
 }

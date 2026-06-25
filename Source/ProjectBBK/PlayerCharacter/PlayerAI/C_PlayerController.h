@@ -8,6 +8,7 @@
 #include "NiagaraSystem.h"
 #include "C_PlayerController.generated.h"
 
+class AC_BaseItem;
 class AC_BasePlayerCharactor;
 class UInputAction;
 class UC_EndingScreenWidget;
@@ -76,6 +77,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Inventory")
 	bool IsInventoryOpen() const { return bInventoryOpen; }
 
+	void SetCurrentInteractable(AC_BaseItem* Item);
+	void ClearCurrentInteractable(AC_BaseItem* Item);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;
@@ -107,6 +111,10 @@ protected:
 	// I키로 인벤토리 토글
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_Inventory;
+
+	// E키로 상호작용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
+	UInputAction* IA_Interact;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputMappingContext* playerMappingContext;
@@ -154,6 +162,7 @@ protected:
 private:
 	void OnSwitchChar0Input();
 	void OnSwitchChar1Input();
+	void OnInteractInput();
 	void ExecuteCharacterSwitch(int32 NextIndex);
 
 	// 인벤토리 위젯 인스턴스 (최초 열 때 생성, 닫아도 유지 — 드래그 위치 보존)
@@ -172,4 +181,6 @@ private:
 	float switchCooldownStartTime = 0.0f;
 
 	FRotator savedControlRotation; // 캐릭터 교체 시 컨트롤 회전 저장
+
+	TArray<TWeakObjectPtr<AC_BaseItem>> overlappingItems;
 };

@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "C_BaseItem.h"
-#include "ItemData.h"
 #include "C_ConsumableItem.generated.h"
 
 class UDataTable;
@@ -16,12 +15,6 @@ public:
 	virtual void InitItem(FName InItemID) override;
 
 protected:
-	virtual void OnInteract(AC_BasePlayerCharactor* Player) override;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Item|Data")
 	UDataTable* consumableDataTable;
-
-private:
-	FConsumableItemData cachedData;
-	bool bDataLoaded = false;
 };
