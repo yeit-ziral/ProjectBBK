@@ -5,7 +5,7 @@
 #include "Components/WidgetComponent.h"
 #include "../PlayerCharacter/C_BasePlayerCharactor.h"
 #include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
-#include "../Monster/UI/Inventory/C_InventoryComponent.h"
+#include "../Inventory/C_InventoryComponent.h"
 
 AC_BaseItem::AC_BaseItem()
 {
