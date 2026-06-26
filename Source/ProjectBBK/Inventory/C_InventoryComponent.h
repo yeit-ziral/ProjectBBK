@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "../../../Items/ItemData.h"
+#include "../Items/ItemData.h"
 #include "C_InventoryComponent.generated.h"
 
 class UDataTable;
