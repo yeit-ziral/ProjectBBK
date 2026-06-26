@@ -194,10 +194,14 @@ void AC_PlayerController::OpenInventory()
 		inventoryWidget = CreateWidget<UC_InventoryWidget>(this, inventoryWidgetClass);
 		if (!inventoryWidget)
 			return;
-		inventoryWidget->SetInventory(inventory);
 	}
 
 	inventoryWidget->AddToViewport();
+
+	// 닫을 때 NativeDestruct가 OnInventoryChanged 바인딩을 해제하므로 매 open마다 재연결 + 현재 내용으로 갱신.
+	// (이게 없으면 최초 1회 이후 닫았다 열면 위젯이 컴포넌트 변경을 수신하지 못해 새 아이템이 표시되지 않음)
+	inventoryWidget->SetInventory(inventory);
+
 	bInventoryOpen = true;
 
 	// 커서 ON + 카메라 회전 차단 + UMG가 마우스(드래그) 입력 받도록 GameAndUI
