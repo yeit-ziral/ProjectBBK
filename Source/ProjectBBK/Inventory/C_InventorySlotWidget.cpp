@@ -2,7 +2,7 @@
 
 #include "C_InventorySlotWidget.h"
 #include "C_InventoryComponent.h"
-#include "../../../Items/ItemData.h"
+#include "../Items/ItemData.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Blueprint/DragDropOperation.h"

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_InventoryComponent.h"
-#include "../../../Items/ItemData.h"
+#include "../Items/ItemData.h"
 #include "Engine/DataTable.h"
 
 UC_InventoryComponent::UC_InventoryComponent()
