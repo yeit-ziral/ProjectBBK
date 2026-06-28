@@ -3,11 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/DataTable.h"   // FTableRowBase
-#include "GameplayEffect.h"     // UGameplayEffect (TSubclassOf 대상)
+#include "Engine/DataTable.h"      // FTableRowBase
+#include "GameplayEffect.h"        // UGameplayEffect (TSubclassOf 대상)
+#include "GameplayTagContainer.h"  // FGameplayTag (속성 식별)
 #include "C_PerkData.generated.h"
 
 class UTexture2D;
+class UNiagaraSystem;
 
 /**
  * 레벨업 특전(선택 보상) 한 개를 나타내는 DataTable 행.
@@ -43,4 +45,18 @@ struct FPerkData : public FTableRowBase   // ← DataTable 행이 되려면 FTab
 	// 최대 체력은 늘려도 현재 체력이 자동으로 따라오지 않으므로 필요한 보상에만 채운다. 없으면 비움.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk")
 	TSubclassOf<UGameplayEffect> OnApplyEffect;
+
+	// 속성 추가용
+	// elementTag가 유효하면 이 보상은 "속성 부여"로 처리된다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Element")
+	FGameplayTag elementTag;   
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Element")
+	float elementDamagePerLevel = 0.f;  // 레벨당 true 데미지
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Element")
+	int elementMaxLevel = 1;  // 속성 레벨 최대치
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Element")
+	FLinearColor elementColor = FLinearColor::Red; // 속성 부여 시 재생할 VFX. 없으면 비움.
 };
