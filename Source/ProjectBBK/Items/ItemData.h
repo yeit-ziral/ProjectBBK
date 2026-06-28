@@ -48,29 +48,30 @@ struct PROJECTBBK_API FBaseItemData : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
+struct FConsumableEffectEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UGameplayEffect> effect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag magnitudeTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float magnitude = 0.f;
+};
+
+USTRUCT(BlueprintType)
 struct PROJECTBBK_API FConsumableItemData : public FBaseItemData
 {
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
-	TSubclassOf<UGameplayEffect> consumeEffect;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
-	FGameplayTag magnitudeTag;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
-	float magnitude = 0.f;
+	TArray<FConsumableEffectEntry> consumeEffects;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
 	int32 maxStack = 99;
-
-	FConsumableItemData()
-		: consumeEffect(nullptr)
-		, magnitudeTag(FGameplayTag())
-		, magnitude(0.f)
-		, maxStack(99)
-	{
-	}
 };
 
 USTRUCT(BlueprintType)

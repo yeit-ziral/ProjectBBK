@@ -1,12 +1,24 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_InventoryComponent.h"
-#include "../../../Items/ItemData.h"
+#include "../Items/ItemData.h"
 #include "Engine/DataTable.h"
 
 UC_InventoryComponent::UC_InventoryComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+}
+
+void UC_InventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	EnsureSlots();   // 고정 크기 빈 슬롯으로 초기화
+}
+
+void UC_InventoryComponent::EnsureSlots()
+{
+	if (slots.Num() != maxSlots)
+		slots.SetNum(maxSlots);   // 늘어나면 기본(빈) 슬롯으로 채워짐
 }
 
 int32 UC_InventoryComponent::GetMaxStack(FName itemID) const
@@ -68,9 +80,11 @@ int32 UC_InventoryComponent::AddItem(FName itemID, int32 count)
 	const int32 maxStack = GetMaxStack(itemID);
 	if (maxStack <= 0) return count;   // 유효하지 않은 itemID — 아무것도 못 넣음
 
+	EnsureSlots();
+
 	int32 remaining = count;
 
-	// 1) 같은 아이템의 기존 스택을 maxStack까지 먼저 채움 (항상 병합, 획득 순서 유지)
+	// 1) 같은 아이템의 기존 스택을 maxStack까지 먼저 채움 (항상 병합)
 	for (FInventorySlot& slot : slots)
 	{
 		if (remaining <= 0) break;
@@ -82,12 +96,16 @@ int32 UC_InventoryComponent::AddItem(FName itemID, int32 count)
 		remaining     -= add;
 	}
 
-	// 2) 초과분은 뒤에 새 슬롯으로 (용량 한도 내에서)
-	while (remaining > 0 && slots.Num() < maxSlots)
+	// 2) 초과분은 앞에서부터 첫 빈칸(itemID=None)에 배치
+	for (FInventorySlot& slot : slots)
 	{
+		if (remaining <= 0) break;
+		if (!slot.itemID.IsNone()) continue;   // 이미 찬 칸은 건너뜀
+
 		const int32 add = FMath::Min(maxStack, remaining);
-		slots.Emplace(itemID, add);
-		remaining -= add;
+		slot.itemID   = itemID;
+		slot.quantity = add;
+		remaining     -= add;
 	}
 
 	if (remaining != count)   // 하나라도 추가됐으면 변경 알림
@@ -101,23 +119,20 @@ bool UC_InventoryComponent::RemoveItem(FName itemID, int32 count)
 	if (count <= 0) return false;
 	if (GetItemCount(itemID) < count) return false;   // 부족하면 아무것도 안 함
 
+	EnsureSlots();
+
 	int32 remaining = count;
-	for (int32 i = 0; i < slots.Num() && remaining > 0; )
+	for (FInventorySlot& slot : slots)
 	{
-		if (slots[i].itemID != itemID)
-		{
-			++i;
-			continue;
-		}
+		if (remaining <= 0) break;
+		if (slot.itemID != itemID) continue;
 
-		const int32 take = FMath::Min(slots[i].quantity, remaining);
-		slots[i].quantity -= take;
-		remaining         -= take;
+		const int32 take = FMath::Min(slot.quantity, remaining);
+		slot.quantity -= take;
+		remaining      -= take;
 
-		if (slots[i].quantity <= 0)
-			slots.RemoveAt(i);   // 빈 슬롯 제거 (다음 슬롯이 i로 당겨지므로 i 유지)
-		else
-			++i;
+		if (slot.quantity <= 0)
+			slot = FInventorySlot();   // 위치 유지하며 빈칸으로 (배열 압축 안 함)
 	}
 
 	OnInventoryChanged.Broadcast();
@@ -127,11 +142,56 @@ bool UC_InventoryComponent::RemoveItem(FName itemID, int32 count)
 bool UC_InventoryComponent::RemoveAtSlot(int32 slotIndex, int32 count)
 {
 	if (count <= 0) return false;
-	if (!slots.IsValidIndex(slotIndex)) return false;
+	EnsureSlots();
+	if (!slots.IsValidIndex(slotIndex) || slots[slotIndex].itemID.IsNone()) return false;
 
 	slots[slotIndex].quantity -= count;
 	if (slots[slotIndex].quantity <= 0)
-		slots.RemoveAt(slotIndex);
+		slots[slotIndex] = FInventorySlot();   // 빈칸으로 (위치 유지)
+
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
+bool UC_InventoryComponent::MoveSlot(int32 FromIndex, int32 ToIndex)
+{
+	EnsureSlots();
+
+	if (FromIndex == ToIndex) return false;
+	if (!slots.IsValidIndex(FromIndex) || !slots.IsValidIndex(ToIndex)) return false;
+	if (slots[FromIndex].itemID.IsNone()) return false;   // 옮길 아이템 없음
+
+	FInventorySlot& from = slots[FromIndex];
+	FInventorySlot& to   = slots[ToIndex];
+
+	if (to.itemID.IsNone())
+	{
+		// 빈칸으로 이동
+		to   = from;
+		from = FInventorySlot();
+	}
+	else if (to.itemID == from.itemID && GetMaxStack(from.itemID) > 1)
+	{
+		// 같은 스택형 아이템 → 병합 (넘치면 잔량은 from에 유지)
+		const int32 space = GetMaxStack(from.itemID) - to.quantity;
+		if (space > 0)
+		{
+			const int32 move = FMath::Min(space, from.quantity);
+			to.quantity   += move;
+			from.quantity -= move;
+			if (from.quantity <= 0)
+				from = FInventorySlot();
+		}
+		else
+		{
+			Swap(slots[FromIndex], slots[ToIndex]);   // 대상이 가득 → 교환
+		}
+	}
+	else
+	{
+		// 다른 아이템 → 위치 교환
+		Swap(slots[FromIndex], slots[ToIndex]);
+	}
 
 	OnInventoryChanged.Broadcast();
 	return true;
@@ -151,4 +211,22 @@ int32 UC_InventoryComponent::GetItemCount(FName itemID) const
 bool UC_InventoryComponent::HasItem(FName itemID, int32 count) const
 {
 	return GetItemCount(itemID) >= count;
+}
+
+void UC_InventoryComponent::AddMoney(int32 amount)
+{
+	if (amount <= 0) return;
+
+	money += amount;
+	OnMoneyChanged.Broadcast(money);
+}
+
+bool UC_InventoryComponent::RemoveMoney(int32 amount)
+{
+	if (amount <= 0) return false;
+	if (money < amount) return false;   // 부족하면 아무것도 안 함
+
+	money -= amount;
+	OnMoneyChanged.Broadcast(money);
+	return true;
 }

@@ -20,11 +20,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	virtual void InitItem(FName InItemID);
 
+	virtual void OnInteract(AC_BasePlayerCharactor* Player);
+
 protected:
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
-
-	virtual void OnInteract(AC_BasePlayerCharactor* Player);
 
 	void ApplyWorldMesh(UStaticMesh* Mesh);
 
@@ -36,9 +35,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Item")
 	UWidgetComponent* interactionWidgetComp;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Item|Interaction")
-	FKey interactKey = EKeys::E;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Item|Mesh")
 	UStaticMesh* defaultMesh;
@@ -52,10 +48,6 @@ protected:
 	FText cachedItemName;
 
 private:
-	bool bConsumed = false;
-
-	TWeakObjectPtr<AC_BasePlayerCharactor> overlappingPlayer;
-
 	UFUNCTION()
 	void OnItemBeginOverlap(
 		UPrimitiveComponent* OverlappedComponent,

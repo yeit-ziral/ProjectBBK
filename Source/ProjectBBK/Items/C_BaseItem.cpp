@@ -4,12 +4,12 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "../PlayerCharacter/C_BasePlayerCharactor.h"
-#include "GameFramework/PlayerController.h"
+#include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
+#include "../Inventory/C_InventoryComponent.h"
 
 AC_BaseItem::AC_BaseItem()
 {
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = false;
+	PrimaryActorTick.bCanEverTick = false;
 
 	collisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
 	SetRootComponent(collisionSphere);
@@ -49,19 +49,6 @@ void AC_BaseItem::BeginPlay()
 	}
 }
 
-void AC_BaseItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	if (!overlappingPlayer.IsValid()) return;
-
-	APlayerController* PC = Cast<APlayerController>(overlappingPlayer->GetController());
-	if (PC && PC->WasInputKeyJustPressed(interactKey))
-	{
-		OnInteract(overlappingPlayer.Get());
-	}
-}
-
 void AC_BaseItem::InitItem(FName InItemID)
 {
 	itemID = InItemID;
@@ -69,7 +56,18 @@ void AC_BaseItem::InitItem(FName InItemID)
 
 void AC_BaseItem::OnInteract(AC_BasePlayerCharactor* Player)
 {
-	// [임시] 서브클래스에서 효과 적용 후 Destroy
+	if (!Player) return;
+
+	AC_PlayerController* PC = Cast<AC_PlayerController>(Player->GetController());
+	if (!PC) return;
+
+	UC_InventoryComponent* Inv = PC->GetInventory();
+	if (!Inv) return;
+
+	if (Inv->AddItem(itemID) == 0)
+	{
+		Destroy();
+	}
 }
 
 void AC_BaseItem::ApplyWorldMesh(UStaticMesh* Mesh)
@@ -89,12 +87,13 @@ void AC_BaseItem::OnItemBeginOverlap(
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 {
-	if (bConsumed) return;
-
 	AC_BasePlayerCharactor* Player = Cast<AC_BasePlayerCharactor>(OtherActor);
 	if (!Player) return;
 
-	overlappingPlayer = Player;
+	if (AC_PlayerController* PC = Cast<AC_PlayerController>(Player->GetController()))
+	{
+		PC->SetCurrentInteractable(this);
+	}
 
 	if (UC_InteractionWidget* Widget = Cast<UC_InteractionWidget>(interactionWidgetComp->GetWidget()))
 	{
@@ -102,7 +101,6 @@ void AC_BaseItem::OnItemBeginOverlap(
 	}
 
 	interactionWidgetComp->SetVisibility(true);
-	SetActorTickEnabled(true);
 }
 
 void AC_BaseItem::OnItemEndOverlap(
@@ -112,9 +110,12 @@ void AC_BaseItem::OnItemEndOverlap(
 	int32 OtherBodyIndex)
 {
 	AC_BasePlayerCharactor* Player = Cast<AC_BasePlayerCharactor>(OtherActor);
-	if (!Player || Player != overlappingPlayer.Get()) return;
+	if (!Player) return;
 
-	overlappingPlayer.Reset();
+	if (AC_PlayerController* PC = Cast<AC_PlayerController>(Player->GetController()))
+	{
+		PC->ClearCurrentInteractable(this);
+	}
+
 	interactionWidgetComp->SetVisibility(false);
-	SetActorTickEnabled(false);
 }
