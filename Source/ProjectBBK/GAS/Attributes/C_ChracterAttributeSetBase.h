@@ -81,6 +81,18 @@ public:
 	FGameplayAttributeData maxStamina;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxStamina)
 
+	UPROPERTY(BlueprintReadOnly, Category = "ammo", ReplicatedUsing = OnRep_ammo)
+	FGameplayAttributeData ammo;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, ammo)
+
+	UPROPERTY(BlueprintReadOnly, Category = "ammo", ReplicatedUsing = OnRep_maxAmmo)
+	FGameplayAttributeData maxAmmo;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxAmmo)
+
+	UPROPERTY(BlueprintReadOnly, Category = "ammo", ReplicatedUsing = OnRep_reloadTime)
+	FGameplayAttributeData reloadTime;
+	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, reloadTime)
+
 	UPROPERTY(BlueprintReadOnly, Category = "Meta")
 	FGameplayAttributeData receivedDamage;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, receivedDamage)
@@ -131,6 +143,15 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_defense(const FGameplayAttributeData& OldDefense);
+
+	UFUNCTION()
+	virtual void OnRep_ammo(const FGameplayAttributeData& OldAmmo);
+
+	UFUNCTION()
+	virtual void OnRep_maxAmmo(const FGameplayAttributeData& OldMaxAmmo);
+
+	UFUNCTION()
+	virtual void OnRep_reloadTime(const FGameplayAttributeData& OldReloadTime);
 
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;

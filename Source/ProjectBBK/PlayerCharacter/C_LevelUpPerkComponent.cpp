@@ -170,14 +170,14 @@ float UC_LevelUpPerkComponent::ComputeElementalTrueDamage() const
 
 	float Total = Primary->Level * Primary->DamagePerLevel;
 
-	//// 나머지 속성 합산
-	//for(const auto& Pair : elements)
-	//{
-	//	if(Pair.Key != primaryElement)
-	//	{
-	//		Total += Pair.Value.Level * Pair.Value.DamagePerLevel * 0.4f;
-	//	}
-	//}
+	// 나머지 속성 합산
+	for(const auto& Pair : elements)
+	{
+		if(Pair.Key != primaryElement)
+		{
+			Total += Pair.Value.Level * Pair.Value.DamagePerLevel * 0.4f;
+		}
+	}
 
 	return Total;
 }

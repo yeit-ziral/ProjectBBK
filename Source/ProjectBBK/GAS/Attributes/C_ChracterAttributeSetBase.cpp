@@ -83,6 +83,21 @@ void UC_ChracterAttributeSetBase::OnRep_defense(const FGameplayAttributeData& Ol
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, defense, OldDefense);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_ammo(const FGameplayAttributeData& OldAmmo)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, ammo, OldAmmo);
+}
+
+void UC_ChracterAttributeSetBase::OnRep_maxAmmo(const FGameplayAttributeData& OldMaxAmmo)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, maxAmmo, OldMaxAmmo);
+}
+
+void UC_ChracterAttributeSetBase::OnRep_reloadTime(const FGameplayAttributeData& OldReloadTime)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, reloadTime, OldReloadTime);
+}
+
 void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
 	Super::PreAttributeChange(Attribute, NewValue);
