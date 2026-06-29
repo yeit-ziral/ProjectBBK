@@ -2,10 +2,13 @@
 
 #include "C_InventorySlotWidget.h"
 #include "C_InventoryComponent.h"
+#include "../Equip/C_EquipmentComponent.h"
+#include "../Equip/C_EquipmentSlotWidget.h"
 #include "../Items/ItemData.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Blueprint/DragDropOperation.h"
+#include "GameFramework/Pawn.h"
 
 void UC_InventorySlotWidget::NativePreConstruct()
 {
@@ -80,6 +83,30 @@ FReply UC_InventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeomet
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
+FReply UC_InventorySlotWidget::NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	// 좌클릭 더블클릭 + 채워진 슬롯일 때만
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && !currentItemID.IsNone())
+	{
+		// 소유 캐릭터의 장비 컴포넌트 조회 (인벤토리는 컨트롤러, 장비는 캐릭터 보유)
+		if (APawn* Pawn = GetOwningPlayerPawn())
+		{
+			if (UC_EquipmentComponent* Equip = Pawn->FindComponentByClass<UC_EquipmentComponent>())
+			{
+				// 장비 아이템일 때만 장착 (소비 아이템은 무시)
+				if (Equip->GetItemSlotType(currentItemID) != EEquipmentSlot::None)
+				{
+					// EquipItem 성공 시 OnInventoryChanged로 그리드 재생성 → this 파괴 가능. 이후 this 접근 금지.
+					Equip->EquipItem(currentItemID);
+					return FReply::Handled();
+				}
+			}
+		}
+	}
+
+	return Super::NativeOnMouseButtonDoubleClick(InGeometry, InMouseEvent);
+}
+
 void UC_InventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
 {
 	UDragDropOperation* Op = NewObject<UDragDropOperation>(GetTransientPackage(), UDragDropOperation::StaticClass());
@@ -116,6 +143,13 @@ void UC_InventorySlotWidget::NativeOnDragCancelled(const FDragDropEvent& InDragD
 bool UC_InventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	if (!InOperation) return false;
+
+	// 장비 슬롯에서 끌어온 경우 → 인벤토리로 해제(장착 해제)
+	if (UC_EquipmentSlotWidget* equipSource = Cast<UC_EquipmentSlotWidget>(InOperation->Payload))
+	{
+		equipSource->RequestUnequip();   // UnequipItem이 AddItem으로 가방에 복귀시킴
+		return true;
+	}
 
 	UC_InventorySlotWidget* source = Cast<UC_InventorySlotWidget>(InOperation->Payload);
 	if (!source || source == this || !inventoryComp.IsValid())
