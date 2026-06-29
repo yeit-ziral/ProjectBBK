@@ -29,11 +29,17 @@ public:
 
 	int32 GetSlotIndex() const { return slotIndex; }
 
+	// 현재 칸의 itemID (빈 칸이면 None) — 장비 슬롯 드롭 등 외부에서 출발 아이템 식별용
+	FName GetItemID() const { return currentItemID; }
+
 protected:
 	virtual void NativePreConstruct() override;
 
 	// 드래그&드롭: 채워진 슬롯을 잡아 다른 슬롯으로 이동
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	// 더블클릭: 장비 아이템이면 즉시 장착 (드래그&드롭의 대체 경로)
+	virtual FReply NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;

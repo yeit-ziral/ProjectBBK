@@ -21,6 +21,7 @@ class UInputAction;
 struct FInputActionValue;
 struct FInputActionInstance;
 class AC_PlayerController;
+class UC_EquipmentWidget;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBasePlayerCharacter, Log, All);
 
@@ -102,6 +103,9 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "ProjectBBK|SkillWheel")
 	void OnSkillWheelShouldClose();
+
+	// 이 캐릭터의 장비창 위젯 클래스 (BP에서 WBP_EquipmentMelee/Ranged 지정) — 캐릭터별 배경
+	TSubclassOf<UC_EquipmentWidget> GetEquipmentWidgetClass() const { return equipmentWidgetClass; }
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Character|Attribute")
 	float GetCharacterLevel() const;
@@ -285,6 +289,10 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "ProjectBBK|Animation")
 	UAnimMontage *deathMontage;
+
+	// 장비창 위젯 클래스 — 각 캐릭터 BP가 자기 배경(WBP_EquipmentMelee/Ranged) 지정
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|UI")
+	TSubclassOf<UC_EquipmentWidget> equipmentWidgetClass;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "ProjectBBK|Abilities")
 	TArray<TSubclassOf<class UC_CharacterGA>> characterAbilities; // Abilities to give to character when possessed

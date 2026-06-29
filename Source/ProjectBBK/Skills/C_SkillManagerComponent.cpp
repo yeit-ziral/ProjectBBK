@@ -6,6 +6,7 @@
 #include "C_SkillBase.h"
 #include "../PlayerCharacter/C_BasePlayerCharactor.h"
 #include "../PlayerCharacter/C_PlayerState.h"
+#include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
 
 UC_SkillManagerComponent::UC_SkillManagerComponent()
 {
@@ -69,6 +70,14 @@ void UC_SkillManagerComponent::OpenSkillWheel()
 	ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.SkillWheelOpen")));
 	bIsSkillWheelOpen = true;
 
+	// 커서 ON + 카메라 회전 차단 + GameAndUI 입력 모드 — 인벤토리와 동일하게 PlayerController가
+	// 플래그로 관리하므로 다른 UI(인벤토리)와 커서 소유권이 겹쳐도 안전하게 동작
+	if (AC_BasePlayerCharactor* Char = Cast<AC_BasePlayerCharactor>(GetOwner()))
+	{
+		if (AC_PlayerController* PC = Cast<AC_PlayerController>(Char->GetController()))
+			PC->PushMouseUI(EMouseUISource::SkillWheel);
+	}
+
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), skillWheelTimeDilation);
 }
 
@@ -85,7 +94,14 @@ void UC_SkillManagerComponent::CloseSkillWheel()
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
 
 	if (AC_BasePlayerCharactor* Char = Cast<AC_BasePlayerCharactor>(GetOwner()))
+	{
+		// 스킬휠 커서 요청 해제 — 인벤토리 등 다른 UI가 남아 있으면 커서는 유지됨.
+		// Z키 닫기·캐릭터 사망 양쪽 경로가 모두 이 함수를 거치므로 단일 진입점.
+		if (AC_PlayerController* PC = Cast<AC_PlayerController>(Char->GetController()))
+			PC->PopMouseUI(EMouseUISource::SkillWheel);
+
 		Char->OnSkillWheelShouldClose();
+	}
 }
 
 TSubclassOf<UC_SkillBase> UC_SkillManagerComponent::GetActiveSkillClass() const
