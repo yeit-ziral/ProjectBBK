@@ -82,7 +82,11 @@ void UC_LevelUpPerkComponent::SelectPerk(int32 Index)
 		//선택 처리 마무리 (기존 SelectPerk 끝부분과 동일하게 큐 정리)
 		PendingChoices.Reset();
 		PendingLevelUps = FMath::Max(0, PendingLevelUps - 1);
-		if (PendingLevelUps > 0) PresentNextChoices();
+		if (PendingLevelUps > 0) 
+			PresentNextChoices();
+		else
+			OnPerkSelectionFinished.Broadcast();
+
 		return; // 속성 보상은 여기서 끝. 아래 GE 적용 코드는 실행하지 않는다.
 	}
 

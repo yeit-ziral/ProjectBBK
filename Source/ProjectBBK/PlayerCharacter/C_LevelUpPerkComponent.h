@@ -31,6 +31,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPerkChoicesReady, const TArray<FP
 // primary(최고 레벨) 속성이 바뀌면 무기 이펙트를 갈아끼우라고 BP에 알림
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPrimaryElementChanged, FGameplayTag, ElementTag, FLinearColor, Color);
 
+// 선택이 모두 끝나(남은 레벨업 0) 창을 닫아도 될 때 알림
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPerkSelectionFinished);
+
 /**
  * 레벨업 특전(선택 보상) 로직 담당 컴포넌트. AC_PlayerState에 붙인다.
  * - 레벨업 감지(HandleLevelUp) → 후보 3개 추출 → 델리게이트 broadcast
@@ -64,6 +67,9 @@ public:
 	// primary 속성이 바뀌면 broadcast (BP가 무기 소켓에 이펙트 부착)
 	UPROPERTY(BlueprintAssignable, Category = "Perk|Element")
 	FOnPrimaryElementChanged OnPrimaryElementChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Perk")
+	FOnPerkSelectionFinished OnPerkSelectionFinished;
 
 protected:
 	// FPerkData 행들이 담긴 DataTable. PlayerState BP 디폴트에서 DT_Perks 지정.
