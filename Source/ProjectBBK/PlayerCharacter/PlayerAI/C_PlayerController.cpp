@@ -10,6 +10,8 @@
 #include "../C_BasePlayerCharactor.h"
 #include "../../Inventory/C_InventoryComponent.h"
 #include "../../Inventory/C_InventoryWidget.h"
+#include "../../Equip/C_EquipmentComponent.h"
+#include "../../Equip/C_EquipmentWidget.h"
 #include "AbilitySystemComponent.h"
 #include "../../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "EnhancedInputComponent.h"
@@ -170,6 +172,9 @@ void AC_PlayerController::SetupInputComponent()
 		if (IA_Inventory)
 			EIC->BindAction(IA_Inventory, ETriggerEvent::Started, this, &AC_PlayerController::ToggleInventory);
 
+		if (IA_Equipment)
+			EIC->BindAction(IA_Equipment, ETriggerEvent::Started, this, &AC_PlayerController::ToggleEquipment);
+
 		if (IA_Interact)
 			EIC->BindAction(IA_Interact, ETriggerEvent::Started, this, &AC_PlayerController::OnInteractInput);
 	}
@@ -204,14 +209,9 @@ void AC_PlayerController::OpenInventory()
 
 	bInventoryOpen = true;
 
-	// 커서 ON + 카메라 회전 차단 + UMG가 마우스(드래그) 입력 받도록 GameAndUI
-	SetShowMouseCursor(true);
-	SetIgnoreLookInput(true);
-
-	FInputModeGameAndUI inputMode;
-	inputMode.SetWidgetToFocus(inventoryWidget->TakeWidget());
-	inputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	SetInputMode(inputMode);
+	// 커서 ON + 카메라 회전 차단 + UMG가 마우스(드래그) 입력 받도록 GameAndUI.
+	// 스킬휠 등 다른 UI와 커서 소유권이 겹쳐도 PushMouseUI가 멱등하게 처리.
+	PushMouseUI(EMouseUISource::Inventory, inventoryWidget);
 }
 
 void AC_PlayerController::CloseInventory()
@@ -224,10 +224,92 @@ void AC_PlayerController::CloseInventory()
 
 	bInventoryOpen = false;
 
-	// 커서 OFF + 카메라 회전 복원 + 게임 입력 모드 복귀
+	// 인벤토리 커서 요청 해제 — 스킬휠 등 다른 UI가 남아 있으면 커서는 유지됨
+	PopMouseUI(EMouseUISource::Inventory);
+}
+
+void AC_PlayerController::PushMouseUI(EMouseUISource source, UUserWidget* widgetToFocus)
+{
+	activeMouseUISources |= static_cast<uint8>(source);
+
+	SetShowMouseCursor(true);
+	SetIgnoreLookInput(true);
+
+	FInputModeGameAndUI inputMode;
+	inputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	if (widgetToFocus)
+		inputMode.SetWidgetToFocus(widgetToFocus->TakeWidget());
+	SetInputMode(inputMode);
+}
+
+void AC_PlayerController::PopMouseUI(EMouseUISource source)
+{
+	activeMouseUISources &= ~static_cast<uint8>(source);
+
+	// 아직 커서를 요청 중인 다른 UI가 남아 있으면 커서/입력모드를 유지
+	if (activeMouseUISources != 0)
+	{
+		SetShowMouseCursor(true);
+
+		FInputModeGameAndUI inputMode;
+		inputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		SetInputMode(inputMode);
+		return;
+	}
+
+	// 모든 UI가 닫힘 — 커서 OFF + 카메라 회전 복원 + 게임 입력 모드 복귀
 	SetShowMouseCursor(false);
 	ResetIgnoreLookInput();
 	SetInputMode(FInputModeGameOnly());
+}
+
+void AC_PlayerController::ToggleEquipment()
+{
+	if (bEquipmentOpen)
+		CloseEquipment();
+	else
+		OpenEquipment();
+}
+
+void AC_PlayerController::OpenEquipment()
+{
+	if (bEquipmentOpen)
+		return;
+
+	// 장비창은 캐릭터별(멜리/레인지 배경) — 현재 Pawn에서 위젯 클래스와 장비 컴포넌트를 가져옴
+	AC_BasePlayerCharactor* Char = Cast<AC_BasePlayerCharactor>(GetPawn());
+	if (!Char)
+		return;
+
+	TSubclassOf<UC_EquipmentWidget> WidgetClass = Char->GetEquipmentWidgetClass();
+	UC_EquipmentComponent* Equip = Char->FindComponentByClass<UC_EquipmentComponent>();
+	if (!WidgetClass || !Equip)
+		return;
+
+	equipmentWidget = CreateWidget<UC_EquipmentWidget>(this, WidgetClass);
+	if (!equipmentWidget)
+		return;
+
+	equipmentWidget->AddToViewport();
+	equipmentWidget->SetEquipment(Equip);
+
+	bEquipmentOpen = true;
+
+	// 인벤토리와 동시에 떠도 커서/입력모드가 안 꼬이도록 플래그로 관리
+	PushMouseUI(EMouseUISource::Equipment);
+}
+
+void AC_PlayerController::CloseEquipment()
+{
+	if (!bEquipmentOpen)
+		return;
+
+	if (equipmentWidget)
+		equipmentWidget->RemoveFromParent();
+	equipmentWidget = nullptr;
+
+	bEquipmentOpen = false;
+	PopMouseUI(EMouseUISource::Equipment);
 }
 
 void AC_PlayerController::OnSwitchChar0Input()
@@ -249,8 +331,8 @@ void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
 	if (!characterRoster.IsValidIndex(NextIndex))
 		return;
 
-	// 인벤토리가 열려 있으면 캐릭터 교체 차단 (강제 교체는 허용)
-	if (!bForce && bInventoryOpen)
+	// 인벤토리/장비창이 열려 있으면 캐릭터 교체 차단 (강제 교체는 허용)
+	if (!bForce && (bInventoryOpen || bEquipmentOpen))
 		return;
 
 	// SkillWheel이 열려 있으면 캐릭터 교체 차단
@@ -426,8 +508,9 @@ void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadChara
 	if (UC_SkillManagerComponent* SM = DeadCharacter->FindComponentByClass<UC_SkillManagerComponent>())
 		SM->CloseSkillWheel();
 
-	// 인벤토리 열린 채 사망 시 입력 모드 복원
+	// 인벤토리/장비창 열린 채 사망 시 입력 모드 복원
 	CloseInventory();
+	CloseEquipment();
 
 	int32 NextLivingIndex = -1;
 	for (int32 i = 0; i < characterRoster.Num(); i++)

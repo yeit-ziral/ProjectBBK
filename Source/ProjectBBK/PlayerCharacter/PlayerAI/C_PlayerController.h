@@ -15,7 +15,20 @@ class UC_EndingScreenWidget;
 class UC_GameOverWidget;
 class UC_InventoryComponent;
 class UC_InventoryWidget;
+class UC_EquipmentWidget;
 class UDataTable;
+class UUserWidget;
+
+// 마우스 커서를 켜는 UI 소스. 비트플래그 — 여러 UI가 동시에 커서를 요청해도
+// 모두 닫혔을 때만 커서를 끄기 위해 사용. 신규 UI 추가 시 비트 하나씩 부여.
+UENUM(BlueprintType, meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum class EMouseUISource : uint8
+{
+	None       = 0			UMETA(Hidden),
+	Inventory  = 1 << 0,
+	SkillWheel = 1 << 1,
+	Equipment  = 1 << 2,
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterSwitched, int32, NewCharacterIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSwitchCooldownStarted, float, Duration, int32, CharacterIndex);
@@ -77,6 +90,28 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Inventory")
 	bool IsInventoryOpen() const { return bInventoryOpen; }
 
+	// 장비창 열기/닫기/토글 — 별도 키(IA_Equipment)로 작동. 현재 캐릭터의 장비창을 생성/표시.
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Equipment")
+	void OpenEquipment();
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Equipment")
+	void CloseEquipment();
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Equipment")
+	void ToggleEquipment();
+
+	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Equipment")
+	bool IsEquipmentOpen() const { return bEquipmentOpen; }
+
+	// 마우스 커서를 켜는 UI를 등록한다. 비어 있다가 처음 켜질 때만 커서/입력모드를 전환.
+	// widgetToFocus가 있으면 해당 위젯에 포커스를 준다(드래그 등 UMG 입력 필요 시).
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|UI")
+	void PushMouseUI(EMouseUISource source, UUserWidget* widgetToFocus = nullptr);
+
+	// 등록했던 UI를 해제한다. 모든 UI가 닫혔을 때만 커서를 끄고 게임 입력으로 복귀.
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|UI")
+	void PopMouseUI(EMouseUISource source);
+
 	void SetCurrentInteractable(AC_BaseItem* Item);
 	void ClearCurrentInteractable(AC_BaseItem* Item);
 
@@ -111,6 +146,10 @@ protected:
 	// I키로 인벤토리 토글
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_Inventory;
+
+	// 장비창 토글 키 (BP에서 IA_Equipment 지정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
+	UInputAction* IA_Equipment;
 
 	// E키로 상호작용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
@@ -170,6 +209,15 @@ private:
 	UC_InventoryWidget* inventoryWidget = nullptr;
 
 	bool bInventoryOpen = false;
+
+	// 장비창 위젯 인스턴스 (열 때마다 현재 캐릭터 클래스로 생성, 닫으면 파기)
+	UPROPERTY()
+	UC_EquipmentWidget* equipmentWidget = nullptr;
+
+	bool bEquipmentOpen = false;
+
+	// 현재 커서를 요청 중인 UI들의 비트마스크 (EMouseUISource OR 누적)
+	uint8 activeMouseUISources = 0;
 
 	bool bIsSwitching = false;
 
