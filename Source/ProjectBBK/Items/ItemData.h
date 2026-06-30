@@ -7,6 +7,14 @@
 #include "ItemData.generated.h"
 
 UENUM(BlueprintType)
+enum class EEquipmentClass : uint8
+{
+	Common  UMETA(DisplayName = "Common"),
+	Melee   UMETA(DisplayName = "Melee Only"),
+	Ranged  UMETA(DisplayName = "Ranged Only")
+};
+
+UENUM(BlueprintType)
 enum class EEquipmentSlot : uint8
 {
 	None       UMETA(DisplayName = "None"),
@@ -82,6 +90,9 @@ struct PROJECTBBK_API FEquipmentItemData : public FBaseItemData
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Equipment")
 	EEquipmentSlot equipSlot = EEquipmentSlot::None;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Equipment")
+	EEquipmentClass equipClass = EEquipmentClass::Common;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Equipment|Stats")
 	float bonusMaxHealth = 0.f;
 
@@ -99,6 +110,7 @@ struct PROJECTBBK_API FEquipmentItemData : public FBaseItemData
 
 	FEquipmentItemData()
 		: equipSlot(EEquipmentSlot::None)
+		, equipClass(EEquipmentClass::Common)
 		, bonusMaxHealth(0.f)
 		, bonusMaxStamina(0.f)
 		, bonusMoveSpeed(0.f)
