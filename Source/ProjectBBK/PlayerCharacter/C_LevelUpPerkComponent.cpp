@@ -4,6 +4,7 @@
 #include "C_PlayerState.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 void UC_LevelUpPerkComponent::HandleLevelUp(int32 NewLevel, int32 OldLevel)
 {
@@ -73,6 +74,22 @@ void UC_LevelUpPerkComponent::SelectPerk(int32 Index)
 	// 후보를 복사해 둔다(아래에서 PendingChoices를 비우기 때문).
 	const FPerkData Chosen = PendingChoices[Index];
 
+	//속성 보상이면 스탯 GE 경로 대신 속성 처리로 분기
+	if (Chosen.elementTag.IsValid())
+	{
+		AddElementLevel(Chosen);
+
+		//선택 처리 마무리 (기존 SelectPerk 끝부분과 동일하게 큐 정리)
+		PendingChoices.Reset();
+		PendingLevelUps = FMath::Max(0, PendingLevelUps - 1);
+		if (PendingLevelUps > 0) 
+			PresentNextChoices();
+		else
+			OnPerkSelectionFinished.Broadcast();
+
+		return; // 속성 보상은 여기서 끝. 아래 GE 적용 코드는 실행하지 않는다.
+	}
+
 	// ASC는 CLAUDE.md 규칙대로 PlayerState에서 취득. (Character 직접 참조 금지)
 	AC_PlayerState* PS = Cast<AC_PlayerState>(GetOwner());
 	UAbilitySystemComponent* ASC = PS ? PS->GetAbilitySystemComponent() : nullptr;
@@ -108,4 +125,108 @@ void UC_LevelUpPerkComponent::SelectPerk(int32 Index)
 	{
 		PresentNextChoices();
 	}
+}
+
+
+void UC_LevelUpPerkComponent::AddElementLevel(const FPerkData& Perk)
+{
+	// 해당 속성 상태를 찾거나 새로 만든다.
+	FElementState& State = elements.FindOrAdd(Perk.elementTag);
+	State.DamagePerLevel = Perk.elementDamagePerLevel;
+	State.MaxLevel = Perk.elementMaxLevel;
+	State.Color = Perk.elementColor;
+
+	// 레벨 +1
+	State.Level = FMath::Min(State.Level + 1, State.MaxLevel);
+
+	// 다른 시스템이 참조할 수 있게 ASC에도 속성 태그 부여
+	if(AC_PlayerState* PS = Cast<AC_PlayerState>(GetOwner()))
+	{
+		if (UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent())
+		{
+			ASC->AddLooseGameplayTag(Perk.elementTag);
+		}
+	}
+
+	// primary 다시 계산
+	int32 BestLevel = -1;
+
+	for (const TPair<FGameplayTag, FElementState>& Pair : elements)
+	{
+		if (Pair.Value.Level > BestLevel)
+		{
+			BestLevel = Pair.Value.Level;
+			primaryElement = Pair.Key;
+		}
+	}
+
+	// 무기 이펙트 갈아끼우라고 BP에 알림 (최고 레벨의 속성 것만 보임)
+	const FElementState* Primary = elements.Find(primaryElement);
+	OnPrimaryElementChanged.Broadcast(primaryElement, Primary ? Primary->Color : FLinearColor::Black);
+}
+
+float UC_LevelUpPerkComponent::ComputeElementalTrueDamage() const
+{
+	// primary 속성만 100% 적용. 나머지는 40% 적용.
+	const FElementState* Primary = elements.Find(primaryElement);
+	if(!Primary)
+		return 0.f;
+
+	float Total = Primary->Level * Primary->DamagePerLevel;
+
+	// 나머지 속성 합산
+	for(const auto& Pair : elements)
+	{
+		if(Pair.Key != primaryElement)
+		{
+			Total += Pair.Value.Level * Pair.Value.DamagePerLevel * 0.4f;
+		}
+	}
+
+	return Total;
+}
+
+void UC_LevelUpPerkComponent::ApplyElementalDamage(AActor* TargetActor)
+{
+	if(!TargetActor)
+		return;
+
+	AC_PlayerState* PS = Cast<AC_PlayerState>(GetOwner());
+	UAbilitySystemComponent* SourceASC = PS ? PS->GetAbilitySystemComponent() : nullptr;
+	
+	// 맞은 적의 ASC
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+	
+	if (!SourceASC || !TargetASC || !elementalDamageEffect)
+		return;
+
+	const float TrueDamage = ComputeElementalTrueDamage();
+	if (TrueDamage <= 0.f)
+		return;
+
+	FGameplayEffectContextHandle Ctx = SourceASC->MakeEffectContext();
+	FGameplayEffectSpecHandle Spec = SourceASC->MakeOutgoingSpec(elementalDamageEffect, 1.f, Ctx);
+	if (Spec.IsValid())
+	{
+		Spec.Data->SetSetByCallerMagnitude(
+			FGameplayTag::RequestGameplayTag(FName("Data.Damage")), TrueDamage);
+		SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data, TargetASC);
+	}
+}
+
+void UC_LevelUpPerkComponent::DebugSelectPerk(FName RowName)
+{
+	if (!PerkTable)
+		return;
+
+	const FPerkData* Row = PerkTable->FindRow<FPerkData>(RowName, TEXT("DebugSelectPerk"));
+	if (!Row)
+		return;
+
+	// 속성 보상이면 속성 레벨 부여 (SelectPerk의 속성 분기와 동일)
+	if (Row->elementTag.IsValid())
+	{
+		AddElementLevel(*Row);
+	}
+	// 스탯 보상도 테스트 하려면 여기서 Row->Effect를 ASC에 적용하면 된다.
 }

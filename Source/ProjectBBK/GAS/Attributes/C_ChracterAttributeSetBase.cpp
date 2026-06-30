@@ -83,6 +83,21 @@ void UC_ChracterAttributeSetBase::OnRep_defense(const FGameplayAttributeData& Ol
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, defense, OldDefense);
 }
 
+void UC_ChracterAttributeSetBase::OnRep_ammo(const FGameplayAttributeData& OldAmmo)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, ammo, OldAmmo);
+}
+
+void UC_ChracterAttributeSetBase::OnRep_maxAmmo(const FGameplayAttributeData& OldMaxAmmo)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, maxAmmo, OldMaxAmmo);
+}
+
+void UC_ChracterAttributeSetBase::OnRep_reloadTime(const FGameplayAttributeData& OldReloadTime)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UC_ChracterAttributeSetBase, reloadTime, OldReloadTime);
+}
+
 void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
 	Super::PreAttributeChange(Attribute, NewValue);
@@ -116,6 +131,10 @@ void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& A
 	{
 		// 방어력은 음수가 될 수 없음 (장비 해제 등으로 0 미만이 되는 것 방지)
 		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	else if (Attribute == GetmoveSpeedAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, 900.0f);
 	}
 }
 
@@ -279,12 +298,10 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 			currentExp -= GetmaxExperience();
 			Setlevel(Getlevel() + 1);
 			SetmaxExperience(FMath::RoundToFloat(GetmaxExperience() * 1.1f));
-			// 레벨업 자동 성장(베이스라인). 나머지 성장은 레벨업 특전(선택 보상)이 담당하므로
-			// 자동 수치는 기존의 절반 수준으로 낮춤. → 특전 한 번의 가치가 커짐.
-			SetmaxHealth(GetmaxHealth() + 25.f);
-			Sethealth(FMath::Min(Gethealth() + 25.f, GetmaxHealth()));
-			SetmaxStamina(GetmaxStamina() + 10.f);
-			Setdamage(Getdamage() + 15.f);
+			SetmaxHealth(GetmaxHealth() + 50.f);
+			Sethealth(FMath::Min(Gethealth() + 50.f, GetmaxHealth()));
+			SetmaxStamina(GetmaxStamina() + 20.f);
+			Setdamage(Getdamage() + 30.f);
 		}
 
 		Setexperience(FMath::Max(currentExp, 0.f));
