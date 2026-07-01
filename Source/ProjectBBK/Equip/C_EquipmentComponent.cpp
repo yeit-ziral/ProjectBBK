@@ -45,6 +45,18 @@ bool UC_EquipmentComponent::GetItemData(FName itemID, FBaseItemData& OutData) co
 	return false;
 }
 
+bool UC_EquipmentComponent::GetEquipmentData(FName itemID, FEquipmentItemData& OutData) const
+{
+	if (itemID.IsNone() || !equipmentTable) return false;
+
+	if (const FEquipmentItemData* row = equipmentTable->FindRow<FEquipmentItemData>(itemID, TEXT("EquipGetEquipmentData"), false))
+	{
+		OutData = *row;
+		return true;
+	}
+	return false;
+}
+
 FName UC_EquipmentComponent::GetEquippedItem(EEquipmentSlot slot) const
 {
 	if (const FEquippedEntry* entry = equipped.Find(slot))

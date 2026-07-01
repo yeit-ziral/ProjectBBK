@@ -73,6 +73,18 @@ bool UC_InventoryComponent::GetItemData(FName itemID, FBaseItemData& OutData) co
 	return false;
 }
 
+bool UC_InventoryComponent::GetConsumableData(FName itemID, FConsumableItemData& OutData) const
+{
+	if (itemID.IsNone() || !consumableTable) return false;
+
+	if (const FConsumableItemData* row = consumableTable->FindRow<FConsumableItemData>(itemID, TEXT("GetConsumableData"), false))
+	{
+		OutData = *row;
+		return true;
+	}
+	return false;
+}
+
 int32 UC_InventoryComponent::AddItem(FName itemID, int32 count)
 {
 	if (count <= 0) return count;

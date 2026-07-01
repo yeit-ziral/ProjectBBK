@@ -4,8 +4,10 @@
 #include "C_EquipmentComponent.h"
 #include "../Inventory/C_InventorySlotWidget.h"
 #include "../Items/ItemData.h"
+#include "../Items/C_ItemTooltipWidget.h"
 #include "Components/Image.h"
 #include "Blueprint/DragDropOperation.h"
+#include "GameFramework/PlayerController.h"
 
 void UC_EquipmentSlotWidget::NativePreConstruct()
 {
@@ -20,6 +22,62 @@ void UC_EquipmentSlotWidget::NativePreConstruct()
 		brush.ImageSize = FVector2D(96.f, 96.f);
 		SlotFrame->SetBrush(brush);
 	}
+}
+
+void UC_EquipmentSlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+
+	if (activeTooltip || !tooltipWidgetClass || !equipComp.IsValid())
+		return;
+
+	const FName itemID = equipComp->GetEquippedItem(slotType);
+	if (itemID.IsNone())
+		return;   // 빈 슬롯 → 툴팁 없음
+
+	FEquipmentItemData equipData;
+	if (!equipComp->GetEquipmentData(itemID, equipData))
+		return;
+
+	UC_ItemTooltipWidget* tooltip = CreateWidget<UC_ItemTooltipWidget>(this, tooltipWidgetClass);
+	if (!tooltip)
+		return;
+
+	tooltip->SetItem(equipData);
+	tooltip->SetVisibility(ESlateVisibility::HitTestInvisible);   // 커서/hover 가로채지 않게
+	tooltip->AddToViewport(1000);                                 // 창·HUD 위에
+
+	// 커서 근처에 배치 (살짝 오프셋)
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		float mx = 0.f, my = 0.f;
+		if (PC->GetMousePosition(mx, my))
+			tooltip->SetPositionInViewport(FVector2D(mx + 16.f, my + 16.f), true);
+	}
+
+	activeTooltip = tooltip;
+}
+
+void UC_EquipmentSlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseLeave(InMouseEvent);
+
+	if (activeTooltip)
+	{
+		activeTooltip->RemoveFromParent();
+		activeTooltip = nullptr;
+	}
+}
+
+void UC_EquipmentSlotWidget::NativeDestruct()
+{
+	if (activeTooltip)
+	{
+		activeTooltip->RemoveFromParent();
+		activeTooltip = nullptr;
+	}
+
+	Super::NativeDestruct();
 }
 
 void UC_EquipmentSlotWidget::RefreshSlot(UC_EquipmentComponent* Equip)
@@ -56,6 +114,8 @@ void UC_EquipmentSlotWidget::RefreshSlot(UC_EquipmentComponent* Equip)
 			ItemIcon->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
+
+	// 툴팁은 NativeOnMouseEnter/Leave에서 hover 시점에 직접 띄움 — 여기서 미리 설정하지 않음
 }
 
 FReply UC_EquipmentSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
