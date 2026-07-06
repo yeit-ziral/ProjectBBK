@@ -10,6 +10,7 @@ class UImage;
 class UTextBlock;
 class UTexture2D;
 class UC_InventoryComponent;
+class UC_ItemTooltipWidget;
 class UDragDropOperation;
 
 /**
@@ -56,6 +57,10 @@ protected:
 	// 슬롯 테두리 텍스처 (WBP에서 T_InventorySlot 지정) — 코드에서 브러시 구성
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
 	UTexture2D* slotFrameTexture = nullptr;
+
+	// 장비 아이템 hover 툴팁 (WBP에서 WBP_ItemTooltip 지정) — 미지정 시 툴팁 없음
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	TSubclassOf<UC_ItemTooltipWidget> tooltipWidgetClass;
 
 private:
 	TWeakObjectPtr<UC_InventoryComponent> inventoryComp;

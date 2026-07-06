@@ -80,6 +80,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	bool GetItemData(FName itemID, FBaseItemData& OutData) const;
 
+	// itemID로 소비 아이템 전용 데이터(consumeEffects 포함) 전체 조회 — 툴팁 등 효과 표시용.
+	// GetItemData는 FBaseItemData로 슬라이싱돼 효과가 잘리므로 전체가 필요하면 이쪽 사용. 소비 DT에 없으면 false.
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool GetConsumableData(FName itemID, FConsumableItemData& OutData) const;
+
 	// 런타임에 조회용 DataTable 지정 — EditDefaultsOnly 슬롯을 코드/소유자에서 주입할 때.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetItemTables(UDataTable* Consumable, UDataTable* Equipment);

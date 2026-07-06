@@ -64,6 +64,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool GetItemData(FName itemID, FBaseItemData& OutData) const;
 
+	// itemID로 장비 전용 데이터(슬롯·보너스 5종 포함) 전체 조회 — 툴팁 등 장비 스탯 표시용.
+	// GetItemData는 FBaseItemData로 슬라이싱돼 보너스가 잘리므로 전체가 필요하면 이쪽 사용.
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	bool GetEquipmentData(FName itemID, FEquipmentItemData& OutData) const;
+
 	// 공유 인벤토리 접근(소유 캐릭터 → 컨트롤러 → GetInventory). UI 드롭 처리 등에서 사용.
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	UC_InventoryComponent* GetInventory() const;

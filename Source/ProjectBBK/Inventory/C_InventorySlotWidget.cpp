@@ -5,6 +5,7 @@
 #include "../Equip/C_EquipmentComponent.h"
 #include "../Equip/C_EquipmentSlotWidget.h"
 #include "../Items/ItemData.h"
+#include "../Items/C_ItemTooltipWidget.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Blueprint/DragDropOperation.h"
@@ -72,6 +73,39 @@ void UC_InventorySlotWidget::SetSlot(UC_InventoryComponent* Inventory, FName Ite
 			QuantityText->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
+
+	// 아이템이면 hover 툴팁 구성 (빈 칸은 툴팁 없음). 장비/소비를 각각 채움.
+	UC_ItemTooltipWidget* tooltip = nullptr;
+	if (!ItemID.IsNone() && tooltipWidgetClass)
+	{
+		// 장비 — 캐릭터의 장비 컴포넌트에서 전체 데이터 조회
+		if (APawn* Pawn = GetOwningPlayerPawn())
+		{
+			if (UC_EquipmentComponent* Equip = Pawn->FindComponentByClass<UC_EquipmentComponent>())
+			{
+				FEquipmentItemData equipData;
+				if (Equip->GetEquipmentData(ItemID, equipData))
+				{
+					tooltip = CreateWidget<UC_ItemTooltipWidget>(this, tooltipWidgetClass);
+					if (tooltip)
+						tooltip->SetItem(equipData);
+				}
+			}
+		}
+
+		// 장비가 아니면 소비 아이템으로 시도
+		if (!tooltip && Inventory)
+		{
+			FConsumableItemData consumeData;
+			if (Inventory->GetConsumableData(ItemID, consumeData))
+			{
+				tooltip = CreateWidget<UC_ItemTooltipWidget>(this, tooltipWidgetClass);
+				if (tooltip)
+					tooltip->SetConsumableItem(consumeData);
+			}
+		}
+	}
+	SetToolTip(tooltip);   // nullptr이면 기존 툴팁 제거
 }
 
 FReply UC_InventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)

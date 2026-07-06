@@ -10,6 +10,7 @@
 class UImage;
 class UTexture2D;
 class UC_EquipmentComponent;
+class UC_ItemTooltipWidget;
 class UDragDropOperation;
 
 /**
@@ -37,6 +38,11 @@ public:
 
 protected:
 	virtual void NativePreConstruct() override;
+	virtual void NativeDestruct() override;
+
+	// Slate 기본 툴팁(SetToolTip/Delegate)이 드래그형 창에서 미동작 → 직접 enter/leave로 뷰포트에 띄움
+	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 
 	// 우클릭 → 해제 / 좌클릭 드래그 시작
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -59,10 +65,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Equipment")
 	UTexture2D* slotFrameTexture = nullptr;
 
+	// 장착 아이템 hover 툴팁 (WBP에서 WBP_ItemTooltip 지정) — 미지정 시 툴팁 없음
+	UPROPERTY(EditDefaultsOnly, Category = "Equipment")
+	TSubclassOf<UC_ItemTooltipWidget> tooltipWidgetClass;
+
 private:
 	TWeakObjectPtr<UC_EquipmentComponent> equipComp;
 
 	// 드래그 비주얼용 현재 아이콘 캐시 (RefreshSlot에서 갱신)
 	UPROPERTY()
 	UTexture2D* currentIcon = nullptr;
+
+	// hover 중 표시 중인 툴팁 (없으면 null). MouseLeave/Destruct에서 정리.
+	UPROPERTY()
+	class UC_ItemTooltipWidget* activeTooltip = nullptr;
 };
