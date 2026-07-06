@@ -23,6 +23,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "../C_LevelUpPerkComponent.h"
 
 
 AC_PlayerController::AC_PlayerController()
@@ -129,10 +130,18 @@ void AC_PlayerController::BeginPlay()
 		if (GI_Ref)
 		{
 			UAbilitySystemComponent *SharedASC = nullptr;
-			if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
+			AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+			if (PS)
 				SharedASC = PS->GetAbilitySystemComponent();
 
+			UC_LevelUpPerkComponent* PerkComp =
+				PS ? PS->FindComponentByClass<UC_LevelUpPerkComponent>() : nullptr;
+
+			if (PerkComp)
+				PerkComp->SetIgnoreLevelChanges(true); // 캐릭터 교체 시 레벨업 퍽 UI가 뜨지 않도록 잠깐 끔
 			GI_Ref->RestoreGameState(characterRoster, startIndex, SharedASC);
+			if(PerkComp)
+				PerkComp->SetIgnoreLevelChanges(false);
 		}
 	}
 
@@ -442,6 +451,14 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 
 	// 이전 캐릭터의 어빌리티를 ASC에서 제거 (characterAbilitiesGiven = false로 리셋됨)
 	OldChar->RemoveCharacterAbilities();
+
+	// 교체할 때 레벨 복원이 퍽 선택창을 띄우지 않게 잠시 무시
+	UC_LevelUpPerkComponent* PerkComp = nullptr;
+	if(AC_PlayerState* PerkPS = GetPlayerState<AC_PlayerState>())
+		PerkComp = PerkPS->FindComponentByClass<UC_LevelUpPerkComponent>();
+
+	if (PerkComp)
+		PerkComp->SetIgnoreLevelChanges(true);	
 
 	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
 	Possess(NewChar);
