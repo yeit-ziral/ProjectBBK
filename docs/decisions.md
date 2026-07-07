@@ -190,6 +190,18 @@
 - **선택 이유:** 한 효과의 GE/태그/수치가 한 구조체에 묶여 인덱스 불일치 오류 원천 차단. 에디터에서 항목 단위로 추가/제거 가능
 - **트레이드오프:** 구조체 하나 추가됨 (복잡도 미미)
 
+### 드래그 가능 팝업창 루트 위젯 — Overlay vs Canvas Panel
+- **선택:** `Overlay` (전체 뷰포트를 덮는 루트)
+- **대안:** `Canvas Panel`
+- **선택 이유:** Canvas Panel이 루트이면 `SetRenderTranslation`으로 창을 이동할 때 마우스 히트 영역도 같이 밀려 창 밖에서 마우스를 놓으면 `MouseButtonUp`을 못 받음. Overlay는 전체 뷰포트를 덮으므로 창이 어디로 이동해도 이벤트를 안정적으로 수신
+- **트레이드오프:** Overlay 루트는 배경이 없으므로 창 본체(WindowRoot)에 배경 처리 필요. Canvas Panel은 자식을 절대 좌표로 배치해야 할 때 (장비 슬롯 등) 적합
+
+### 드래그 창 WindowRoot — SizeBox vs Border
+- **선택:** `SizeBox` (Width/Height Override로 크기 고정)
+- **대안:** `Border`
+- **선택 이유:** Border는 자식 텍스트 길이에 따라 크기가 바뀜 — 스탯 수치가 변경될 때마다 창 크기가 흔들림. SizeBox로 고정하면 수치 변화와 무관하게 창 크기 유지
+- **트레이드오프:** SizeBox는 자식을 하나만 허용하므로 배경 Image와 콘텐츠를 겹치려면 내부에 Overlay 추가 필요. Width/Height Override 수치 미입력 시 크기 0 → 클릭 불가 (Debugging #34)
+
 ### SoundMix/SoundClass ref 위치 — GameInstance vs SettingsWidget
 - **선택:** `UC_BBKGameInstance`에 `UPROPERTY(EditDefaultsOnly)` 4개로 보관
 - **대안:** `UC_SettingsWidget`에 보관
