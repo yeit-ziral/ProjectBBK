@@ -10,12 +10,15 @@
 
 class AC_BaseItem;
 class AC_BasePlayerCharactor;
+class AC_MerchantNPC;
 class UInputAction;
 class UC_EndingScreenWidget;
 class UC_GameOverWidget;
 class UC_InventoryComponent;
 class UC_InventoryWidget;
 class UC_EquipmentWidget;
+class UC_MerchantDialogueWidget;
+class UC_ShopWidget;
 class UDataTable;
 class UUserWidget;
 
@@ -28,6 +31,7 @@ enum class EMouseUISource : uint8
 	Inventory  = 1 << 0,
 	SkillWheel = 1 << 1,
 	Equipment  = 1 << 2,
+	Merchant   = 1 << 3,
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterSwitched, int32, NewCharacterIndex);
@@ -115,10 +119,35 @@ public:
 	void SetCurrentInteractable(AC_BaseItem* Item);
 	void ClearCurrentInteractable(AC_BaseItem* Item);
 
+	// ===== 상인 NPC / 상점 =====
+
+	// 대화창 열기 (G키 → 시선이 향한 상인) — 대사 표시 후 구매/그만두기 선택.
+	void OpenMerchantDialogue(AC_MerchantNPC* NPC);
+
+	// 대화창 닫기 (그만두기 / 취소)
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Merchant")
+	void CloseMerchantDialogue();
+
+	// 대화창 "구매" 선택 → 대화창을 닫고 상점창 + 인벤토리를 연다.
+	void OnDialogueBuyChosen(AC_MerchantNPC* NPC);
+
+	// 상점창 + 인벤토리 동시 열기
+	void OpenShop(AC_MerchantNPC* NPC);
+
+	// 상점창 + 인벤토리 닫기
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Merchant")
+	void CloseShop();
+
+	// 현재 열려 있는 상점창 (없으면 nullptr) — 인벤 슬롯 더블클릭 판매 경로에서 조회
+	UC_ShopWidget* GetActiveShopWidget() const { return bShopOpen ? shopWidget : nullptr; }
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void SetupInputComponent() override;
+
+	// 시선(카메라 전방) 트레이스로 상인 포커스 갱신
+	virtual void PlayerTick(float DeltaTime) override;
 
 protected:
 	// BP_PlayerController에서 교체할 캐릭터 클래스를 순서대로 지정
@@ -155,6 +184,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_Interact;
 
+	// G키로 상인 NPC 대화
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
+	UInputAction* IA_TalkToNPC;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputMappingContext* playerMappingContext;
 
@@ -169,6 +202,18 @@ protected:
 	// BP_PlayerController에서 WBP_Inventory 할당
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UC_InventoryWidget> inventoryWidgetClass;
+
+	// BP_PlayerController에서 WBP_MerchantDialogue 할당
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UC_MerchantDialogueWidget> dialogueWidgetClass;
+
+	// BP_PlayerController에서 WBP_Shop 할당
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UC_ShopWidget> shopWidgetClass;
+
+	// 상인 시선 감지 최대 거리 (cm)
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Merchant", meta = (ClampMin = "0"))
+	float merchantGazeDistance = 800.f;
 
 	// 캐릭터 교체와 무관하게 유지되는 인벤토리 보관소
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectBBK|Inventory")
@@ -202,7 +247,23 @@ private:
 	void OnSwitchChar0Input();
 	void OnSwitchChar1Input();
 	void OnInteractInput();
+	void OnTalkToNPCInput();
 	void ExecuteCharacterSwitch(int32 NextIndex);
+
+	// 시선 트레이스 → 포커스 상인 갱신 (매 틱)
+	void UpdateMerchantGaze();
+
+	// 현재 시선이 향한 상인 (외곽선 표시 + G키 대상)
+	TWeakObjectPtr<AC_MerchantNPC> focusedMerchant;
+
+	// 상인 UI 위젯 인스턴스
+	UPROPERTY()
+	UC_MerchantDialogueWidget* dialogueWidget = nullptr;
+
+	UPROPERTY()
+	UC_ShopWidget* shopWidget = nullptr;
+
+	bool bShopOpen = false;
 
 	// 인벤토리 위젯 인스턴스 (최초 열 때 생성, 닫아도 유지 — 드래그 위치 보존)
 	UPROPERTY()

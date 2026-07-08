@@ -60,6 +60,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	EEquipmentSlot GetItemSlotType(FName itemID) const;
 
+	// 현재 캐릭터가 이 아이템을 장착할 수 있는지 — Common은 누구나, Melee/Ranged 전용은 캐릭터 타입 일치 시만.
+	// 미등록/슬롯None이면 false. UI에서 장착 가능 여부 표시용으로도 사용 가능.
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	bool CanEquipItem(FName itemID) const;
+
 	// itemID로 표시용 데이터(이름·아이콘·Mesh) 조회 — 장비 DT 기준. UI 슬롯 아이콘용.
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool GetItemData(FName itemID, FBaseItemData& OutData) const;
@@ -88,6 +93,9 @@ protected:
 
 private:
 	UAbilitySystemComponent* GetASC() const;
+
+	// 소유 캐릭터 타입이 장비 등급(Common/Melee/Ranged)과 호환되는지 판정
+	bool CanEquipClass(EEquipmentClass itemClass) const;
 
 	// row의 보너스 5종을 SetByCaller로 주입해 현재 ASC에 적용 → 핸들 반환
 	FActiveGameplayEffectHandle ApplyEquipGE(const FEquipmentItemData& row) const;

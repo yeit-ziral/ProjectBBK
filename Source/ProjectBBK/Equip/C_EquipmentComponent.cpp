@@ -4,6 +4,8 @@
 #include "../Inventory/C_InventoryComponent.h"
 #include "../Items/ItemData.h"
 #include "../PlayerCharacter/C_BasePlayerCharactor.h"
+#include "../PlayerCharacter/C_MeleeCharacter.h"
+#include "../PlayerCharacter/C_RangeCharacter.h"
 #include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
@@ -69,6 +71,37 @@ bool UC_EquipmentComponent::IsSlotEquipped(EEquipmentSlot slot) const
 	return equipped.Contains(slot);
 }
 
+bool UC_EquipmentComponent::CanEquipClass(EEquipmentClass itemClass) const
+{
+	// 공용 장비는 근/원 관계없이 누구나 장착 가능
+	if (itemClass == EEquipmentClass::Common)
+		return true;
+
+	const AActor* Owner = GetOwner();
+	if (!Owner)
+		return false;
+
+	// 전용 장비는 소유 캐릭터 타입이 일치할 때만 장착 가능
+	if (itemClass == EEquipmentClass::Melee)
+		return Owner->IsA(AC_MeleeCharacter::StaticClass());
+	if (itemClass == EEquipmentClass::Ranged)
+		return Owner->IsA(AC_RangeCharacter::StaticClass());
+
+	return true;
+}
+
+bool UC_EquipmentComponent::CanEquipItem(FName itemID) const
+{
+	if (itemID.IsNone() || !equipmentTable)
+		return false;
+
+	const FEquipmentItemData* row = equipmentTable->FindRow<FEquipmentItemData>(itemID, TEXT("CanEquipItem"), false);
+	if (!row || row->equipSlot == EEquipmentSlot::None)
+		return false;
+
+	return CanEquipClass(row->equipClass);
+}
+
 EEquipmentSlot UC_EquipmentComponent::GetItemSlotType(FName itemID) const
 {
 	if (itemID.IsNone() || !equipmentTable)
@@ -119,6 +152,10 @@ bool UC_EquipmentComponent::EquipItem(FName itemID)
 
 	const EEquipmentSlot slot = row->equipSlot;
 	if (slot == EEquipmentSlot::None)
+		return false;
+
+	// 근/원 전용 장비는 캐릭터 타입이 맞지 않으면 장착 불가 (근접이 원거리 전용 장착 시도 등)
+	if (!CanEquipClass(row->equipClass))
 		return false;
 
 	UC_InventoryComponent* inv = GetInventory();
