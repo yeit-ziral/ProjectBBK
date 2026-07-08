@@ -1,5 +1,25 @@
 ## Common Patterns
 
+### ASC 어트리뷰트 실시간 반영 위젯 패턴 (UC_StatusWidget 참고)
+드래그 가능한 팝업창에서 ASC 어트리뷰트 변경을 실시간으로 표시하는 구조.
+```
+InitializeStatWindow(ASC)
+  → 기존 FDelegateHandle.Remove() 먼저   ← 캐릭터 교체 재호출 대비
+  → GetGameplayAttributeValueChangeDelegate(Attribute).AddUObject(this, &Callback)
+  → RefreshStatValues()                   ← 델리게이트는 변경 시만 호출되므로 현재값 즉시 표시
+
+NativeDestruct()
+  → 바인딩했던 모든 FDelegateHandle.Remove() 필수
+
+캐릭터 교체 시 (ExecuteCharacterSwitch, OnCharacterSwitched.Broadcast 직후)
+  → bStatusOpen && statusWidget → InitializeStatWindow(ASC) 재호출
+  → ASC가 PlayerState 공유이므로 재바인딩 불필요하지만,
+    새 캐릭터 GE 적용 직후 현재값 보장을 위해 RefreshStatValues 겸해서 호출
+```
+- BindWidget 이름과 어트리뷰트 이름이 다를 수 있음 (예: `damage` 어트리뷰트 → `AttackText` 위젯)
+- 루트: `[Overlay] → [SizeBox] WindowRoot → [Overlay] → [Image](배경) + [Vertical Box](콘텐츠)`
+- SizeBox Width/Height Override 수치 미입력 시 크기 0 → 클릭 불가 (Debugging #34)
+
 ### 새 PlayerGA 추가 체크리스트
 1. `UC_CharacterGA` 상속 C++ 클래스 또는 Blueprint 생성
 2. `ProjectBBKAbilityID` enum에 ID 추가 (필요 시)

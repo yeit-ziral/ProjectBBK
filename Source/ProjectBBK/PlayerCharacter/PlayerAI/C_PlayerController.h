@@ -19,6 +19,7 @@ class UC_InventoryWidget;
 class UC_EquipmentWidget;
 class UC_MerchantDialogueWidget;
 class UC_ShopWidget;
+class UC_StatusWidget;
 class UDataTable;
 class UUserWidget;
 
@@ -32,6 +33,7 @@ enum class EMouseUISource : uint8
 	SkillWheel = 1 << 1,
 	Equipment  = 1 << 2,
 	Merchant   = 1 << 3,
+	Status     = 1 << 4,
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterSwitched, int32, NewCharacterIndex);
@@ -107,6 +109,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Equipment")
 	bool IsEquipmentOpen() const { return bEquipmentOpen; }
 
+	// 스탯 창 열기/닫기/토글 — IA_Status 키로 작동. 어빌리티 발동은 차단하지 않음.
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|UI")
+	void OpenStatus();
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|UI")
+	void CloseStatus();
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|UI")
+	void ToggleStatus();
+
+	UFUNCTION(BlueprintPure, Category = "ProjectBBK|UI")
+	bool IsStatusOpen() const { return bStatusOpen; }
+
 	// 마우스 커서를 켜는 UI를 등록한다. 비어 있다가 처음 켜질 때만 커서/입력모드를 전환.
 	// widgetToFocus가 있으면 해당 위젯에 포커스를 준다(드래그 등 UMG 입력 필요 시).
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|UI")
@@ -180,6 +195,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_Equipment;
 
+	// 스탯창 토글 키 (BP에서 IA_Status 지정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
+	UInputAction* IA_Status;
+
 	// E키로 상호작용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_Interact;
@@ -214,6 +233,10 @@ protected:
 	// 상인 시선 감지 최대 거리 (cm)
 	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Merchant", meta = (ClampMin = "0"))
 	float merchantGazeDistance = 800.f;
+
+	// BP_PlayerController에서 WBP_Status 할당
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UC_StatusWidget> statusWidgetClass;
 
 	// 캐릭터 교체와 무관하게 유지되는 인벤토리 보관소
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectBBK|Inventory")
@@ -276,6 +299,12 @@ private:
 	UC_EquipmentWidget* equipmentWidget = nullptr;
 
 	bool bEquipmentOpen = false;
+
+	// 스탯창 위젯 인스턴스 (최초 1회 생성 후 유지 — 드래그 위치 보존)
+	UPROPERTY()
+	UC_StatusWidget* statusWidget = nullptr;
+
+	bool bStatusOpen = false;
 
 	// 현재 커서를 요청 중인 UI들의 비트마스크 (EMouseUISource OR 누적)
 	uint8 activeMouseUISources = 0;

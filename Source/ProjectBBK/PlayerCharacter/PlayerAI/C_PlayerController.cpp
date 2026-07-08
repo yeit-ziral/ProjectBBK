@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_PlayerController.h"
+#include "../../UI/C_StatusWidget.h"
 #include "../../Items/C_BaseItem.h"
 #include "../../Skills/C_SkillManagerComponent.h"
 #include "../../LevelSystem/C_BBKGameInstance.h"
@@ -179,6 +180,9 @@ void AC_PlayerController::SetupInputComponent()
 		if (IA_Equipment)
 			EIC->BindAction(IA_Equipment, ETriggerEvent::Started, this, &AC_PlayerController::ToggleEquipment);
 
+		if (IA_Status)
+			EIC->BindAction(IA_Status, ETriggerEvent::Started, this, &AC_PlayerController::ToggleStatus);
+
 		if (IA_Interact)
 			EIC->BindAction(IA_Interact, ETriggerEvent::Started, this, &AC_PlayerController::OnInteractInput);
 
@@ -317,6 +321,51 @@ void AC_PlayerController::CloseEquipment()
 
 	bEquipmentOpen = false;
 	PopMouseUI(EMouseUISource::Equipment);
+}
+
+void AC_PlayerController::ToggleStatus()
+{
+	if (bStatusOpen)
+		CloseStatus();
+	else
+		OpenStatus();
+}
+
+void AC_PlayerController::OpenStatus()
+{
+	if (bStatusOpen || !statusWidgetClass)
+		return;
+
+	// 최초 1회만 생성 — 닫아도 인스턴스 유지 (드래그 위치 보존)
+	if (!statusWidget)
+	{
+		statusWidget = CreateWidget<UC_StatusWidget>(this, statusWidgetClass);
+		if (!statusWidget)
+			return;
+	}
+
+	statusWidget->AddToViewport();
+
+	UAbilitySystemComponent* ASC = nullptr;
+	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+		ASC = PS->GetAbilitySystemComponent();
+
+	statusWidget->InitializeStatWindow(ASC);
+
+	bStatusOpen = true;
+	PushMouseUI(EMouseUISource::Status, statusWidget);
+}
+
+void AC_PlayerController::CloseStatus()
+{
+	if (!bStatusOpen)
+		return;
+
+	if (statusWidget)
+		statusWidget->RemoveFromParent();
+
+	bStatusOpen = false;
+	PopMouseUI(EMouseUISource::Status);
 }
 
 void AC_PlayerController::OnSwitchChar0Input()
@@ -472,6 +521,10 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
 	OnCharacterSwitched.Broadcast(NextIndex);
 
+	// 스탯창이 열려있으면 새 캐릭터 값으로 즉시 갱신
+	if (bStatusOpen && statusWidget && ASC)
+		statusWidget->InitializeStatWindow(ASC);
+
 	// HUD 초기화(SwitchCommonSkill(0)) 이후 저장된 스킬 인덱스 복원
 	// InitializeDefaultSkill이 항상 0번으로 리셋하므로 Broadcast 이후 덮어써야 함
 	if (UC_SkillManagerComponent *SM = NewChar->FindComponentByClass<UC_SkillManagerComponent>())
@@ -515,9 +568,10 @@ void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadChara
 	if (UC_SkillManagerComponent* SM = DeadCharacter->FindComponentByClass<UC_SkillManagerComponent>())
 		SM->CloseSkillWheel();
 
-	// 인벤토리/장비창 열린 채 사망 시 입력 모드 복원
+	// UI가 열린 채 전원 사망 시 입력 모드 복원
 	CloseInventory();
 	CloseEquipment();
+	CloseStatus();
 
 	int32 NextLivingIndex = -1;
 	for (int32 i = 0; i < characterRoster.Num(); i++)
