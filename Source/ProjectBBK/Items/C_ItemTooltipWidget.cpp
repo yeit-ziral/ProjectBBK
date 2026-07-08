@@ -15,27 +15,6 @@ namespace
 		const TCHAR* sign = value > 0.f ? TEXT("+") : TEXT("-");
 		lines.Add(FString::Printf(TEXT("%s %s%g"), *label, sign, FMath::Abs(value)));
 	}
-
-	// 소비 효과 태그 → 표시용 한글 라벨. 미등록 태그는 마지막 세그먼트를 그대로 사용.
-	FString ConsumableEffectLabel(const FGameplayTag& tag)
-	{
-		static const TMap<FName, FString> labels = {
-			{ FName("Data.Heal"),    TEXT("체력 회복")     },
-			{ FName("Data.Stamina"), TEXT("스태미나 회복") },
-			{ FName("Data.Mana"),    TEXT("마나 회복")     },
-			{ FName("Data.Exp"),     TEXT("경험치")        },
-		};
-
-		if (const FString* found = labels.Find(tag.GetTagName()))
-			return *found;
-
-		// 폴백: "Data.Heal" → "Heal"
-		const FString full = tag.ToString();
-		FString left, right;
-		if (full.Split(TEXT("."), &left, &right, ESearchCase::IgnoreCase, ESearchDir::FromEnd))
-			return right;
-		return full;
-	}
 }
 
 void UC_ItemTooltipWidget::ApplyHeader(UTexture2D* icon, const FText& name)
@@ -93,15 +72,9 @@ void UC_ItemTooltipWidget::SetConsumableItem(const FConsumableItemData& data)
 	if (SlotTypeText)
 		SlotTypeText->SetText(FText::FromString(TEXT("소비아이템")));
 
-	// 🟨 효과 목록 — consumeEffects 각 항목(태그→라벨, magnitude→값)
+	// 🟨 설명 — DT의 description 원문을 그대로 표시 (consumeEffects 자동 조립 대신)
 	if (EffectsText)
-	{
-		TArray<FString> lines;
-		for (const FConsumableEffectEntry& entry : data.consumeEffects)
-			AppendStatLine(lines, ConsumableEffectLabel(entry.magnitudeTag), entry.magnitude);
-
-		EffectsText->SetText(FText::FromString(FString::Join(lines, TEXT("\n"))));
-	}
+		EffectsText->SetText(data.description);
 }
 
 FText UC_ItemTooltipWidget::GetSlotDisplayName(EEquipmentSlot equipSlot)
