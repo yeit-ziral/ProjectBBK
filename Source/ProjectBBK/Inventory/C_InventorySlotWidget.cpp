@@ -6,6 +6,8 @@
 #include "../Equip/C_EquipmentSlotWidget.h"
 #include "../Items/ItemData.h"
 #include "../Items/C_ItemTooltipWidget.h"
+#include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
+#include "../NPC/C_ShopWidget.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Blueprint/DragDropOperation.h"
@@ -122,6 +124,16 @@ FReply UC_InventorySlotWidget::NativeOnMouseButtonDoubleClick(const FGeometry& I
 	// 좌클릭 더블클릭 + 채워진 슬롯일 때만
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && !currentItemID.IsNone())
 	{
+		// 상점이 열려 있으면 더블클릭 = 판매 (장착보다 우선)
+		if (AC_PlayerController* PC = Cast<AC_PlayerController>(GetOwningPlayer()))
+		{
+			if (UC_ShopWidget* Shop = PC->GetActiveShopWidget())
+			{
+				Shop->RequestSellFromInventory(currentItemID);
+				return FReply::Handled();
+			}
+		}
+
 		// 소유 캐릭터의 장비 컴포넌트 조회 (인벤토리는 컨트롤러, 장비는 캐릭터 보유)
 		if (APawn* Pawn = GetOwningPlayerPawn())
 		{

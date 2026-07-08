@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_PlayerController.h"
+#include "../../UI/C_StatusWidget.h"
 #include "../../Items/C_BaseItem.h"
 #include "../../Skills/C_SkillManagerComponent.h"
 #include "../../LevelSystem/C_BBKGameInstance.h"
@@ -12,6 +13,10 @@
 #include "../../Inventory/C_InventoryWidget.h"
 #include "../../Equip/C_EquipmentComponent.h"
 #include "../../Equip/C_EquipmentWidget.h"
+#include "../../NPC/C_MerchantNPC.h"
+#include "../../NPC/C_MerchantDialogueWidget.h"
+#include "../../NPC/C_ShopWidget.h"
+#include "Camera/PlayerCameraManager.h"
 #include "AbilitySystemComponent.h"
 #include "../../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "EnhancedInputComponent.h"
@@ -184,8 +189,14 @@ void AC_PlayerController::SetupInputComponent()
 		if (IA_Equipment)
 			EIC->BindAction(IA_Equipment, ETriggerEvent::Started, this, &AC_PlayerController::ToggleEquipment);
 
+		if (IA_Status)
+			EIC->BindAction(IA_Status, ETriggerEvent::Started, this, &AC_PlayerController::ToggleStatus);
+
 		if (IA_Interact)
 			EIC->BindAction(IA_Interact, ETriggerEvent::Started, this, &AC_PlayerController::OnInteractInput);
+
+		if (IA_TalkToNPC)
+			EIC->BindAction(IA_TalkToNPC, ETriggerEvent::Started, this, &AC_PlayerController::OnTalkToNPCInput);
 	}
 }
 
@@ -319,6 +330,51 @@ void AC_PlayerController::CloseEquipment()
 
 	bEquipmentOpen = false;
 	PopMouseUI(EMouseUISource::Equipment);
+}
+
+void AC_PlayerController::ToggleStatus()
+{
+	if (bStatusOpen)
+		CloseStatus();
+	else
+		OpenStatus();
+}
+
+void AC_PlayerController::OpenStatus()
+{
+	if (bStatusOpen || !statusWidgetClass)
+		return;
+
+	// 최초 1회만 생성 — 닫아도 인스턴스 유지 (드래그 위치 보존)
+	if (!statusWidget)
+	{
+		statusWidget = CreateWidget<UC_StatusWidget>(this, statusWidgetClass);
+		if (!statusWidget)
+			return;
+	}
+
+	statusWidget->AddToViewport();
+
+	UAbilitySystemComponent* ASC = nullptr;
+	if (AC_PlayerState* PS = GetPlayerState<AC_PlayerState>())
+		ASC = PS->GetAbilitySystemComponent();
+
+	statusWidget->InitializeStatWindow(ASC);
+
+	bStatusOpen = true;
+	PushMouseUI(EMouseUISource::Status, statusWidget);
+}
+
+void AC_PlayerController::CloseStatus()
+{
+	if (!bStatusOpen)
+		return;
+
+	if (statusWidget)
+		statusWidget->RemoveFromParent();
+
+	bStatusOpen = false;
+	PopMouseUI(EMouseUISource::Status);
 }
 
 void AC_PlayerController::OnSwitchChar0Input()
@@ -482,6 +538,10 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	// HUD가 여기에 바인딩해서 위젯을 재초기화함 (Possess 이후이므로 새 어빌리티가 ASC에 등록된 상태)
 	OnCharacterSwitched.Broadcast(NextIndex);
 
+	// 스탯창이 열려있으면 새 캐릭터 값으로 즉시 갱신
+	if (bStatusOpen && statusWidget && ASC)
+		statusWidget->InitializeStatWindow(ASC);
+
 	// HUD 초기화(SwitchCommonSkill(0)) 이후 저장된 스킬 인덱스 복원
 	// InitializeDefaultSkill이 항상 0번으로 리셋하므로 Broadcast 이후 덮어써야 함
 	if (UC_SkillManagerComponent *SM = NewChar->FindComponentByClass<UC_SkillManagerComponent>())
@@ -525,9 +585,10 @@ void AC_PlayerController::HandleCharacterDeath(AC_BasePlayerCharactor *DeadChara
 	if (UC_SkillManagerComponent* SM = DeadCharacter->FindComponentByClass<UC_SkillManagerComponent>())
 		SM->CloseSkillWheel();
 
-	// 인벤토리/장비창 열린 채 사망 시 입력 모드 복원
+	// UI가 열린 채 전원 사망 시 입력 모드 복원
 	CloseInventory();
 	CloseEquipment();
+	CloseStatus();
 
 	int32 NextLivingIndex = -1;
 	for (int32 i = 0; i < characterRoster.Num(); i++)
@@ -619,4 +680,155 @@ void AC_PlayerController::SetCurrentInteractable(AC_BaseItem* Item)
 void AC_PlayerController::ClearCurrentInteractable(AC_BaseItem* Item)
 {
 	overlappingItems.RemoveAll([Item](const TWeakObjectPtr<AC_BaseItem>& Ptr) { return Ptr.Get() == Item; });
+}
+
+// ===== 상인 NPC / 상점 =====
+
+void AC_PlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+	UpdateMerchantGaze();
+}
+
+void AC_PlayerController::UpdateMerchantGaze()
+{
+	// 상인 UI(대화/상점)가 열려 있으면 시선 감지 중지 — 포커스 유지, 재판정 안 함
+	if (activeMouseUISources != 0)
+		return;
+
+	APawn* P = GetPawn();
+	if (!P)
+	{
+		if (focusedMerchant.IsValid())
+			focusedMerchant->SetFocused(false);
+		focusedMerchant.Reset();
+		return;
+	}
+
+	FVector viewLoc;
+	FRotator viewRot;
+	GetPlayerViewPoint(viewLoc, viewRot);
+
+	const FVector traceEnd = viewLoc + viewRot.Vector() * merchantGazeDistance;
+
+	FHitResult hit;
+	FCollisionQueryParams params;
+	params.AddIgnoredActor(P);
+
+	AC_MerchantNPC* newFocus = nullptr;
+	if (GetWorld()->LineTraceSingleByChannel(hit, viewLoc, traceEnd, ECC_Visibility, params))
+		newFocus = Cast<AC_MerchantNPC>(hit.GetActor());
+
+	if (newFocus == focusedMerchant.Get())
+		return;
+
+	if (focusedMerchant.IsValid())
+		focusedMerchant->SetFocused(false);
+
+	if (newFocus)
+		newFocus->SetFocused(true);
+
+	focusedMerchant = newFocus;
+}
+
+void AC_PlayerController::OnTalkToNPCInput()
+{
+	// 이미 상인 UI가 열려 있으면 무시
+	if (activeMouseUISources & static_cast<uint8>(EMouseUISource::Merchant))
+		return;
+
+	if (focusedMerchant.IsValid())
+		OpenMerchantDialogue(focusedMerchant.Get());
+}
+
+void AC_PlayerController::OpenMerchantDialogue(AC_MerchantNPC* NPC)
+{
+	if (!NPC || !dialogueWidgetClass)
+		return;
+
+	if (dialogueWidget)
+		dialogueWidget->RemoveFromParent();
+
+	dialogueWidget = CreateWidget<UC_MerchantDialogueWidget>(this, dialogueWidgetClass);
+	if (!dialogueWidget)
+		return;
+
+	dialogueWidget->AddToViewport(9);
+	dialogueWidget->Setup(NPC, this);
+
+	NPC->PlayTalkAnim(); // 말 걸면 talk 모션
+
+	PushMouseUI(EMouseUISource::Merchant, dialogueWidget);
+}
+
+void AC_PlayerController::CloseMerchantDialogue()
+{
+	if (dialogueWidget)
+	{
+		dialogueWidget->RemoveFromParent();
+		dialogueWidget = nullptr;
+	}
+
+	PopMouseUI(EMouseUISource::Merchant);
+
+	if (focusedMerchant.IsValid())
+	{
+		focusedMerchant->StopTalkAnim();
+		focusedMerchant->SetFocused(false);
+	}
+	focusedMerchant.Reset();
+}
+
+void AC_PlayerController::OnDialogueBuyChosen(AC_MerchantNPC* NPC)
+{
+	// 대화창만 닫고 상점으로 (Merchant 커서는 유지 — OpenShop이 다시 Push)
+	if (dialogueWidget)
+	{
+		dialogueWidget->RemoveFromParent();
+		dialogueWidget = nullptr;
+	}
+
+	OpenShop(NPC);
+}
+
+void AC_PlayerController::OpenShop(AC_MerchantNPC* NPC)
+{
+	if (!NPC || !shopWidgetClass)
+		return;
+
+	if (shopWidget)
+		shopWidget->RemoveFromParent();
+
+	shopWidget = CreateWidget<UC_ShopWidget>(this, shopWidgetClass);
+	if (!shopWidget)
+		return;
+
+	shopWidget->AddToViewport(10);
+	shopWidget->Setup(NPC, inventory, this);
+	bShopOpen = true;
+
+	// 내 인벤토리도 동시에 표시
+	OpenInventory();
+
+	PushMouseUI(EMouseUISource::Merchant, shopWidget);
+}
+
+void AC_PlayerController::CloseShop()
+{
+	if (shopWidget)
+	{
+		shopWidget->RemoveFromParent();
+		shopWidget = nullptr;
+	}
+	bShopOpen = false;
+
+	CloseInventory();
+	PopMouseUI(EMouseUISource::Merchant);
+
+	if (focusedMerchant.IsValid())
+	{
+		focusedMerchant->StopTalkAnim();
+		focusedMerchant->SetFocused(false);
+	}
+	focusedMerchant.Reset();
 }
