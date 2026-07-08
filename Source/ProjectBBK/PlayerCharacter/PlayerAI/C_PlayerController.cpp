@@ -13,6 +13,10 @@
 #include "../../Inventory/C_InventoryWidget.h"
 #include "../../Equip/C_EquipmentComponent.h"
 #include "../../Equip/C_EquipmentWidget.h"
+#include "../../NPC/C_MerchantNPC.h"
+#include "../../NPC/C_MerchantDialogueWidget.h"
+#include "../../NPC/C_ShopWidget.h"
+#include "Camera/PlayerCameraManager.h"
 #include "AbilitySystemComponent.h"
 #include "../../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "EnhancedInputComponent.h"
@@ -181,6 +185,9 @@ void AC_PlayerController::SetupInputComponent()
 
 		if (IA_Interact)
 			EIC->BindAction(IA_Interact, ETriggerEvent::Started, this, &AC_PlayerController::OnInteractInput);
+
+		if (IA_TalkToNPC)
+			EIC->BindAction(IA_TalkToNPC, ETriggerEvent::Started, this, &AC_PlayerController::OnTalkToNPCInput);
 	}
 }
 
@@ -656,4 +663,155 @@ void AC_PlayerController::SetCurrentInteractable(AC_BaseItem* Item)
 void AC_PlayerController::ClearCurrentInteractable(AC_BaseItem* Item)
 {
 	overlappingItems.RemoveAll([Item](const TWeakObjectPtr<AC_BaseItem>& Ptr) { return Ptr.Get() == Item; });
+}
+
+// ===== 상인 NPC / 상점 =====
+
+void AC_PlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+	UpdateMerchantGaze();
+}
+
+void AC_PlayerController::UpdateMerchantGaze()
+{
+	// 상인 UI(대화/상점)가 열려 있으면 시선 감지 중지 — 포커스 유지, 재판정 안 함
+	if (activeMouseUISources != 0)
+		return;
+
+	APawn* P = GetPawn();
+	if (!P)
+	{
+		if (focusedMerchant.IsValid())
+			focusedMerchant->SetFocused(false);
+		focusedMerchant.Reset();
+		return;
+	}
+
+	FVector viewLoc;
+	FRotator viewRot;
+	GetPlayerViewPoint(viewLoc, viewRot);
+
+	const FVector traceEnd = viewLoc + viewRot.Vector() * merchantGazeDistance;
+
+	FHitResult hit;
+	FCollisionQueryParams params;
+	params.AddIgnoredActor(P);
+
+	AC_MerchantNPC* newFocus = nullptr;
+	if (GetWorld()->LineTraceSingleByChannel(hit, viewLoc, traceEnd, ECC_Visibility, params))
+		newFocus = Cast<AC_MerchantNPC>(hit.GetActor());
+
+	if (newFocus == focusedMerchant.Get())
+		return;
+
+	if (focusedMerchant.IsValid())
+		focusedMerchant->SetFocused(false);
+
+	if (newFocus)
+		newFocus->SetFocused(true);
+
+	focusedMerchant = newFocus;
+}
+
+void AC_PlayerController::OnTalkToNPCInput()
+{
+	// 이미 상인 UI가 열려 있으면 무시
+	if (activeMouseUISources & static_cast<uint8>(EMouseUISource::Merchant))
+		return;
+
+	if (focusedMerchant.IsValid())
+		OpenMerchantDialogue(focusedMerchant.Get());
+}
+
+void AC_PlayerController::OpenMerchantDialogue(AC_MerchantNPC* NPC)
+{
+	if (!NPC || !dialogueWidgetClass)
+		return;
+
+	if (dialogueWidget)
+		dialogueWidget->RemoveFromParent();
+
+	dialogueWidget = CreateWidget<UC_MerchantDialogueWidget>(this, dialogueWidgetClass);
+	if (!dialogueWidget)
+		return;
+
+	dialogueWidget->AddToViewport(9);
+	dialogueWidget->Setup(NPC, this);
+
+	NPC->PlayTalkAnim(); // 말 걸면 talk 모션
+
+	PushMouseUI(EMouseUISource::Merchant, dialogueWidget);
+}
+
+void AC_PlayerController::CloseMerchantDialogue()
+{
+	if (dialogueWidget)
+	{
+		dialogueWidget->RemoveFromParent();
+		dialogueWidget = nullptr;
+	}
+
+	PopMouseUI(EMouseUISource::Merchant);
+
+	if (focusedMerchant.IsValid())
+	{
+		focusedMerchant->StopTalkAnim();
+		focusedMerchant->SetFocused(false);
+	}
+	focusedMerchant.Reset();
+}
+
+void AC_PlayerController::OnDialogueBuyChosen(AC_MerchantNPC* NPC)
+{
+	// 대화창만 닫고 상점으로 (Merchant 커서는 유지 — OpenShop이 다시 Push)
+	if (dialogueWidget)
+	{
+		dialogueWidget->RemoveFromParent();
+		dialogueWidget = nullptr;
+	}
+
+	OpenShop(NPC);
+}
+
+void AC_PlayerController::OpenShop(AC_MerchantNPC* NPC)
+{
+	if (!NPC || !shopWidgetClass)
+		return;
+
+	if (shopWidget)
+		shopWidget->RemoveFromParent();
+
+	shopWidget = CreateWidget<UC_ShopWidget>(this, shopWidgetClass);
+	if (!shopWidget)
+		return;
+
+	shopWidget->AddToViewport(10);
+	shopWidget->Setup(NPC, inventory, this);
+	bShopOpen = true;
+
+	// 내 인벤토리도 동시에 표시
+	OpenInventory();
+
+	PushMouseUI(EMouseUISource::Merchant, shopWidget);
+}
+
+void AC_PlayerController::CloseShop()
+{
+	if (shopWidget)
+	{
+		shopWidget->RemoveFromParent();
+		shopWidget = nullptr;
+	}
+	bShopOpen = false;
+
+	CloseInventory();
+	PopMouseUI(EMouseUISource::Merchant);
+
+	if (focusedMerchant.IsValid())
+	{
+		focusedMerchant->StopTalkAnim();
+		focusedMerchant->SetFocused(false);
+	}
+	focusedMerchant.Reset();
 }
