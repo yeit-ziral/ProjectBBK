@@ -254,3 +254,12 @@ TArray<FPerkDisplayInfo> UC_LevelUpPerkComponent::GetOwnedPerks() const
 	}
 	return Result;
 }
+
+int32 UC_LevelUpPerkComponent::GetElementLevel(FGameplayTag ElementTag) const
+{
+	if(const FElementState* State = elements.Find(ElementTag))
+	{
+		return State->Level;
+	}
+	return 0;
+}

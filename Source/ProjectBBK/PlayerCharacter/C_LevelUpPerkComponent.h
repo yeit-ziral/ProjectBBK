@@ -73,6 +73,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	TArray<FPerkDisplayInfo> GetOwnedPerks() const;
 
+	//현재 해당 속성 레벨 조회(없으면 0)
+	UFUNCTION(BlueprintCallable, Category = "Perk")
+	int32 GetElementLevel(FGameplayTag ElementTag) const;
+
 	// BP(UMG)가 바인딩 → 후보 3개를 받아 위젯을 띄운다.
 	UPROPERTY(BlueprintAssignable, Category = "Perk")
 	FOnPerkChoicesReady OnPerkChoicesReady;
