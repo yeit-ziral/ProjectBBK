@@ -3,6 +3,7 @@
 #include "C_ShopWidget.h"
 #include "C_ShopSlotWidget.h"
 #include "C_QuantityPopupWidget.h"
+#include "C_ShopMessageWidget.h"
 #include "C_MerchantNPC.h"
 #include "../Inventory/C_InventoryComponent.h"
 #include "../Inventory/C_InventorySlotWidget.h"
@@ -25,6 +26,20 @@ void UC_ShopWidget::NativeDestruct()
 {
 	if (inventory.IsValid())
 		inventory->OnMoneyChanged.RemoveDynamic(this, &UC_ShopWidget::OnMoneyChanged);
+
+	// 상점을 닫을 때 떠 있던 수량 팝업이 화면에 남지 않도록 정리
+	if (activePopup)
+	{
+		activePopup->RemoveFromParent();
+		activePopup = nullptr;
+	}
+
+	// 안내 팝업(골드 부족 등)도 함께 정리
+	if (activeMessage)
+	{
+		activeMessage->RemoveFromParent();
+		activeMessage = nullptr;
+	}
 
 	Super::NativeDestruct();
 }
@@ -92,8 +107,15 @@ void UC_ShopWidget::OnStockSlotClicked(FName ItemID, int32 BuyPrice, int32 Stock
 	const int32 stockCap   = (Stock < 0) ? affordable : Stock;
 	const int32 maxQty     = FMath::Min(affordable, stockCap);
 
+	// 개당 가격조차 소지금으로 못 내면 골드 부족 안내
+	if (affordable <= 0)
+	{
+		ShowMessage(NSLOCTEXT("Shop", "NotEnoughGold", "골드가 부족합니다"));
+		return;
+	}
+
 	if (maxQty <= 0)
-		return; // 소지금/재고 부족 — 무동작 (BP에서 사운드 등 피드백 추가 가능)
+		return; // 재고 부족 — 무동작 (BP에서 사운드 등 피드백 추가 가능)
 
 	if (maxQty == 1 || !quantityPopupClass)
 	{
@@ -101,15 +123,8 @@ void UC_ShopWidget::OnStockSlotClicked(FName ItemID, int32 BuyPrice, int32 Stock
 		return;
 	}
 
-	// 수량 팝업
-	UC_QuantityPopupWidget* Popup = CreateWidget<UC_QuantityPopupWidget>(this, quantityPopupClass);
-	if (!Popup)
-	{
-		ExecuteBuy(ItemID, 1);
-		return;
-	}
-	Popup->Setup(this, inventory.Get(), EShopTransactionMode::Buy, ItemID, BuyPrice, maxQty);
-	Popup->AddToViewport(20);
+	// 수량 팝업 (기존 팝업이 있으면 교체)
+	ShowQuantityPopup(EShopTransactionMode::Buy, ItemID, BuyPrice, maxQty);
 }
 
 // ---------- 판매 ----------
@@ -123,7 +138,8 @@ void UC_ShopWidget::RequestSellFromInventory(FName ItemID)
 	if (owned <= 0)
 		return;
 
-	if (owned == 1 || !quantityPopupClass)
+	// 팝업 클래스가 없을 때만 즉시 1개 판매로 폴백 — 보유 수량이 1개여도 수량창을 띄운다
+	if (!quantityPopupClass)
 	{
 		ExecuteSell(ItemID, 1);
 		return;
@@ -131,14 +147,58 @@ void UC_ShopWidget::RequestSellFromInventory(FName ItemID)
 
 	const int32 sellPrice = merchant->GetSellPrice(ItemID);
 
+	// 수량 팝업 (기존 팝업이 있으면 교체)
+	ShowQuantityPopup(EShopTransactionMode::Sell, ItemID, sellPrice, owned);
+}
+
+void UC_ShopWidget::ShowQuantityPopup(EShopTransactionMode Mode, FName ItemID, int32 UnitPrice, int32 MaxQuantity)
+{
+	if (!quantityPopupClass || !inventory.IsValid())
+		return;
+
+	// 이미 떠 있는 수량 팝업이 있으면 먼저 닫는다.
+	//  - 같은 아이템을 다시 눌러도 창이 무한으로 쌓이지 않음
+	//  - 다른 아이템을 누르면 기존 창이 닫히고 새 창으로 교체됨
+	if (activePopup)
+	{
+		activePopup->RemoveFromParent();
+		activePopup = nullptr;
+	}
+
 	UC_QuantityPopupWidget* Popup = CreateWidget<UC_QuantityPopupWidget>(this, quantityPopupClass);
 	if (!Popup)
-	{
-		ExecuteSell(ItemID, 1);
 		return;
-	}
-	Popup->Setup(this, inventory.Get(), EShopTransactionMode::Sell, ItemID, sellPrice, owned);
+
+	Popup->Setup(this, inventory.Get(), Mode, ItemID, UnitPrice, MaxQuantity);
 	Popup->AddToViewport(20);
+	activePopup = Popup;
+}
+
+void UC_ShopWidget::ShowMessage(const FText& Message)
+{
+	if (!messagePopupClass)
+		return; // 안내창 미지정 — 조용히 무동작
+
+	// 이미 떠 있는 안내창이 있으면 교체 (중복 누적 방지)
+	if (activeMessage)
+	{
+		activeMessage->RemoveFromParent();
+		activeMessage = nullptr;
+	}
+
+	UC_ShopMessageWidget* Popup = CreateWidget<UC_ShopMessageWidget>(this, messagePopupClass);
+	if (!Popup)
+		return;
+
+	Popup->AddToViewport(30);
+	Popup->ShowMessage(Message);
+	activeMessage = Popup;
+}
+
+void UC_ShopWidget::NotifyPopupClosed(UC_QuantityPopupWidget* Popup)
+{
+	if (activePopup == Popup)
+		activePopup = nullptr;
 }
 
 void UC_ShopWidget::ConfirmQuantity(EShopTransactionMode Mode, FName ItemID, int32 Quantity)

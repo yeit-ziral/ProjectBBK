@@ -13,6 +13,7 @@ class UButton;
 class UWidget;
 class UC_ShopSlotWidget;
 class UC_QuantityPopupWidget;
+class UC_ShopMessageWidget;
 class UC_InventoryComponent;
 class AC_MerchantNPC;
 class AC_PlayerController;
@@ -44,6 +45,9 @@ public:
 
 	// 수량 팝업 확정 콜백 (구매/판매 공용).
 	void ConfirmQuantity(EShopTransactionMode Mode, FName ItemID, int32 Quantity);
+
+	// 수량 팝업이 스스로 닫힐 때(확정/취소) 소유 상점에 알림 → activePopup 정리.
+	void NotifyPopupClosed(UC_QuantityPopupWidget* Popup);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -80,6 +84,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<UC_QuantityPopupWidget> quantityPopupClass;
 
+	// 안내 팝업(골드 부족 등). 미지정 시 안내창 없이 무동작.
+	UPROPERTY(EditDefaultsOnly, Category = "Shop")
+	TSubclassOf<UC_ShopMessageWidget> messagePopupClass;
+
 private:
 	UFUNCTION()
 	void OnCloseClicked();
@@ -90,6 +98,12 @@ private:
 	void RefreshStock();
 	void UpdateMoneyDisplay(int32 Amount);
 
+	// 수량 팝업 생성(구매/판매 공용). 기존 팝업이 있으면 닫고 새로 띄운다(중복/교체 처리).
+	void ShowQuantityPopup(EShopTransactionMode Mode, FName ItemID, int32 UnitPrice, int32 MaxQuantity);
+
+	// 간단 안내 팝업 표시(골드 부족 등). 기존 안내창이 있으면 교체.
+	void ShowMessage(const FText& Message);
+
 	// 실제 구매/판매 처리 (수량 확정 후)
 	void ExecuteBuy(FName ItemID, int32 Quantity);
 	void ExecuteSell(FName ItemID, int32 Quantity);
@@ -97,6 +111,14 @@ private:
 	TWeakObjectPtr<AC_MerchantNPC> merchant;
 	TWeakObjectPtr<UC_InventoryComponent> inventory;
 	TWeakObjectPtr<AC_PlayerController> ownerPC;
+
+	// 현재 떠 있는 수량 팝업(구매/판매). 동시에 하나만 유지한다.
+	UPROPERTY()
+	UC_QuantityPopupWidget* activePopup = nullptr;
+
+	// 현재 떠 있는 안내 팝업(골드 부족 등). 동시에 하나만 유지한다.
+	UPROPERTY()
+	UC_ShopMessageWidget* activeMessage = nullptr;
 
 	// 창 드래그 상태
 	bool bIsDragging = false;

@@ -26,7 +26,9 @@ void UC_ShopSlotWidget::SetStock(UC_ShopWidget* Owner, UC_InventoryComponent* In
 			brush.DrawAs    = ESlateBrushDrawType::Image;
 			brush.ImageSize = FVector2D(64.f, 64.f);
 			ItemIcon->SetBrush(brush);
-			ItemIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+			// Visible로 두어야 아이콘 위 클릭도 슬롯(부모)으로 버블링되어 구매창이 뜬다.
+			// (HitTestInvisible이면 아이콘 영역 클릭이 무시되어 이름만 눌러야 동작함)
+			ItemIcon->SetVisibility(ESlateVisibility::Visible);
 		}
 		else
 		{
