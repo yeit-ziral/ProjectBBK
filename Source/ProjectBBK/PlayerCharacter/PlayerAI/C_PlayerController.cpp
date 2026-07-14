@@ -549,6 +549,10 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 		ASC->RemoveLooseGameplayTag(DeadTag);
 	}
 
+	// 레벨 복원이 끝났으니 퍽 감지 다시 켬
+	if (PerkComp)
+		PerkComp->SetIgnoreLevelChanges(false);
+
 	// 이전 캐릭터 비활성화
 	OldChar->SetActorHiddenInGame(true);
 	OldChar->SetActorEnableCollision(false);
