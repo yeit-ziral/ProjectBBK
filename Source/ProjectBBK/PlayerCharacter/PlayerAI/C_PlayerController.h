@@ -203,6 +203,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_Interact;
 
+	// 퀵슬롯(WBP_UseItem) 0번/1번 사용 키
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
+	UInputAction* IA_UseItem0;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
+	UInputAction* IA_UseItem1;
+
 	// G키로 상인 NPC 대화
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectBBK|Input")
 	UInputAction* IA_TalkToNPC;
@@ -271,6 +278,8 @@ private:
 	void OnSwitchChar1Input();
 	void OnInteractInput();
 	void OnTalkToNPCInput();
+	void OnUseItemSlot0Input();
+	void OnUseItemSlot1Input();
 	void ExecuteCharacterSwitch(int32 NextIndex);
 
 	// 시선 트레이스 → 포커스 상인 갱신 (매 틱)

@@ -2,11 +2,15 @@
 
 #include "C_InventoryComponent.h"
 #include "../Items/ItemData.h"
+#include "../PlayerCharacter/C_PlayerState.h"
 #include "Engine/DataTable.h"
+#include "AbilitySystemComponent.h"
+#include "GameFramework/PlayerController.h"
 
 UC_InventoryComponent::UC_InventoryComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	quickSlots.SetNum(NumQuickSlots);
 }
 
 void UC_InventoryComponent::BeginPlay()
@@ -241,4 +245,77 @@ bool UC_InventoryComponent::RemoveMoney(int32 amount)
 	money -= amount;
 	OnMoneyChanged.Broadcast(money);
 	return true;
+}
+
+bool UC_InventoryComponent::UseItem(FName itemID)
+{
+	FConsumableItemData data;
+	if (!GetConsumableData(itemID, data)) return false;      // 소비 아이템이 아님
+	if (data.consumeEffects.IsEmpty()) return false;         // 효과 없는 아이템의 무의미한 소모 방지
+	if (!HasItem(itemID, 1)) return false;                   // 재고 확인이 GE 적용보다 먼저
+
+	// ASC는 반드시 PlayerState 경유로 취득 (CLAUDE.md GAS 규칙) — 인벤토리 소유자는 PlayerController
+	APlayerController* PC = Cast<APlayerController>(GetOwner());
+	AC_PlayerState* PS = PC ? PC->GetPlayerState<AC_PlayerState>() : nullptr;
+	UAbilitySystemComponent* ASC = PS ? PS->GetAbilitySystemComponent() : nullptr;
+	if (!ASC) return false;
+
+	FGameplayEffectContextHandle ctx = ASC->MakeEffectContext();
+	ctx.AddSourceObject(GetOwner());
+
+	for (const FConsumableEffectEntry& entry : data.consumeEffects)
+	{
+		if (!entry.effect) continue;
+
+		FGameplayEffectSpecHandle spec = ASC->MakeOutgoingSpec(entry.effect, 1.f, ctx);
+		if (!spec.IsValid()) continue;
+
+		spec.Data->SetSetByCallerMagnitude(entry.magnitudeTag, entry.magnitude);
+		ASC->ApplyGameplayEffectSpecToSelf(*spec.Data);
+	}
+
+	RemoveItem(itemID, 1);
+
+	// 등록된 퀵슬롯 전부 갱신 (재고 감소분 반영, 0개 시 반투명 처리는 위젯 쪽 책임)
+	for (int32 i = 0; i < quickSlots.Num(); ++i)
+	{
+		if (quickSlots[i] == itemID)
+			OnQuickSlotChanged.Broadcast(i);
+	}
+
+	return true;
+}
+
+bool UC_InventoryComponent::RegisterQuickSlot(int32 SlotIndex, FName ItemID)
+{
+	if (!quickSlots.IsValidIndex(SlotIndex)) return false;
+
+	FConsumableItemData data;
+	if (!GetConsumableData(ItemID, data)) return false;   // 소비 아이템만 등록 허용
+
+	quickSlots[SlotIndex] = ItemID;
+	OnQuickSlotChanged.Broadcast(SlotIndex);
+	return true;
+}
+
+bool UC_InventoryComponent::UnregisterQuickSlot(int32 SlotIndex)
+{
+	if (!quickSlots.IsValidIndex(SlotIndex) || quickSlots[SlotIndex].IsNone()) return false;
+
+	quickSlots[SlotIndex] = NAME_None;
+	OnQuickSlotChanged.Broadcast(SlotIndex);
+	return true;
+}
+
+FName UC_InventoryComponent::GetQuickSlotItem(int32 SlotIndex) const
+{
+	return quickSlots.IsValidIndex(SlotIndex) ? quickSlots[SlotIndex] : NAME_None;
+}
+
+bool UC_InventoryComponent::UseQuickSlot(int32 SlotIndex)
+{
+	const FName itemID = GetQuickSlotItem(SlotIndex);
+	if (itemID.IsNone()) return false;
+
+	return UseItem(itemID);
 }

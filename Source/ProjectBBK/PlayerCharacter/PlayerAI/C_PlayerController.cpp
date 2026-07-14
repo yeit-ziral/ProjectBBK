@@ -197,6 +197,12 @@ void AC_PlayerController::SetupInputComponent()
 
 		if (IA_TalkToNPC)
 			EIC->BindAction(IA_TalkToNPC, ETriggerEvent::Started, this, &AC_PlayerController::OnTalkToNPCInput);
+
+		if (IA_UseItem0)
+			EIC->BindAction(IA_UseItem0, ETriggerEvent::Started, this, &AC_PlayerController::OnUseItemSlot0Input);
+
+		if (IA_UseItem1)
+			EIC->BindAction(IA_UseItem1, ETriggerEvent::Started, this, &AC_PlayerController::OnUseItemSlot1Input);
 	}
 }
 
@@ -385,6 +391,18 @@ void AC_PlayerController::OnSwitchChar0Input()
 void AC_PlayerController::OnSwitchChar1Input()
 {
 	SwitchToCharacter(1);
+}
+
+void AC_PlayerController::OnUseItemSlot0Input()
+{
+	if (inventory)
+		inventory->UseQuickSlot(0);
+}
+
+void AC_PlayerController::OnUseItemSlot1Input()
+{
+	if (inventory)
+		inventory->UseQuickSlot(1);
 }
 
 void AC_PlayerController::SwitchToCharacter(int32 NextIndex, bool bForce)
