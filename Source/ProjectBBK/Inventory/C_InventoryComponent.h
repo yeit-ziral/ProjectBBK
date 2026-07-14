@@ -31,6 +31,7 @@ struct FInventorySlot
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMoneyChanged, int32, NewAmount);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnQuickSlotChanged, int32, SlotIndex);
 
 /**
  * 인벤토리 코어 컴포넌트 (UI/화폐/장착/플레이어 통합 제외).
@@ -84,6 +85,33 @@ public:
 	// GetItemData는 FBaseItemData로 슬라이싱돼 효과가 잘리므로 전체가 필요하면 이쪽 사용. 소비 DT에 없으면 false.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	bool GetConsumableData(FName itemID, FConsumableItemData& OutData) const;
+
+	// 소비 아이템 사용 — consumeEffects를 순회해 ASC(PlayerState 경유)에 GE 적용 후 1개 소모.
+	// 미보유·효과 없음·ASC 취득 실패 시 false (GE 미적용, 스택도 유지).
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool UseItem(FName itemID);
+
+	// ===== 퀵슬롯 (F1/F2 등으로 즉시 사용할 소비 아이템 슬롯, 총 2개) =====
+
+	// SlotIndex(0~1)에 소비 아이템을 등록 — 인벤토리에서 제거하지 않고 itemID 참조만 저장. 소비 아이템이 아니면 false.
+	UFUNCTION(BlueprintCallable, Category = "Inventory|QuickSlot")
+	bool RegisterQuickSlot(int32 SlotIndex, FName ItemID);
+
+	// 등록 해제 (재고 0이어도 자동 해제되지 않으므로 별도 호출 필요 시 사용)
+	UFUNCTION(BlueprintCallable, Category = "Inventory|QuickSlot")
+	bool UnregisterQuickSlot(int32 SlotIndex);
+
+	// SlotIndex에 등록된 itemID (미등록이면 None)
+	UFUNCTION(BlueprintPure, Category = "Inventory|QuickSlot")
+	FName GetQuickSlotItem(int32 SlotIndex) const;
+
+	// SlotIndex에 등록된 아이템을 사용 (UseItem 호출)
+	UFUNCTION(BlueprintCallable, Category = "Inventory|QuickSlot")
+	bool UseQuickSlot(int32 SlotIndex);
+
+	// 퀵슬롯 등록/해제/사용(재고 변화) 시 브로드캐스트 — WBP_UseItem 갱신용
+	UPROPERTY(BlueprintAssignable, Category = "Inventory|QuickSlot")
+	FOnQuickSlotChanged OnQuickSlotChanged;
 
 	// 런타임에 조회용 DataTable 지정 — EditDefaultsOnly 슬롯을 코드/소유자에서 주입할 때.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
@@ -139,4 +167,11 @@ private:
 
 	// slots 배열을 maxSlots 고정 크기로 보장 (빈칸 포함). 모든 변경 함수 진입 시 호출.
 	void EnsureSlots();
+
+	// 퀵슬롯 개수 (요구사항상 고정 2개)
+	static constexpr int32 NumQuickSlots = 2;
+
+	// 퀵슬롯별 등록된 itemID (참조만 — 인벤토리 slots와 무관, 생성자에서 NumQuickSlots 크기로 고정)
+	UPROPERTY()
+	TArray<FName> quickSlots;
 };

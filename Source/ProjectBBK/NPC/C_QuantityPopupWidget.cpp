@@ -93,12 +93,18 @@ void UC_QuantityPopupWidget::OnMinusClicked()
 void UC_QuantityPopupWidget::OnConfirmClicked()
 {
 	if (ownerShop.IsValid())
+	{
 		ownerShop->ConfirmQuantity(mode, itemID, currentQuantity);
+		ownerShop->NotifyPopupClosed(this);
+	}
 
 	RemoveFromParent();
 }
 
 void UC_QuantityPopupWidget::OnCancelClicked()
 {
+	if (ownerShop.IsValid())
+		ownerShop->NotifyPopupClosed(this);
+
 	RemoveFromParent();
 }
