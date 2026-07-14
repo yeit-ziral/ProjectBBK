@@ -8,6 +8,10 @@
 
 void UC_LevelUpPerkComponent::HandleLevelUp(int32 NewLevel, int32 OldLevel)
 {
+	// 캐릭터 바꿀 때 레벨 변화가 퍽 띄우지 않게 잠깐 끔
+	if (bIgnoreLevelChanges)
+		return;
+
 	// ⚠️ level 어트리뷰트는 최초 초기화(예: 0→1) 때도 변경 델리게이트가 불린다.
 	//    "실제로 레벨이 올랐을 때"만 처리해야 게임 시작 직후 선택창이 뜨는 사고를 막는다.
 	if (NewLevel <= OldLevel)
@@ -135,6 +139,8 @@ void UC_LevelUpPerkComponent::AddElementLevel(const FPerkData& Perk)
 	State.DamagePerLevel = Perk.elementDamagePerLevel;
 	State.MaxLevel = Perk.elementMaxLevel;
 	State.Color = Perk.elementColor;
+	State.DisplayName = Perk.DisplayName;
+	State.Icon = Perk.Icon;
 
 	// 레벨 +1
 	State.Level = FMath::Min(State.Level + 1, State.MaxLevel);
@@ -229,4 +235,31 @@ void UC_LevelUpPerkComponent::DebugSelectPerk(FName RowName)
 		AddElementLevel(*Row);
 	}
 	// 스탯 보상도 테스트 하려면 여기서 Row->Effect를 ASC에 적용하면 된다.
+}
+
+TArray<FPerkDisplayInfo> UC_LevelUpPerkComponent::GetOwnedPerks() const
+{
+	TArray<FPerkDisplayInfo> Result;
+
+	for (const TPair<FGameplayTag, FElementState>& Pair : elements)
+	{
+		FPerkDisplayInfo Info;
+		Info.ElementTag = Pair.Key;
+		Info.DisplayName = Pair.Value.DisplayName;
+		Info.Level = Pair.Value.Level;
+		Info.MaxLevel = Pair.Value.MaxLevel;
+		Info.Color = Pair.Value.Color;
+		Info.Icon = Pair.Value.Icon;
+		Result.Add(Info);
+	}
+	return Result;
+}
+
+int32 UC_LevelUpPerkComponent::GetElementLevel(FGameplayTag ElementTag) const
+{
+	if(const FElementState* State = elements.Find(ElementTag))
+	{
+		return State->Level;
+	}
+	return 0;
 }

@@ -22,6 +22,12 @@ struct FElementState
 
 	UPROPERTY()
 	FLinearColor Color = FLinearColor::Black;
+	
+	UPROPERTY()
+	FText DisplayName;
+
+	UPROPERTY()
+	TObjectPtr<UTexture2D> Icon = nullptr;
 };
 
 // 후보 보상 3개가 준비되면 UMG가 받아서 위젯을 띄우도록 알리는 델리게이트.
@@ -59,6 +65,17 @@ public:
 	// 디버그용. RowName에 해당하는 perk를 바로 적용한다.
 	UFUNCTION(BlueprintCallable, Category = "Perk|Debug")
 	void DebugSelectPerk(FName RowName);
+
+	//캐릭터 바꿀 때 레벨 변화가 퍽 띄우지 않게 잠깐 끔
+	UFUNCTION(BlueprintCallable, Category = "Perk")
+	void SetIgnoreLevelChanges(bool bIgnore) { bIgnoreLevelChanges = bIgnore; }
+
+	UFUNCTION(BlueprintCallable, Category = "Perk")
+	TArray<FPerkDisplayInfo> GetOwnedPerks() const;
+
+	//현재 해당 속성 레벨 조회(없으면 0)
+	UFUNCTION(BlueprintCallable, Category = "Perk")
+	int32 GetElementLevel(FGameplayTag ElementTag) const;
 
 	// BP(UMG)가 바인딩 → 후보 3개를 받아 위젯을 띄운다.
 	UPROPERTY(BlueprintAssignable, Category = "Perk")
@@ -103,4 +120,6 @@ private:
 
 	void AddElementLevel(const FPerkData& Perk); // 속성 레벨 +1, primary 속성 갱신
 	float ComputeElementalTrueDamage() const;		 // 이번 타격의 속성 true 데미지 합
+
+	bool bIgnoreLevelChanges = false; // 캐릭터 바꿀 때 레벨 변화가 퍽 띄우지 않게 잠깐 끔
 };

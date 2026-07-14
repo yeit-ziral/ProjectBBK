@@ -11,6 +11,29 @@
 class UTexture2D;
 class UNiagaraSystem;
 
+USTRUCT(BlueprintType)
+struct FPerkDisplayInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	FGameplayTag ElementTag;
+
+	UPROPERTY(BlueprintReadOnly) 
+	FText DisplayName;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 Level = 0;
+	UPROPERTY(BlueprintReadOnly)
+	int32 MaxLevel = 1;
+
+	UPROPERTY(BlueprintReadOnly)
+	FLinearColor Color = FLinearColor::White;
+
+	UPROPERTY(BlueprintReadOnly) 
+	TObjectPtr<UTexture2D> Icon = nullptr;
+};
+
 /**
  * 레벨업 특전(선택 보상) 한 개를 나타내는 DataTable 행.
  * 새 보상을 추가하려면 코드 수정 없이 DataTable에 행만 추가하면 된다.
