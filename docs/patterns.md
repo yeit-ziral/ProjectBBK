@@ -662,3 +662,33 @@ DefaultEngine.ini [/Script/Engine.Engine]
 - SM_GameSettings (Sound Class Mix 에셋)
 - BP_GameInstance Audio 슬롯에 4개 에셋 할당
 - 슬라이더 Height 조절: Bar Thickness 사용 (SizeBox Height Override 사용 금지 — Debugging Checklist 34번)
+
+### 퀵슬롯(참조 등록) 패턴 (`UC_InventoryComponent` 퀵슬롯 / `UC_UseItemSlotWidget` 참고)
+인벤토리에서 제거하지 않고 itemID만 참조로 등록해, 키 입력으로 즉시 사용하는 슬롯 구조.
+```
+UC_InventoryComponent
+  quickSlots: TArray<FName>  ← 고정 크기(N), itemID 참조만 (인벤토리 slots와 무관)
+  RegisterQuickSlot(index, itemID)  → GetConsumableData 성공(소비 아이템)만 허용
+  UseQuickSlot(index) → GetQuickSlotItem → UseItem(itemID)
+  OnQuickSlotChanged(int32 SlotIndex) 델리게이트 → 등록/해제/사용(재고 변화) 시 브로드캐스트
+
+UC_UseItemSlotWidget (WBP_UseItem)
+  SetSlotIndex(Inventory, Index) → 기존 델리게이트 해제 후 재바인딩(캐릭터 교체 대비 기존 패턴과 동일) + RefreshDisplay
+  NativeOnDrop → Cast<UC_InventorySlotWidget>(Payload)->GetItemID() → RegisterQuickSlot
+               → source->RestoreDisplay() 필수 (원본 인벤토리 표시 복구, Debugging #37 참고)
+  RefreshDisplay → 미등록: 아이콘/수량 숨김. 재고 0: 아이콘 RenderOpacity 반투명 + 수량 숨김(자동 해제 안 함). 재고>1: 수량 표시
+```
+- 인벤토리 슬롯 이동(`MoveSlot`)과 달리 퀵슬롯 등록은 인벤토리 `slots` 배열을 전혀 건드리지 않음 — 별도 델리게이트(`OnQuickSlotChanged`)로 관리
+- 재고 0이어도 등록 유지 → 재획득 시 재드래그 불필요 (반투명 표시로만 구분)
+
+### 컴포넌트 직접 GE 적용 패턴 확장 (`UC_InventoryComponent::UseItem` 참고)
+`AC_ExpOrb`(스폰형 픽업)와 동일하게, 단발성 소모 효과는 GA 래퍼 없이 컴포넌트에서 직접 적용.
+```
+UseItem(itemID)
+  → GetConsumableData → consumeEffects 없으면 false
+  → HasItem(itemID, 1) 확인이 GE 적용보다 먼저   ← "공짜 사용" 버그 방지
+  → ASC = Cast<APlayerController>(GetOwner())->GetPlayerState<AC_PlayerState>()->GetAbilitySystemComponent()
+  → consumeEffects 순회: MakeOutgoingSpec → SetSetByCallerMagnitude(entry.magnitudeTag, entry.magnitude) → ApplyGameplayEffectSpecToSelf
+  → 성공 시 RemoveItem(itemID, 1)
+```
+- 인벤토리는 `PlayerController` 소유이므로 ASC는 `PlayerState` 경유로 취득 (Character 직접 참조 아님 — GAS 규칙과 동일 원칙, 경로만 다름)

@@ -45,6 +45,7 @@
 | WBP_MainMenu | ✅ 완료 | UC_MainMenuWidget 기반. BindWidget: StartButton·SettingsButton·QuitButton. 게임 시작: StartGame() 경유 로딩 오버레이 포함 |
 | WBP_Settings | ✅ 완료 | UC_SettingsWidget 기반. BindWidget: CloseButton·MasterVolumeSlider·BGMVolumeSlider·SFXVolumeSlider·MasterVolumeText·BGMVolumeText·SFXVolumeText. Master/BGM/SFX 볼륨 슬라이더 + 퍼센트 텍스트. UC_BBKGameUserSettings 연동, 슬라이더 조작 시 즉시 적용·저장 |
 | WBP_Status | ✅ 완료 | UC_StatusWidget 기반. BindWidget: MaxHPText·MaxStaminaText·MoveSpeedText·DefenseText·AttackText. ASC 어트리뷰트 변경 델리게이트로 실시간 반영. SizeBox WindowRoot + 드래그 이동. 캐릭터 교체·전원 사망 시 자동 처리. IA_Status 토글 키. |
+| WBP_UseItem | ✅ 완료 | UC_UseItemSlotWidget 기반. 퀵슬롯(2개) — 인벤토리 드래그&드롭으로 소비 아이템 참조 등록(인벤토리에서 제거 안 함), IA_UseItem0/1(1·2키)로 사용, 재고 0 시 아이콘 반투명 유지. 쿨다운 기능은 별도 예정(tasks/task_useItem.md 섹션 7) |
 
 ### Effects
 | Effect | 상태 | 비고 |
