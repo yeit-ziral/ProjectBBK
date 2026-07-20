@@ -33,6 +33,11 @@ public:
 	// 현재 칸의 itemID (빈 칸이면 None) — 장비 슬롯 드롭 등 외부에서 출발 아이템 식별용
 	FName GetItemID() const { return currentItemID; }
 
+	// 드래그 시작 시 숨겼던 아이콘/수량을 원래 상태로 복구 — 다른 위젯(퀵슬롯 등)에 참조만 등록되고
+	// 인벤토리에서는 제거되지 않는 드롭 대상에서, 드롭 처리 후 이 슬롯 쪽 표시를 되살리기 위해 호출
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void RestoreDisplay();
+
 protected:
 	virtual void NativePreConstruct() override;
 
