@@ -225,3 +225,10 @@
 - **대안:** 재고 0 시 `UnregisterQuickSlot` 자동 호출
 - **선택 이유:** 포션류를 다시 파밍/구매했을 때 재드래그 없이 바로 재사용 가능하게 하기 위함
 - **트레이드오프:** 영구히 안 쓸 아이템이 슬롯을 계속 점유 — 수동 해제 UI(우클릭 등)는 이번 범위 밖
+
+### HUD 중복 생성 방지 — PlayerController 캐시 가드 vs 방치 vs C++ 방어 코드
+- **선택:** PlayerController에 `CachedHUD` 참조를 저장해 최초 1개만 생성, 이후 캐릭터는 생성 스킵 (BP 수정)
+- **대안 1:** 방치 — 게임플레이(GE 적용)는 중복 안 되고 UI 반응만 겹침, 현재는 체감 안 됨
+- **대안 2:** C++ 위젯에 "실제 표시 중인 HUD 소속인지" 체크하는 방어 코드 추가
+- **선택 이유:** `UC_InventoryComponent`의 `OnQuickSlotChanged`/`OnQuickSlotUseFailed`가 PlayerController 레벨 공유 델리게이트라, 캐릭터 로스터 구조상 캐릭터별로 생성되는 `WBP_HUD` 인스턴스 수만큼 중복 바인딩됨(Debugging Checklist #40). 근본 원인(HUD 중복 생성)을 없애야 향후 비멱등적 기능이 이 델리게이트에 추가될 때 조용히 N배로 실행되는 잠재 버그를 막을 수 있음. 스킬 아이콘/게이지가 이미 쓰는 "단일 HUD 재초기화" 패턴과도 구조적으로 일치
+- **트레이드오프:** HUD를 캐릭터별 `BeginPlay`에서 조기 생성해야 했던 원래 이유(Debugging Checklist #18, Possess 이전 타이밍 문제)가 재발하지 않는지 확인 필요 — `OnCharacterSwitched.Broadcast(0)` 기반 재초기화 흐름은 그대로 유지되므로 정상 동작 예상되나 적용 후 실제 확인 필요

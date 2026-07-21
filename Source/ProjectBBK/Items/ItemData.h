@@ -80,6 +80,10 @@ struct PROJECTBBK_API FConsumableItemData : public FBaseItemData
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
 	int32 maxStack = 99;
+
+	// 사용 후 재사용까지 대기 시간(초). 0 = 쿨다운 없음.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
+	float cooldown = 0.f;
 };
 
 USTRUCT(BlueprintType)
