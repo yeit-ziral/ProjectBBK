@@ -107,5 +107,11 @@ bool UC_UseItemSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 		return false;
 
 	// 소비 아이템이 아니면 RegisterQuickSlot 내부에서 거부(false) — 인벤토리에서 제거되지 않음, 참조만 등록
-	return inventoryComp->RegisterQuickSlot(slotIndex, itemID);
+	const bool bRegistered = inventoryComp->RegisterQuickSlot(slotIndex, itemID);
+
+	// 아이템은 인벤토리에 그대로 남으므로, 드래그 시작 시 숨겼던 원본 슬롯의 아이콘/수량을 복구
+	// (인벤토리 내부 이동과 달리 OnInventoryChanged가 브로드캐스트되지 않아 그리드가 재생성되지 않음)
+	source->RestoreDisplay();
+
+	return bRegistered;
 }

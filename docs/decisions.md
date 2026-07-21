@@ -207,3 +207,21 @@
 - **대안:** `UC_SettingsWidget`에 보관
 - **선택 이유:** 레벨 로드 후 `LoadComplete()`에서 자동 볼륨 복원이 필요. SettingsWidget에 두면 설정창을 열지 않는 한 복원 불가. GameInstance는 항상 유효하므로 모든 시점에서 접근 가능
 - **트레이드오프:** `BP_GameInstance`에 Audio 슬롯 4개(`GameSoundMix`, `SC_Master`, `SC_BGM`, `SC_SFX`) 할당 필요. 미할당 시 `ApplyVolumeSettings()`가 무동작으로 실패
+
+### UseItem 구현 위치 — GA 신설 vs `UC_InventoryComponent` 직접 구현
+- **선택:** `UC_InventoryComponent::UseItem`에서 GE 직접 적용, 새 GA 생성 안 함
+- **대안:** `GA_UseItem` 신설 후 `TryActivateAbility`로 발동
+- **선택 이유:** `AC_ExpOrb`(스폰형 픽업 아이템 패턴)와 동일한 선례 — 몽타주·애니메이션·입력 차단 등 GA 특유의 생명주기가 필요 없는 단발성 효과 적용은 GA 래퍼가 불필요한 오버헤드. CLAUDE.md 제약("UseItem은 인벤토리 컴포넌트에 둠")과도 일치
+- **트레이드오프:** 향후 "아이템 사용 애니메이션 재생" 등 GA 특유 기능이 필요해지면 GA로 리팩토링 필요
+
+### 퀵슬롯 상태 저장 위치 — 위젯 로컬 vs `UC_InventoryComponent`
+- **선택:** `quickSlots`를 `UC_InventoryComponent`(PlayerController 소유)에 저장
+- **대안:** `UC_UseItemSlotWidget` 로컬 변수로 등록 아이템 보관
+- **선택 이유:** 위젯 인스턴스는 HUD 재생성 등으로 파괴될 수 있지만 인벤토리 컴포넌트는 캐릭터 교체와 무관하게 PlayerController에 상주 — 등록 상태가 위젯 생명주기에 종속되지 않음
+- **트레이드오프:** 없음 (기존 `OnInventoryChanged`/`OnMoneyChanged`와 동일한 위치 원칙)
+
+### 퀵슬롯 재고 0 처리 — 자동 해제 vs 반투명 유지
+- **선택:** 재고 0이 돼도 등록 유지, 아이콘만 반투명 처리(`RenderOpacity=0.35`) + 수량 텍스트 숨김
+- **대안:** 재고 0 시 `UnregisterQuickSlot` 자동 호출
+- **선택 이유:** 포션류를 다시 파밍/구매했을 때 재드래그 없이 바로 재사용 가능하게 하기 위함
+- **트레이드오프:** 영구히 안 쓸 아이템이 슬롯을 계속 점유 — 수동 해제 UI(우클릭 등)는 이번 범위 밖

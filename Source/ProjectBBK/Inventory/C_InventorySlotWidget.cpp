@@ -183,6 +183,11 @@ void UC_InventorySlotWidget::NativeOnDragCancelled(const FDragDropEvent& InDragD
 	Super::NativeOnDragCancelled(InDragDropEvent, InOperation);
 
 	// 유효하지 않은 곳에 드롭(취소) → 원래 표시 복구
+	RestoreDisplay();
+}
+
+void UC_InventorySlotWidget::RestoreDisplay()
+{
 	SetSlot(inventoryComp.Get(), currentItemID, currentQuantity, slotIndex);
 }
 
