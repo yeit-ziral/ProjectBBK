@@ -96,7 +96,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Meta")
 	FGameplayAttributeData receivedDamage;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, receivedDamage)
-
+	
 	// 방어력을 무시하는 고정 데미지 (DoT, 상태이상 전용)
 	UPROPERTY(BlueprintReadOnly, Category = "Meta")
 	FGameplayAttributeData receivedTrueDamage;

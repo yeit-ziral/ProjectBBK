@@ -136,6 +136,18 @@ void UC_ChracterAttributeSetBase::PreAttributeChange(const FGameplayAttribute& A
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, 900.0f);
 	}
+	else if (Attribute == GetammoAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetmaxAmmo());
+	}
+	else if( Attribute == GetmaxAmmoAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f); // maxAmmo는 음수가 될 수 없음
+	}
+	else if (Attribute == GetreloadTimeAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.05f);
+	}
 }
 
 void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -327,6 +339,10 @@ void UC_ChracterAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimePro
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, stamina, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxStamina, COND_None, REPNOTIFY_Always);
+
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, ammo, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, maxAmmo, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, reloadTime, COND_None, REPNOTIFY_Always);
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UC_ChracterAttributeSetBase, defense, COND_None, REPNOTIFY_Always);
 }
