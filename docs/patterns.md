@@ -692,3 +692,24 @@ UseItem(itemID)
   → 성공 시 RemoveItem(itemID, 1)
 ```
 - 인벤토리는 `PlayerController` 소유이므로 ASC는 `PlayerState` 경유로 취득 (Character 직접 참조 아님 — GAS 규칙과 동일 원칙, 경로만 다름)
+
+### 다이나믹 머티리얼 기반 쿨다운 오버레이 패턴 (`C_SkillIconWidget` / `C_UseItemSlotWidget` 참고)
+스킬 쿨다운과 소비 아이템 쿨다운 양쪽에 동일하게 재사용되는 원형 웨지 오버레이 구조.
+```
+NativeConstruct
+  → CooldownOverlay(Image)의 Brush에서 머티리얼(UMaterialInterface) 추출
+  → UMaterialInstanceDynamic::Create → SetBrushFromMaterial
+
+UpdateCooldown(CurrentCooldown, MaxCooldown)
+  → Progress = CurrentCooldown / MaxCooldown   ← 줄어드는 방향 (Design Decisions 참고)
+  → cooldownMaterial->SetScalarParameterValue("Progress", Progress)
+  → 텍스트는 FMath::CeilToInt(CurrentCooldown)
+  → SetCooldownVisible(CurrentCooldown > 0)
+
+NativeTick
+  → currentCooldownTime -= DeltaTime
+  → 0 이하 도달 시 SetCooldownVisible(false)
+  → 그 외엔 매 프레임 UpdateCooldown 재호출
+```
+- `Progress` 스칼라 파라미터를 가진 머티리얼 자체를 여러 위젯이 공유 가능 (`WBP_SkillIcon`용 머티리얼을 `WBP_UseItem`에도 그대로 할당 가능)
+- 소비 아이템 쿨다운은 GAS/GE 없이 `UC_InventoryComponent`의 `GetItemCooldownRemaining` 타임스탬프 값을 그대로 `UpdateCooldown`에 흘려보내는 방식 — 위젯 쪽 구조는 GA 기반 쿨다운과 동일하게 재사용, 데이터 소스만 다름

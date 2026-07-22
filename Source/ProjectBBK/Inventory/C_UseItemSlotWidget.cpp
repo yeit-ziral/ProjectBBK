@@ -7,34 +7,139 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Blueprint/DragDropOperation.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Kismet/GameplayStatics.h"
+
+void UC_UseItemSlotWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (CooldownOverlay)
+	{
+		UMaterialInterface* BaseMaterial = Cast<UMaterialInterface>(CooldownOverlay->GetBrush().GetResourceObject());
+		if (BaseMaterial)
+		{
+			cooldownMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+			CooldownOverlay->SetBrushFromMaterial(cooldownMaterial);
+		}
+	}
+
+	SetCooldownVisible(false);
+}
+
+void UC_UseItemSlotWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (currentCooldownTime > 0.f)
+	{
+		currentCooldownTime -= InDeltaTime;
+
+		if (currentCooldownTime <= 0.f)
+		{
+			currentCooldownTime = 0.f;
+			SetCooldownVisible(false);
+		}
+		else
+		{
+			UpdateCooldown(currentCooldownTime, maxCooldownTime);
+		}
+	}
+}
 
 void UC_UseItemSlotWidget::SetSlotIndex(UC_InventoryComponent* Inventory, int32 Index)
 {
 	// 슬롯이 바뀌는 경우(재바인딩) 대비 기존 델리게이트 해제 후 재등록
 	if (inventoryComp.IsValid())
+	{
 		inventoryComp->OnQuickSlotChanged.RemoveDynamic(this, &UC_UseItemSlotWidget::OnQuickSlotChangedHandler);
+		inventoryComp->OnQuickSlotUseFailed.RemoveDynamic(this, &UC_UseItemSlotWidget::OnQuickSlotUseFailedHandler);
+	}
 
 	inventoryComp = Inventory;
 	slotIndex     = Index;
 
+	currentCooldownTime = 0.f;
+	maxCooldownTime     = 0.f;
+	SetCooldownVisible(false);
+
 	if (inventoryComp.IsValid())
+	{
 		inventoryComp->OnQuickSlotChanged.AddDynamic(this, &UC_UseItemSlotWidget::OnQuickSlotChangedHandler);
+		inventoryComp->OnQuickSlotUseFailed.AddDynamic(this, &UC_UseItemSlotWidget::OnQuickSlotUseFailedHandler);
+	}
 
 	RefreshDisplay();
+	RestoreCooldownState();
 }
 
 void UC_UseItemSlotWidget::NativeDestruct()
 {
 	if (inventoryComp.IsValid())
+	{
 		inventoryComp->OnQuickSlotChanged.RemoveDynamic(this, &UC_UseItemSlotWidget::OnQuickSlotChangedHandler);
+		inventoryComp->OnQuickSlotUseFailed.RemoveDynamic(this, &UC_UseItemSlotWidget::OnQuickSlotUseFailedHandler);
+	}
 
 	Super::NativeDestruct();
 }
 
 void UC_UseItemSlotWidget::OnQuickSlotChangedHandler(int32 ChangedSlotIndex)
 {
-	if (ChangedSlotIndex == slotIndex)
-		RefreshDisplay();
+	if (ChangedSlotIndex != slotIndex) return;
+
+	RefreshDisplay();
+	RestoreCooldownState();   // 사용 성공으로 쿨다운이 새로 시작됐을 수 있음
+}
+
+void UC_UseItemSlotWidget::OnQuickSlotUseFailedHandler(int32 ChangedSlotIndex)
+{
+	if (ChangedSlotIndex != slotIndex) return;
+
+	if (outOfStockSound)
+		UGameplayStatics::PlaySound2D(this, outOfStockSound);
+}
+
+void UC_UseItemSlotWidget::RestoreCooldownState()
+{
+	if (!inventoryComp.IsValid()) return;
+
+	const FName itemID = inventoryComp->GetQuickSlotItem(slotIndex);
+	if (itemID.IsNone()) return;
+
+	const float Remaining = inventoryComp->GetItemCooldownRemaining(itemID);
+	if (Remaining <= 0.f) return;
+
+	FConsumableItemData data;
+	if (inventoryComp->GetConsumableData(itemID, data) && data.cooldown > 0.f)
+		UpdateCooldown(Remaining, data.cooldown);
+}
+
+void UC_UseItemSlotWidget::UpdateCooldown(float CurrentCooldown, float MaxCooldown)
+{
+	if (MaxCooldown <= 0.f) return;
+
+	currentCooldownTime = CurrentCooldown;
+	maxCooldownTime     = MaxCooldown;
+
+	// 남은시간/전체쿨다운 — 줄어드는 방향 (docs/decisions.md 쿨다운 오버레이 방향 참고)
+	const float Progress = CurrentCooldown / MaxCooldown;
+
+	if (cooldownMaterial)
+		cooldownMaterial->SetScalarParameterValue(TEXT("Progress"), Progress);
+
+	if (CooldownText)
+		CooldownText->SetText(FText::AsNumber(FMath::CeilToInt(CurrentCooldown)));
+
+	SetCooldownVisible(CurrentCooldown > 0.f);
+}
+
+void UC_UseItemSlotWidget::SetCooldownVisible(bool bShow)
+{
+	const ESlateVisibility NewVisibility = bShow ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+
+	if (CooldownOverlay) CooldownOverlay->SetVisibility(NewVisibility);
+	if (CooldownText)    CooldownText->SetVisibility(NewVisibility);
 }
 
 void UC_UseItemSlotWidget::RefreshDisplay()

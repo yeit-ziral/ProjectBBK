@@ -252,6 +252,7 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 	FConsumableItemData data;
 	if (!GetConsumableData(itemID, data)) return false;      // 소비 아이템이 아님
 	if (data.consumeEffects.IsEmpty()) return false;         // 효과 없는 아이템의 무의미한 소모 방지
+	if (IsItemOnCooldown(itemID)) return false;               // 쿨다운 확인도 GE 적용보다 먼저
 	if (!HasItem(itemID, 1)) return false;                   // 재고 확인이 GE 적용보다 먼저
 
 	// ASC는 반드시 PlayerState 경유로 취득 (CLAUDE.md GAS 규칙) — 인벤토리 소유자는 PlayerController
@@ -275,6 +276,9 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 	}
 
 	RemoveItem(itemID, 1);
+
+	if (data.cooldown > 0.f)
+		itemCooldownEndTime.Add(itemID, GetWorld()->GetTimeSeconds() + data.cooldown);
 
 	// 등록된 퀵슬롯 전부 갱신 (재고 감소분 반영, 0개 시 반투명 처리는 위젯 쪽 책임)
 	for (int32 i = 0; i < quickSlots.Num(); ++i)
@@ -315,7 +319,26 @@ FName UC_InventoryComponent::GetQuickSlotItem(int32 SlotIndex) const
 bool UC_InventoryComponent::UseQuickSlot(int32 SlotIndex)
 {
 	const FName itemID = GetQuickSlotItem(SlotIndex);
-	if (itemID.IsNone()) return false;
+	if (itemID.IsNone()) return false;   // 미등록 슬롯 — 소리 없이 그냥 실패
+
+	if (!HasItem(itemID, 1))
+	{
+		OnQuickSlotUseFailed.Broadcast(SlotIndex);   // 등록은 됐으나 재고 0 — 알림 사운드 트리거
+		return false;
+	}
 
 	return UseItem(itemID);
+}
+
+bool UC_InventoryComponent::IsItemOnCooldown(FName itemID) const
+{
+	return GetItemCooldownRemaining(itemID) > 0.f;
+}
+
+float UC_InventoryComponent::GetItemCooldownRemaining(FName itemID) const
+{
+	const float* EndTime = itemCooldownEndTime.Find(itemID);
+	if (!EndTime) return 0.f;
+
+	return FMath::Max(0.f, *EndTime - GetWorld()->GetTimeSeconds());
 }

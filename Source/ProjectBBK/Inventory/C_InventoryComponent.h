@@ -113,6 +113,18 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory|QuickSlot")
 	FOnQuickSlotChanged OnQuickSlotChanged;
 
+	// 등록된 아이템의 재고가 0인 상태에서 사용 시도 시 브로드캐스트 — WBP_UseItem 알림 사운드용. 미등록 슬롯은 브로드캐스트하지 않음.
+	UPROPERTY(BlueprintAssignable, Category = "Inventory|QuickSlot")
+	FOnQuickSlotChanged OnQuickSlotUseFailed;
+
+	// itemID가 현재 쿨다운 중인지 여부 (GAS/GE 미사용, 타임스탬프 기반)
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	bool IsItemOnCooldown(FName itemID) const;
+
+	// itemID의 남은 쿨다운(초). 쿨다운 없으면 0.
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	float GetItemCooldownRemaining(FName itemID) const;
+
 	// 런타임에 조회용 DataTable 지정 — EditDefaultsOnly 슬롯을 코드/소유자에서 주입할 때.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetItemTables(UDataTable* Consumable, UDataTable* Equipment);
@@ -174,4 +186,8 @@ private:
 	// 퀵슬롯별 등록된 itemID (참조만 — 인벤토리 slots와 무관, 생성자에서 NumQuickSlots 크기로 고정)
 	UPROPERTY()
 	TArray<FName> quickSlots;
+
+	// 아이템별 쿨다운 종료 시각(GetWorld()->GetTimeSeconds() 기준) — 쿨다운 없는 아이템은 항목 없음
+	UPROPERTY()
+	TMap<FName, float> itemCooldownEndTime;
 };
