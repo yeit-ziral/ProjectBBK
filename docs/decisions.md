@@ -231,4 +231,4 @@
 - **대안 1:** 방치 — 게임플레이(GE 적용)는 중복 안 되고 UI 반응만 겹침, 현재는 체감 안 됨
 - **대안 2:** C++ 위젯에 "실제 표시 중인 HUD 소속인지" 체크하는 방어 코드 추가
 - **선택 이유:** `UC_InventoryComponent`의 `OnQuickSlotChanged`/`OnQuickSlotUseFailed`가 PlayerController 레벨 공유 델리게이트라, 캐릭터 로스터 구조상 캐릭터별로 생성되는 `WBP_HUD` 인스턴스 수만큼 중복 바인딩됨(Debugging Checklist #40). 근본 원인(HUD 중복 생성)을 없애야 향후 비멱등적 기능이 이 델리게이트에 추가될 때 조용히 N배로 실행되는 잠재 버그를 막을 수 있음. 스킬 아이콘/게이지가 이미 쓰는 "단일 HUD 재초기화" 패턴과도 구조적으로 일치
-- **트레이드오프:** HUD를 캐릭터별 `BeginPlay`에서 조기 생성해야 했던 원래 이유(Debugging Checklist #18, Possess 이전 타이밍 문제)가 재발하지 않는지 확인 필요 — `OnCharacterSwitched.Broadcast(0)` 기반 재초기화 흐름은 그대로 유지되므로 정상 동작 예상되나 적용 후 실제 확인 필요
+- **트레이드오프:** 적용 완료. 캐릭터 `BeginPlay`가 Possess보다 먼저 실행되는 구조(Debugging Checklist #18)라 `Get Controller`가 None을 반환해 참조를 얻을 수 없었음 — `Get Player Controller`(Player Index 0)로 대체해 해결(Debugging Checklist #41 참고). `OnCharacterSwitched.Broadcast(0)` 기반 재초기화 흐름은 그대로 유지되며 HUD 자체 그래프는 수정하지 않음

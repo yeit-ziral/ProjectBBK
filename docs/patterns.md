@@ -359,6 +359,21 @@ SetPositionInViewport(MouseX - DesiredSize.X / 2, MouseY - DesiredSize.Y / 2)
 - WorldDir 직접 사용 시 LineTrace 불필요 — `bBlockingHit` 폴백 처리도 생략 가능
 - 조준 모드 진입 시 `SetIgnoreLookInput(true)`로 카메라 회전 차단 → 마우스 위치가 의미 있어짐
 
+### 캐릭터 로스터 HUD 단일 생성 가드 패턴
+로스터의 각 캐릭터가 자기 `BeginPlay`에서 개별적으로 `WBP_HUD`를 생성하면 캐릭터 수만큼 중복 생성됨(Debugging Checklist 40번). PlayerController에 캐시 변수를 두고 최초 1개만 생성하도록 가드.
+```
+Event BeginPlay (각 캐릭터 BP)
+  → Get Player Controller (Player Index: 0)   ← Get Controller는 Possess 이전이라 None (Debugging Checklist 41번)
+  → Cast To BP_PlayerController
+      → Get CachedHUD → Branch (Is Valid)
+          True  → 아무것도 안 함                      // 이미 다른 캐릭터가 생성함
+          False → Create Widget(WBP_HUD, Owning Player: Cast 결과)
+                 → Add to Viewport
+                 → Set CachedHUD
+```
+- `CachedHUD`는 `BP_PlayerController`의 My Blueprint 변수로 추가 (Type: Object Reference → WBP_HUD)
+- `WBP_HUD` 자체의 `Event Construct`(아래 재초기화 패턴 참고)는 수정 불필요 — 인스턴스가 1개로 줄어들면 중복 바인딩 문제가 자동 해소됨
+
 ### 캐릭터 교체 후 HUD 재초기화 패턴 (OnCharacterSwitched 참고)
 캐릭터 로스터 시스템에서 교체 시마다 HUD 위젯을 새 어빌리티 인스턴스로 재바인딩.
 ```
