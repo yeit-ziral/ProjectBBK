@@ -11,6 +11,7 @@ class AC_EliteBlackSphere;
 class UAnimSequenceBase;
 class UGameplayEffect;
 class ACharacter;
+class USoundBase;
 struct FGameplayEventData;
 
 /**
@@ -88,6 +89,14 @@ protected:
 	// 구체가 명중하지 못하면 이 시간 뒤 어빌리티 자동 종료
 	UPROPERTY(EditDefaultsOnly, Category = "Special2|Sphere")
 	float maxWaitForHit = 6.0f;
+
+	// 검은 구체 발사 순간 재생 (EM_BlackOrbLaunch)
+	UPROPERTY(EditDefaultsOnly, Category = "Special2|Sound")
+	USoundBase* launchSound = nullptr;
+
+	// 끌어오기(드래그) 시작 순간 재생 (EM_Grab)
+	UPROPERTY(EditDefaultsOnly, Category = "Special2|Sound")
+	USoundBase* grabSound = nullptr;
 
 private:
 	UFUNCTION()

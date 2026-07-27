@@ -7,6 +7,7 @@
 #include "C_RangedMonster.generated.h"
 
 class UGameplayEffect;
+class USoundBase;
 
 /**
  *
@@ -33,6 +34,19 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+
+	// 걷기(이동) 발소리 (RM_Ranged_Walk) — 이동 중 일정 간격으로 재생
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	USoundBase* walkSound = nullptr;
+
+	// 발소리 재생 간격(초)
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	float footstepInterval = 0.45f;
+
+	// 이 수평 속도(cm/s) 이상일 때만 발소리 재생
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	float walkSpeedThreshold = 10.f;
 
 	// �ִϸ��̼� (MeleeMonster�� ������ ���)
 	UPROPERTY(EditAnywhere, Category = "Animation")
@@ -61,4 +75,7 @@ protected:
 
 private:
 	void SpawnProjectile();
+
+	// 다음 발소리까지 남은 시간
+	float footstepTimer = 0.f;
 };

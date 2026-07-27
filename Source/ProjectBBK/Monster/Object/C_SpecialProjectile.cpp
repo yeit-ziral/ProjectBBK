@@ -94,6 +94,8 @@ void AC_SpecialProjectile::Tick(float DeltaTime)
 				trailEffect->Deactivate();
 			if (explosionEffect)
 				UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), explosionEffect, targetLocation, FRotator::ZeroRotator, FVector(0.5f));
+			if (explosionSound)
+				UGameplayStatics::PlaySoundAtLocation(this, explosionSound, targetLocation);
 			ApplyAoEDamage();
 			OnReachedTarget();
 			Destroy();

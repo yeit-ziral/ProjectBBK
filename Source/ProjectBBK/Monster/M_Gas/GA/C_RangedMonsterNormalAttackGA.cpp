@@ -93,6 +93,10 @@ void UC_RangedMonsterNormalAttackGA::OnFireProjectileEvent(FGameplayEventData Pa
 
 	AC_RangedProjectile* proj = GetWorld()->SpawnActor<AC_RangedProjectile>(ProjectileClass, spawnTM, params);
 
+	// 발사음 (RM_Mech_Fireball_Attack) — 발사체 스폰(발사) 시점
+	if (fireSound)
+		UGameplayStatics::PlaySoundAtLocation(character, fireSound, spawnTM.GetLocation());
+
 	AActor* targetActor = nullptr;
 
 	if (AAIController* aiController = Cast<AAIController>(character->GetController()))

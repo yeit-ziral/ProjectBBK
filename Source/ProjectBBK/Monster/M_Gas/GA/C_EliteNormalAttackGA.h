@@ -8,6 +8,7 @@
 
 class UAnimMontage;
 class UGameplayEffect;
+class USoundBase;
 struct FGameplayEventData;
 
 /**
@@ -58,6 +59,10 @@ protected:
 	// 전방 구체판정 반경 (사거리는 DataTable AttackRange 사용)
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Trace")
 	float traceRadius = 80.0f;
+
+	// 노말 공격(스윙) 시작 시 재생 (EM_Grim_Hammer_Lord)
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Sound")
+	USoundBase* attackSound = nullptr;
 
 private:
 	// true면 다음 발동 시 attackMontage2 사용
