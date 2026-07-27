@@ -4,7 +4,6 @@
 
 | 증상 | 재현 방법 | 담당 | 비고 |
 |------|-----------|------|------|
-| 캐릭터 로스터에서 `WBP_HUD`가 캐릭터 수만큼 중복 생성 → 공유 `Inventory` 델리게이트 중복 브로드캐스트 | 재고 0인 등록된 퀵슬롯 사용 시도 → 알림 사운드가 캐릭터 수만큼 겹쳐 재생(로그로 확인, 청감상 거의 안 들림) | 기용 | PlayerController에 HUD 캐시 가드 추가해 최초 1개만 생성하도록 BP 수정 예정 (미적용) |
 
 ---
 
@@ -56,4 +55,5 @@
 37. **인벤토리 슬롯 아이템을 외부 위젯(퀵슬롯 등)으로 드래그&드롭해 "참조만" 등록할 때 원본 인벤토리 슬롯 아이콘이 사라짐** — `UC_InventorySlotWidget::NativeOnDragDetected`가 드래그 시작 시 아이콘/수량을 숨기는데, 기존엔 이게 `OnInventoryChanged` 브로드캐스트(그리드 재생성) 또는 `NativeOnDragCancelled`(드롭 실패)에서만 복구됨. 드롭 대상이 인벤토리 데이터를 건드리지 않고 성공 처리(true 반환)하면 두 복구 경로 모두 안 타서 아이콘이 계속 숨겨진 채로 남음. → `RestoreDisplay()`를 공개 함수로 분리해, 인벤토리 데이터를 바꾸지 않는 외부 드롭 핸들러(`UC_UseItemSlotWidget::NativeOnDrop` 등)에서도 명시적으로 호출해야 함.
 38. **`UWidget` 파생 클래스에서 지역 변수명을 `Visibility`로 지으면 빌드 실패(C4458)** — `UWidget::Visibility` 멤버를 가려서 발생 (프로젝트가 경고를 에러로 처리). Slate 관련 지역 변수명은 `NewVisibility` 등으로 구분할 것.
 39. **`GetName()`으로 두 `UObject` 인스턴스가 "같은 객체"인지 판별하면 안 됨** — `GetName()`은 같은 Outer 안에서만 유일성이 보장됨. 서로 다른 부모(Outer, 예: 서로 다른 `WBP_HUD` 인스턴스)를 가진 위젯은 디자인 타임 이름이 같아도 실제로는 다른 인스턴스일 수 있음. 진짜 식별에는 `GetPathName()`(Outer 전체 경로 포함) 사용.
-40. **캐릭터 로스터 시스템에서 `WBP_HUD`가 캐릭터 수만큼 중복 생성되면 `PlayerController` 소유 공유 컴포넌트(`UC_InventoryComponent` 등)의 델리게이트가 중복 브로드캐스트됨** — 스킬 아이콘/게이지처럼 캐릭터별 ASC 인스턴스에 바인딩되는 경우는 안 겹치지만, PlayerController 레벨 공유 상태에 바인딩된 위젯은 살아있는 HUD 인스턴스 수만큼 중복 반응(사운드 중복 재생 등). `GetPathName()`으로 인스턴스 비교해 확인 가능.
+40. **캐릭터 로스터 시스템에서 `WBP_HUD`가 캐릭터 수만큼 중복 생성되면 `PlayerController` 소유 공유 컴포넌트(`UC_InventoryComponent` 등)의 델리게이트가 중복 브로드캐스트됨** — 스킬 아이콘/게이지처럼 캐릭터별 ASC 인스턴스에 바인딩되는 경우는 안 겹치지만, PlayerController 레벨 공유 상태에 바인딩된 위젯은 살아있는 HUD 인스턴스 수만큼 중복 반응(사운드 중복 재생 등). `GetPathName()`으로 인스턴스 비교해 확인 가능. → `CachedHUD` 가드로 해결 (Known Issues, 41번 항목 참고)
+41. **캐릭터 로스터 시스템에서 캐릭터 `BeginPlay`에서 `Get Controller`가 항상 None을 반환할 때** — `PlayerController::BeginPlay()`가 로스터 캐릭터를 전부 `SpawnActor`로 스폰한 뒤에야 `Possess`를 호출하는 구조(18번 항목과 동일 원인)라, 각 캐릭터의 `BeginPlay` 시점엔 아직 Possess 전이므로 `Get Controller`(Pawn 자신의 컨트롤러 참조)는 None. `PlayerController` 자체는 이미 자신의 `BeginPlay`를 마치고 스폰 루프를 실행 중이므로, `Get Player Controller`(Player Index: 0, 월드 기준 전역 조회)를 대신 사용하면 Possess 여부와 무관하게 항상 유효한 참조를 얻을 수 있음. `WBP_HUD` 중복 생성 방지용 `CachedHUD` 가드 구현에 이 참조가 필요했음.
