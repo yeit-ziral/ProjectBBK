@@ -8,6 +8,7 @@
 
 class UAnimMontage;
 class UGameplayEffect;
+class USoundBase;
 
 UCLASS()
 class PROJECTBBK_API UC_RangedMonsterSpecialAttackGA : public UGameplayAbility
@@ -48,6 +49,10 @@ protected:
 	// DataTable Attack 스탯에 곱할 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Damage")
 	float damageMultiplier = 0.2f;
+
+	// 미사일 발사 순간 재생 (RM_Robot_Missile_Launch)
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Sound")
+	USoundBase* launchSound = nullptr;
 
 private:
 	UFUNCTION()

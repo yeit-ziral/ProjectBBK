@@ -6,6 +6,7 @@
 #include "M_Gas/C_MonsterASC.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 AC_RangedMonster::AC_RangedMonster()
 {
@@ -43,6 +44,33 @@ void AC_RangedMonster::BeginPlay()
 			monsterASC->GiveAbility(FGameplayAbilitySpec(normalAttackGAClass, 1, 0));
 		if (specialAttackGAClass && !monsterASC->FindAbilitySpecFromClass(specialAttackGAClass))
 			monsterASC->GiveAbility(FGameplayAbilitySpec(specialAttackGAClass, 1, 0));
+	}
+}
+
+void AC_RangedMonster::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// 이동 발소리 (RM_Ranged_Walk) — 지면 이동 중, 공격 애님이 아닐 때 일정 간격 재생
+	if (!walkSound) return;
+
+	UCharacterMovementComponent* move = GetCharacterMovement();
+	const bool bMoving = move && move->IsMovingOnGround()
+		&& GetVelocity().Size2D() > walkSpeedThreshold
+		&& !IsPlayingAttackAnimation();
+
+	if (!bMoving)
+	{
+		// 멈추면 다음에 움직이기 시작할 때 즉시 첫 발소리가 나도록 리셋
+		footstepTimer = 0.f;
+		return;
+	}
+
+	footstepTimer -= DeltaTime;
+	if (footstepTimer <= 0.f)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, walkSound, GetActorLocation());
+		footstepTimer = footstepInterval;
 	}
 }
 

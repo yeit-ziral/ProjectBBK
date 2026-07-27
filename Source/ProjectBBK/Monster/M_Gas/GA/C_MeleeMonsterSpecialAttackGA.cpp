@@ -88,6 +88,10 @@ void UC_MeleeMonsterSpecialAttackGA::ApplySlamDamageAndKnockback()
 	if (!sourceASC) return;
 
 	const FVector center = monster->GetActorLocation();
+
+	// 땅을 내려찍는 순간의 슬램음 (MM_Monster_Ground_Slam)
+	if (slamSound)
+		UGameplayStatics::PlaySoundAtLocation(monster, slamSound, center);
 	const float attackValue = (float)monster->GetAttack() * slamDamageMultiplier;
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> types;

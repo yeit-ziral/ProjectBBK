@@ -138,6 +138,10 @@ void UC_EliteMonsterSpecialAttackGA_Pull::SpawnSphere()
 
 	sphere->InitSphere(GetAbilitySystemComponentFromActorInfo(), avatar, damageEffectClass, damage, dir, hitEventTag);
 	bSphereSpawned = true;
+
+	// 검은 구체 발사음 (EM_BlackOrbLaunch)
+	if (launchSound)
+		UGameplayStatics::PlaySoundAtLocation(avatar, launchSound, spawnLoc);
 }
 
 void UC_EliteMonsterSpecialAttackGA_Pull::OnSphereHit(FGameplayEventData Payload)
@@ -225,6 +229,10 @@ void UC_EliteMonsterSpecialAttackGA_Pull::BeginDrag()
 
 	pullElapsed = 0.f;
 	SetPlayerMoveInputBlocked(true);
+
+	// 적을 끌어오기 시작하는 순간의 그랩음 (EM_Grab)
+	if (grabSound)
+		UGameplayStatics::PlaySoundAtLocation(avatar, grabSound, avatar->GetActorLocation());
 
 	world->GetTimerManager().SetTimer(
 		pullTickTimerHandle, this, &UC_EliteMonsterSpecialAttackGA_Pull::TickPull, pullTickInterval, true);

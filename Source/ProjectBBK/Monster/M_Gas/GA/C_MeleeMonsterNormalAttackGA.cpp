@@ -59,6 +59,13 @@ void UC_MeleeMonsterNormalAttackGA::PlayAttackMontageAndBindEvents()
 		montageTask->ReadyForActivation();
 	}
 
+	// 노말 공격음 (MM_Monster_Arm_Swing_one_time) — 스윙 시작 시점
+	if (attackSound)
+	{
+		if (AActor* avatar = GetAvatarActorFromActorInfo())
+			UGameplayStatics::PlaySoundAtLocation(avatar, attackSound, avatar->GetActorLocation());
+	}
+
 	// 2) ��Ʈ Ÿ�̹� �̺�Ʈ ���
 	if (hitEventTag.IsValid())
 	{

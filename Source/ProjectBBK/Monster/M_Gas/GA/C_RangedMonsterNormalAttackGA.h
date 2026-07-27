@@ -41,4 +41,8 @@ protected:
 	// DataTable Attack 스탯에 곱할 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
 	float damageMultiplier = 0.1f;
+
+	// 발사체 발사 순간 재생 (RM_Mech_Fireball_Attack)
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	class USoundBase* fireSound = nullptr;
 };

@@ -8,9 +8,10 @@
 
 class UAnimMontage;
 class UGameplayEffect;
+class USoundBase;
 
 /**
- * 
+ *
  */
 UCLASS()
 class PROJECTBBK_API UC_MeleeMonsterNormalAttackGA : public UGameplayAbility
@@ -49,6 +50,10 @@ protected:
 	// DataTable Attack 스탯에 곱할 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Damage")
 	float damageMultiplier = 1.0f;
+
+	// 노말 공격(팔 휘두르기) 시작 시 재생 (MM_Monster_Arm_Swing_one_time)
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Sound")
+	USoundBase* attackSound = nullptr;
 
 	void PlayAttackMontageAndBindEvents();
 

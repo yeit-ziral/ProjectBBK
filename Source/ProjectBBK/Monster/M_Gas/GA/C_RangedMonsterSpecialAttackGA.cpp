@@ -105,4 +105,8 @@ void UC_RangedMonsterSpecialAttackGA::SpawnSpecialProjectile()
 	const float attackValue = (float)monster->GetAttack() * damageMultiplier;
 	projectile->InitSpecialProjectile(target->GetActorLocation(), specialArcHeight, specialProjectileSpeed);
 	projectile->InitGASDamage(sourceASC, damageEffectClass, attackValue);
+
+	// 미사일 발사음 (RM_Robot_Missile_Launch) — 발사 시점
+	if (launchSound)
+		UGameplayStatics::PlaySoundAtLocation(monster, launchSound, spawnLocation);
 }
