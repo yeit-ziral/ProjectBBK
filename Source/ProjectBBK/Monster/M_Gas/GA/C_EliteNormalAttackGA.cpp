@@ -38,6 +38,13 @@ void UC_EliteNormalAttackGA::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		return;
 	}
 
+	// 노말 공격음 (EM_Grim_Hammer_Lord) — 스윙 시작 시점
+	if (attackSound)
+	{
+		if (AActor* avatar = GetAvatarActorFromActorInfo())
+			UGameplayStatics::PlaySoundAtLocation(avatar, attackSound, avatar->GetActorLocation());
+	}
+
 	// 1) 몽타주 재생 (Return2Idle 포함 → 완료 시 공격 종료)
 	UAbilityTask_PlayMontageAndWait* montageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 		this, NAME_None, chosen, 1.0f, NAME_None, false

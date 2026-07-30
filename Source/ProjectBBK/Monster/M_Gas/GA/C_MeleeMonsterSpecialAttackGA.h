@@ -8,6 +8,7 @@
 
 class UAnimMontage;
 class UGameplayEffect;
+class USoundBase;
 
 UCLASS()
 class PROJECTBBK_API UC_MeleeMonsterSpecialAttackGA : public UGameplayAbility
@@ -52,6 +53,10 @@ protected:
 	// 수직(위로 뜨는) 강도
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Slam")
 	float verticalKnockbackStrength = 400.0f;
+
+	// 땅을 내려찍는 순간 재생 (MM_Monster_Ground_Slam)
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Sound")
+	USoundBase* slamSound = nullptr;
 
 private:
 	UFUNCTION()

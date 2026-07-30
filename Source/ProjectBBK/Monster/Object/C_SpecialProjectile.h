@@ -13,6 +13,7 @@ class UParticleSystem;
 class UNiagaraSystem;
 class UAbilitySystemComponent;
 class UGameplayEffect;
+class USoundBase;
 
 UENUM(BlueprintType)
 enum class ESpecialProjectilePhase : uint8
@@ -61,6 +62,10 @@ protected:
 	// 타겟 도달 시 폭발 이펙트
 	UPROPERTY(EditDefaultsOnly, Category = "Effects")
 	UNiagaraSystem* explosionEffect;
+
+	// 타겟(적/바닥) 명중 폭발 시 재생 (RM_Explosion_impact_3)
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+	USoundBase* explosionSound = nullptr;
 
 	// 타겟에 도달했을 때 BP에서 데미지/이펙트 처리
 	UFUNCTION(BlueprintImplementableEvent, Category = "SpecialProjectile")
