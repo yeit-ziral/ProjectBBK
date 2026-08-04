@@ -179,6 +179,34 @@ bool UC_EquipmentComponent::EquipItem(FName itemID)
 	return true;
 }
 
+void UC_EquipmentComponent::SuspendEquipBonuses()
+{
+	UAbilitySystemComponent* ASC = GetASC();
+	if (!ASC)
+		return;
+
+	for (TPair<EEquipmentSlot, FEquippedEntry>& Pair : equipped)
+	{
+		if (Pair.Value.bonusHandle.IsValid())
+		{
+			ASC->RemoveActiveGameplayEffect(Pair.Value.bonusHandle);
+			Pair.Value.bonusHandle = FActiveGameplayEffectHandle();
+		}
+	}
+}
+
+void UC_EquipmentComponent::ReapplyEquipBonuses()
+{
+	if (!equipmentTable)
+		return;
+
+	for (TPair<EEquipmentSlot, FEquippedEntry>& Pair : equipped)
+	{
+		if (const FEquipmentItemData* row = equipmentTable->FindRow<FEquipmentItemData>(Pair.Value.itemID, TEXT("ReapplyEquipBonuses"), false))
+			Pair.Value.bonusHandle = ApplyEquipGE(*row);
+	}
+}
+
 bool UC_EquipmentComponent::UnequipItem(EEquipmentSlot slot)
 {
 	const FEquippedEntry* found = equipped.Find(slot);

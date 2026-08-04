@@ -29,7 +29,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEquipmentChanged);
  * 장비 착용/해제 핸들러 (캐릭터별). AC_BasePlayerCharactor에 부착.
  * - 인벤토리(공유, PlayerController 보유)에서 아이템을 빼/넣고,
  *   GE_EquipBonus(SetByCaller 5종)를 현재 캐릭터 ASC에 적용/제거한다.
- * - 캐릭터별 ASC에 GE가 머무르므로 캐릭터 교체 시 재적용 불필요.
+ * - ASC는 PlayerState 소유로 캐릭터 로스터 전체가 공유하므로, 장착 GE를 그대로 두면
+ *   캐릭터를 교체해도 계속 적용된 채로 남는다(= 장비 없는 캐릭터도 보너스를 받음).
+ *   AC_PlayerController::ExecuteCharacterSwitch가 SuspendEquipBonuses/ReapplyEquipBonuses를
+ *   호출해 "지금 활성화된 캐릭터의 장비만" 보너스가 걸리도록 보장한다.
  * 규칙: GE 클래스/DataTable은 BP에서 주입(하드코딩 금지). 슬롯당 1개(비스택).
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -81,6 +84,17 @@ public:
 	// 장착 상태 변경 시 브로드캐스트 (장비창 UI 갱신용)
 	UPROPERTY(BlueprintAssignable, Category = "Equipment")
 	FOnEquipmentChanged OnEquipmentChanged;
+
+	// ASC가 캐릭터 로스터 전체에 공유되므로, 이 캐릭터가 비활성화될 때(교체로 다른 캐릭터로 전환)
+	// 장착 보너스 GE를 ASC에서 제거 — 장착 상태(equipped)는 유지, GE만 잠시 뗌.
+	// AC_PlayerController::ExecuteCharacterSwitch에서 OldChar에 호출.
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void SuspendEquipBonuses();
+
+	// 이 캐릭터가 다시 활성화될 때 장착된 항목들의 보너스 GE를 재적용.
+	// AC_PlayerController::ExecuteCharacterSwitch에서 NewChar에 호출.
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void ReapplyEquipBonuses();
 
 protected:
 	// BP에서 GE_EquipBonus 지정 (C++ 하드코딩 금지)

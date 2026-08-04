@@ -125,7 +125,10 @@ int32 UC_InventoryComponent::AddItem(FName itemID, int32 count)
 	}
 
 	if (remaining != count)   // 하나라도 추가됐으면 변경 알림
+	{
 		OnInventoryChanged.Broadcast();
+		NotifyQuickSlotsForItem(itemID);
+	}
 
 	return remaining;   // 못 넣은 잔여 (0이면 전부 추가)
 }
@@ -152,6 +155,7 @@ bool UC_InventoryComponent::RemoveItem(FName itemID, int32 count)
 	}
 
 	OnInventoryChanged.Broadcast();
+	NotifyQuickSlotsForItem(itemID);
 	return true;
 }
 
@@ -161,11 +165,14 @@ bool UC_InventoryComponent::RemoveAtSlot(int32 slotIndex, int32 count)
 	EnsureSlots();
 	if (!slots.IsValidIndex(slotIndex) || slots[slotIndex].itemID.IsNone()) return false;
 
+	const FName itemID = slots[slotIndex].itemID;
+
 	slots[slotIndex].quantity -= count;
 	if (slots[slotIndex].quantity <= 0)
 		slots[slotIndex] = FInventorySlot();   // 빈칸으로 (위치 유지)
 
 	OnInventoryChanged.Broadcast();
+	NotifyQuickSlotsForItem(itemID);
 	return true;
 }
 
@@ -280,14 +287,18 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 	if (data.cooldown > 0.f)
 		itemCooldownEndTime.Add(itemID, GetWorld()->GetTimeSeconds() + data.cooldown);
 
-	// 등록된 퀵슬롯 전부 갱신 (재고 감소분 반영, 0개 시 반투명 처리는 위젯 쪽 책임)
+	NotifyQuickSlotsForItem(itemID);   // 등록된 퀵슬롯 전부 갱신 (재고 감소분 반영, 0개 시 반투명 처리는 위젯 쪽 책임)
+
+	return true;
+}
+
+void UC_InventoryComponent::NotifyQuickSlotsForItem(FName itemID)
+{
 	for (int32 i = 0; i < quickSlots.Num(); ++i)
 	{
 		if (quickSlots[i] == itemID)
 			OnQuickSlotChanged.Broadcast(i);
 	}
-
-	return true;
 }
 
 bool UC_InventoryComponent::RegisterQuickSlot(int32 SlotIndex, FName ItemID)

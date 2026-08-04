@@ -220,6 +220,12 @@
 - **선택 이유:** 위젯 인스턴스는 HUD 재생성 등으로 파괴될 수 있지만 인벤토리 컴포넌트는 캐릭터 교체와 무관하게 PlayerController에 상주 — 등록 상태가 위젯 생명주기에 종속되지 않음
 - **트레이드오프:** 없음 (기존 `OnInventoryChanged`/`OnMoneyChanged`와 동일한 위치 원칙)
 
+### 캐릭터 교체 시 장비 보너스 격리 — Suspend/Reapply vs GE 태그 필터링
+- **선택:** `UC_EquipmentComponent::SuspendEquipBonuses()`/`ReapplyEquipBonuses()` — 교체 시 GE를 직접 제거/재적용
+- **대안:** GE_EquipBonus에 캐릭터 식별 정보를 심고 AttributeSet의 PostAttributeChange 등에서 "현재 활성 캐릭터"와 불일치하면 무시하는 필터링
+- **선택 이유:** ASC가 PlayerState 소유로 로스터 전체가 공유되는 기존 구조를 바꾸지 않고, 이미 존재하는 SaveActiveEffects/RestoreActiveEffects 패턴과 동일한 철학(교체 시점에 뗐다 다시 건다)으로 일관되게 처리 가능. 필터링 방식은 AttributeSet에 "현재 캐릭터가 누구인지" 판별 로직을 추가해야 해서 결합도가 높아짐
+- **트레이드오프:** equipped 맵의 GE handle이 교체마다 새로 발급됨 — handle을 안정적 식별자로 쓰면 안 되고 itemID 기준으로 관리해야 함
+
 ### 퀵슬롯 재고 0 처리 — 자동 해제 vs 반투명 유지
 - **선택:** 재고 0이 돼도 등록 유지, 아이콘만 반투명 처리(`RenderOpacity=0.35`) + 수량 텍스트 숨김
 - **대안:** 재고 0 시 `UnregisterQuickSlot` 자동 호출

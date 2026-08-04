@@ -708,6 +708,37 @@ UseItem(itemID)
 ```
 - 인벤토리는 `PlayerController` 소유이므로 ASC는 `PlayerState` 경유로 취득 (Character 직접 참조 아님 — GAS 규칙과 동일 원칙, 경로만 다름)
 
+### 공유 ASC 환경에서 캐릭터별 Infinite GE 격리 패턴 (UC_EquipmentComponent 참고)
+캐릭터 로스터가 PlayerState의 ASC 하나를 공유하는 구조에서, 특정 캐릭터에만 적용돼야 하는 Infinite GE(장비 보너스 등)를 교체 시점에 뗐다 다시 거는 패턴.
+```
+컴포넌트(캐릭터별, AC_BasePlayerCharactor에 부착)
+  SuspendEquipBonuses() → equipped 맵 순회, ASC->RemoveActiveGameplayEffect(handle) 후
+                           handle만 초기화 (equipped 항목 자체는 유지 — "장착 상태"는 보존)
+  ReapplyEquipBonuses() → equipped 맵 순회, ApplyEquipGE() 재호출로 새 handle 발급
+
+AC_PlayerController::ExecuteCharacterSwitch
+  OldChar->EquipComp->SuspendEquipBonuses()   ← OldChar->SaveCharacterState()보다 먼저 호출
+    (보너스가 반영된 채로 Health/Stamina를 스냅샷하면 안 됨)
+  ...
+  Possess(NewChar)                             ← 내부에서 RestoreCharacterState까지 끝난 뒤 리턴
+  NewChar->EquipComp->ReapplyEquipBonuses()     ← Possess 직후 호출
+```
+- SaveActiveEffects/RestoreActiveEffects(State/Effect.Cooldown 태그 매칭 기반)는 태그 없는 순수 스탯 GE는 커버하지 않으므로 별도 메커니즘 필요
+- handle은 교체마다 새로 발급되므로 안정적 식별자로 쓰지 말 것 — itemID 기준으로 관리
+
+### 퀵슬롯 표시 갱신 — 모든 수량 변경 경로에서 OnQuickSlotChanged 브로드캐스트 (UC_InventoryComponent 참고)
+WBP_UseItem(퀵슬롯 위젯)은 OnQuickSlotChanged만 구독, OnInventoryChanged는 구독하지 않음.
+```
+AddItem / RemoveItem / RemoveAtSlot 공통
+  → 수량 변경 성공 시 OnInventoryChanged.Broadcast() 뿐 아니라
+    NotifyQuickSlotsForItem(itemID)도 함께 호출
+
+NotifyQuickSlotsForItem(itemID)
+  → quickSlots 배열 순회, itemID 일치하는 인덱스만 OnQuickSlotChanged 브로드캐스트
+```
+- UseItem()의 기존 브로드캐스트 루프를 이 헬퍼로 통합
+- MoveSlot()은 총 보유 수량이 안 바뀌므로 호출 불필요 (상점 구매·바닥 아이템 획득 등 AddItem 경로, 인벤토리 제거 경로 전부에서 퀵슬롯 표시가 정확히 갱신됨)
+
 ### 다이나믹 머티리얼 기반 쿨다운 오버레이 패턴 (`C_SkillIconWidget` / `C_UseItemSlotWidget` 참고)
 스킬 쿨다운과 소비 아이템 쿨다운 양쪽에 동일하게 재사용되는 원형 웨지 오버레이 구조.
 ```
