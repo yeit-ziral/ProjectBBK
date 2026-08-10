@@ -238,3 +238,15 @@
 - **대안 2:** C++ 위젯에 "실제 표시 중인 HUD 소속인지" 체크하는 방어 코드 추가
 - **선택 이유:** `UC_InventoryComponent`의 `OnQuickSlotChanged`/`OnQuickSlotUseFailed`가 PlayerController 레벨 공유 델리게이트라, 캐릭터 로스터 구조상 캐릭터별로 생성되는 `WBP_HUD` 인스턴스 수만큼 중복 바인딩됨(Debugging Checklist #40). 근본 원인(HUD 중복 생성)을 없애야 향후 비멱등적 기능이 이 델리게이트에 추가될 때 조용히 N배로 실행되는 잠재 버그를 막을 수 있음. 스킬 아이콘/게이지가 이미 쓰는 "단일 HUD 재초기화" 패턴과도 구조적으로 일치
 - **트레이드오프:** 적용 완료. 캐릭터 `BeginPlay`가 Possess보다 먼저 실행되는 구조(Debugging Checklist #18)라 `Get Controller`가 None을 반환해 참조를 얻을 수 없었음 — `Get Player Controller`(Player Index 0)로 대체해 해결(Debugging Checklist #41 참고). `OnCharacterSwitched.Broadcast(0)` 기반 재초기화 흐름은 그대로 유지되며 HUD 자체 그래프는 수정하지 않음
+
+### 소비 아이템 복합 동작(AOE 판정·액터 스폰) — GA vs UC_ConsumableAction(UObject)
+- **선택:** `UC_ConsumableAction`(UObject, Blueprintable) 베이스 클래스 신설. `FConsumableItemData.actionClass`로 DataTable에서 지정, `UC_InventoryComponent::UseItem()`이 `NewObject`로 생성해 `Execute(ASC, AvatarActor)` 호출
+- **대안:** GA 신설 후 `TryActivateAbilityByClass`로 발동 (SkillWheel과 동일 방식)
+- **선택 이유:** `UseQuickSlot()`이 ASC를 거치지 않는 직접 함수 호출 경로라 GA의 핵심 이점(ActivationBlockedTags, 비용/쿨다운 GE)이 애초에 적용되지 않음. 아이템은 이미 자체 타임스탬프 쿨다운(`IsItemOnCooldown`)이 있어 GA 쿨다운과 중복됨. `UC_ConsumableAction`은 GAS 오버헤드 없이 "클래스 참조로 동작을 갈아끼우는" 확장성만 재사용
+- **트레이드오프:** 몽타주 재생·2단계 입력(조준→발사) 등 GA 고유 생명주기가 필요한 아이템은 이 구조로 못 만듦 — 필요해지면 서브클래스 내부에서 `TryActivateAbilityByClass`로 위임하는 "GA 브릿지" 액션 검토 (아직 미구현)
+
+### AC_HealZone 회복 방식 — Instant GE + 존 자체 반복 타이머 vs Duration GE(GE_HealOverTime) 1회 적용
+- **선택:** `GE_HealZoneTick`(Instant, Set by Caller `Data.Heal`) 신규 생성. `AC_HealZone`이 `OnBeginOverlap`에 반복 타이머를 시작해 매 tick마다 Instant GE를 적용하고, `OnEndOverlap`에 타이머를 멈추는 방식
+- **대안:** 기존 `GE_HealOverTime`(Duration+Period)을 `AC_FireZone`처럼 진입 시 1회만 적용
+- **선택 이유:** Duration GE를 1회 적용하면 장판을 스치기만 해도 전체 Duration 동안 회복이 지속돼 "장판 안에 있는 동안만 회복"이라는 의도와 어긋남. Instant GE + 존이 직접 관리하는 타이머는 실제 체류 시간과 회복이 정확히 일치함
+- **트레이드오프:** `AC_FireZone`엔 없던 `OnEndOverlap` 처리와 타이머 시작/정지 로직이 추가로 필요해 구조가 조금 더 복잡함. Instant GE는 활성 핸들이 없으므로(Debugging Checklist #12) "제거"가 아니라 "타이머 정지"로 회복을 멈춤
