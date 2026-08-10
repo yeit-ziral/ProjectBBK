@@ -6,6 +6,8 @@
 #include "GameplayEffect.h"
 #include "ItemData.generated.h"
 
+class UC_ConsumableAction;
+
 UENUM(BlueprintType)
 enum class EEquipmentClass : uint8
 {
@@ -84,6 +86,10 @@ struct PROJECTBBK_API FConsumableItemData : public FBaseItemData
 	// 사용 후 재사용까지 대기 시간(초). 0 = 쿨다운 없음.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
 	float cooldown = 0.f;
+
+	// GE 즉시 적용만으로 표현 불가능한 동작(AOE 판정, 액터 스폰 등) 실행. None이면 consumeEffects만 적용.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Consumable")
+	TSubclassOf<UC_ConsumableAction> actionClass;
 };
 
 USTRUCT(BlueprintType)

@@ -759,3 +759,37 @@ NativeTick
 ```
 - `Progress` 스칼라 파라미터를 가진 머티리얼 자체를 여러 위젯이 공유 가능 (`WBP_SkillIcon`용 머티리얼을 `WBP_UseItem`에도 그대로 할당 가능)
 - 소비 아이템 쿨다운은 GAS/GE 없이 `UC_InventoryComponent`의 `GetItemCooldownRemaining` 타임스탬프 값을 그대로 `UpdateCooldown`에 흘려보내는 방식 — 위젯 쪽 구조는 GA 기반 쿨다운과 동일하게 재사용, 데이터 소스만 다름
+
+### 소비 아이템 복합 동작 패턴 (`UC_ConsumableAction` 참고)
+GE 즉시 자기 자신 적용(`consumeEffects`)만으로 표현 안 되는 소비 아이템(AOE 판정, 액터 스폰 등)을 GA 없이 처리하는 구조.
+```
+UC_InventoryComponent::UseItem(itemID)
+  → consumeEffects 순회 적용 (기존 그대로, 자기 자신 대상 즉발 GE)
+  → data.actionClass 있으면:
+      NewObject<UC_ConsumableAction>(this, data.actionClass)->Execute(ASC, ASC->GetAvatarActor())
+  → RemoveItem
+
+UC_ConsumableAction (UObject, Abstract, Blueprintable)
+  → Execute(ASC, AvatarActor) BlueprintNativeEvent — 서브클래스가 BP/C++에서 구현
+  → 서브클래스는 EditDefaultsOnly 프로퍼티로 자체 튜닝 수치를 보유 (GA Blueprint가 자기 radius/damage를 보유하는 것과 동일한 방식)
+```
+- 판단 기준: 대상이 자기 자신뿐이고 GE 적용만 필요하면 `consumeEffects`, 그 외(타 대상 AOE, 액터 스폰, GE 외 로직)는 `UC_ConsumableAction` 서브클래스
+- `FConsumableItemData.actionClass`(`TSubclassOf<UC_ConsumableAction>`)로 DataTable에서 지정 — 아이템 추가 시 새 Action Blueprint + DT row만 필요, `UseItem()` 수정 불필요
+
+### 체류 기반 반복 효과 존 패턴 (`AC_HealZone` 참고)
+"지면 AOE 존 패턴"(`GA_Ablaze`/`AC_FireZone`)의 변형 — 진입 시 1회 적용 대신, 반경 안에 머무는 동안만 효과가 지속되어야 하는 경우.
+```
+Initialize(ASC, InstigatorActor, TickEffectClass, Radius, ZoneLifetime, TickInterval, MagnitudePerTick)
+  → 스폰 시점에 이미 반경 안이면 StartHealing() 즉시 실행
+  → OnBeginOverlap(대상 필터) → StartHealing()
+  → OnEndOverlap(대상 필터) → StopHealing()   ← FireZone엔 없는 처리, 체류형 존엔 필수
+
+StartHealing()
+  → 이미 타이머 도는 중이면 무시(중복 방지) → 즉시 1틱 적용 → SetTimer(반복, TickInterval)
+
+StopHealing()
+  → ClearTimer   ← Instant GE라 "제거"할 활성 핸들이 없음 (Debugging Checklist #12), 타이머 정지만으로 충분
+```
+- Instant GE(Set by Caller) + 존 자체 타이머 조합. Duration GE를 1회 적용하는 방식(FireZone)과 달리, 체류 시간과 효과가 정확히 일치함
+- 존 액터 자체의 `ZoneLifetime`(수명 타이머)과 효과의 지속 여부(Begin/EndOverlap)는 서로 무관 — 액터는 lifetime 동안 살아있고, 효과는 그 안에서 체류 여부에 따라 켜졌다 꺼졌다 함
+- 존 액터는 스폰 주체(GA/`UC_ConsumableAction`)와 무관하게 `Skills/` 폴더에 배치 (기존 `AC_FireZone`/`AC_TrapZone` 컨벤션)

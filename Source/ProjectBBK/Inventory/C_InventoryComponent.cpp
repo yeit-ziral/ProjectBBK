@@ -2,6 +2,7 @@
 
 #include "C_InventoryComponent.h"
 #include "../Items/ItemData.h"
+#include "../Items/C_ConsumableAction.h"
 #include "../PlayerCharacter/C_PlayerState.h"
 #include "Engine/DataTable.h"
 #include "AbilitySystemComponent.h"
@@ -258,7 +259,7 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 {
 	FConsumableItemData data;
 	if (!GetConsumableData(itemID, data)) return false;      // 소비 아이템이 아님
-	if (data.consumeEffects.IsEmpty()) return false;         // 효과 없는 아이템의 무의미한 소모 방지
+	if (data.consumeEffects.IsEmpty() && !data.actionClass) return false;   // 효과 없는 아이템의 무의미한 소모 방지
 	if (IsItemOnCooldown(itemID)) return false;               // 쿨다운 확인도 GE 적용보다 먼저
 	if (!HasItem(itemID, 1)) return false;                   // 재고 확인이 GE 적용보다 먼저
 
@@ -280,6 +281,12 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 
 		spec.Data->SetSetByCallerMagnitude(entry.magnitudeTag, entry.magnitude);
 		ASC->ApplyGameplayEffectSpecToSelf(*spec.Data);
+	}
+
+	if (data.actionClass)
+	{
+		if (UC_ConsumableAction* action = NewObject<UC_ConsumableAction>(this, data.actionClass))
+			action->Execute(ASC, ASC->GetAvatarActor());
 	}
 
 	RemoveItem(itemID, 1);

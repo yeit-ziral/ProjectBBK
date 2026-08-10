@@ -75,6 +75,7 @@
 | GE_Slowed | ✅ 완료 | 상태이상: 감속 — State.Slowed 태그 부여 + MoveSpeed × 0.2, Duration 5초, GA_RockSpear 사용 |
 | GE_GainExperience | ✅ 완료 | Set by Caller, Data.Exp 태그, experience 어트리뷰트 가산 |
 | GE_EquipBonus | ✅ 완료 | 장비 공용 GE. Infinite Duration, SetByCaller Modifier 5개 (MaxHealth, MaxStamina, MoveSpeed, Defense, Damage). 캐릭터 교체 시 UC_EquipmentComponent::Suspend/ReapplyEquipBonuses로 활성 캐릭터에만 적용되도록 격리 |
+| GE_HealZoneTick | ✅ 완료 | Instant, Set by Caller Data.Heal — AC_HealZone이 체류 중 반복 적용 |
 
 ### Objects
 | Object | 상태 | 비고 |
@@ -85,6 +86,9 @@
 | C_EquipmentItem / BP_EquipItem | ✅ 완료 | InitItem만 담당 (DT 로드 + Mesh). 장착/해제는 UC_EquipmentComponent에서 처리 (구현 완료) |
 | C_MoneyItem / BP_Money | ✅ 완료 | AC_BaseItem 상속. moneyAmount(EditAnywhere), BeginPlay에서 cachedItemName 포맷, OnInteract에서 AddMoney + Destroy |
 | C_InteractionWidget / WBP_Interaction | ✅ 완료 | 상호작용 UI 위젯. BindWidget: InteractionText |
+| UC_ConsumableAction | ✅ 완료 | GE 즉시 자기 적용만으로 표현 안 되는 소비 아이템 동작(AOE 판정, 액터 스폰 등) 처리용 UObject 베이스. FConsumableItemData.actionClass로 DT 연동 |
+| UC_SpawnHealZoneAction / AC_HealZone (BP_HealZone) | ✅ 완료 | 힐장판 소비 아이템 — Instant GE(GE_HealZoneTick) + 존 자체 반복 타이머로 체류 중에만 회복 |
+| UC_KnockbackAction | ✅ 완료 | 넉백 소비 아이템 — GE 없이 순수 LaunchCharacter, State.KnockbackImmune 면역 체크 |
 
 ### Level System
 | Class / Asset | 상태 | 비고 |
