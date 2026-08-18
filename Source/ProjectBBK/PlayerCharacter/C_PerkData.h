@@ -19,6 +19,27 @@ enum class EPerkType : uint8
 	Crit UMETA(DisplayName = "Crit")
 };
 
+// 속성 하나의 현재 상태
+USTRUCT()
+struct FElementState
+{
+	GENERATED_BODY()
+
+	int32 Level = 0;
+	float DamagePerLevel = 0.f;
+	int32 MaxLevel = 1;
+
+	UPROPERTY()
+	FLinearColor Color = FLinearColor::Black;
+
+	UPROPERTY()
+	FText DisplayName;
+
+	UPROPERTY()
+	TObjectPtr<UTexture2D> Icon = nullptr;
+};
+
+
 USTRUCT(BlueprintType)
 struct FPerkDisplayInfo
 {

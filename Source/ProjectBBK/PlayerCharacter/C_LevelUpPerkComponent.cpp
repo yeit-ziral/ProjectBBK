@@ -263,3 +263,34 @@ int32 UC_LevelUpPerkComponent::GetElementLevel(FGameplayTag ElementTag) const
 	}
 	return 0;
 }
+
+void UC_LevelUpPerkComponent::BroadcastCurrentState()
+{
+	const FElementState* Primary = elements.Find(primaryElement);
+	OnPrimaryElementChanged.Broadcast(primaryElement, Primary ? Primary->Color : FLinearColor::Black);
+}
+
+void UC_LevelUpPerkComponent::RestoreElementState(const TMap<FGameplayTag, FElementState>& InElements)
+{
+	elements = InElements;
+
+	// primary 재계산 + ASC 태그 복원
+	int32 BestLevel = -1;
+	primaryElement = FGameplayTag();
+
+	AC_PlayerState* PS = Cast<AC_PlayerState>(GetOwner());
+	UAbilitySystemComponent* ASC = PS ? PS->GetAbilitySystemComponent() : nullptr;
+
+	for (const TPair<FGameplayTag, FElementState>& Pair : elements)
+	{
+		if (Pair.Value.Level > BestLevel)
+		{
+			BestLevel = Pair.Value.Level;
+			primaryElement = Pair.Key;
+		}
+		if (ASC)
+		{
+			ASC->AddLooseGameplayTag(Pair.Key); // 태그 복원(오러 등 참고용)
+		}
+	}
+}

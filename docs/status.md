@@ -100,3 +100,10 @@
 | AC_Portal (C_Portal) | ✅ 완료 | BP_Portal 생성 후 Niagara 에셋 할당, 각 레벨에 배치 필요. 기본 비활성화 → 몬스터 전멸 시 GameMode가 ActivatePortal() 호출 |
 | AC_MainMenuGameMode (C_MainMenuGameMode) | ✅ 완료 | 메인 메뉴 레벨 전용 GameMode. BeginPlay에서 WBP_MainMenu 생성 + UIOnly 입력 모드 설정 |
 | BGM 재생 로직 | 📋 계획 중 | 구현 예정 |
+
+### Animation / IK
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| ABP_Melee Foot IK | ✅ 완료 | EventGraph(BP) 구현. IK_Melee 리그 + Transform(Modify) Bone. Mesh Z = -96(= -CapsuleHalfHeight) 정렬, FootTrace 하드코딩 상수 제거로 평지·계단 모두 정상 동작 확인 |
+| ABP_Melee Foot IK — 잔여 개선 | 🔧 에디터 작업 필요 | ① FootTrace 기준면을 Root 소켓 → 캡슐 바닥으로 교체(루트모션 몽타주 대비) ② Offset Clamp 추가(절벽 대비) ③ 디버그 Print String/Text 노드 정리 |
+| ABP_Range Foot IK (UC_RangeAnimInstance) | ✅ 완료 (C++ 구현) | 캡슐 바닥 기준, ImpactPoint 사용, Clamp·급경사 회전 제외 포함. BP 판 대비 안전장치가 갖춰진 참조 구현 |

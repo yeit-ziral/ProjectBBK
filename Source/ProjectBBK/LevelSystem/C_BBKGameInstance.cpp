@@ -17,6 +17,7 @@
 #include "../PlayerCharacter/C_BasePlayerCharactor.h"
 #include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
 #include "../Skills/C_SkillManagerComponent.h"
+#include "../PlayerCharacter/C_LevelUpPerkComponent.h"
 
 void UC_BBKGameInstance::Init()
 {
@@ -298,6 +299,14 @@ void UC_BBKGameInstance::SaveGameState(const TArray<AC_BasePlayerCharactor*>& Ro
 			PersistedState.maxStamina     = AS->GetmaxStamina();
 			PersistedState.damage         = AS->Getdamage();
 		}
+
+		if (AActor* Owner = SharedASC->GetOwner())
+		{
+			if (UC_LevelUpPerkComponent* Perk = Owner->FindComponentByClass<UC_LevelUpPerkComponent>())
+			{
+				PersistedState.perkElements = Perk->GetElementState();
+			}
+		}
 	}
 
 	PersistedState.bHasSavedState = true;
@@ -322,6 +331,14 @@ void UC_BBKGameInstance::RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roste
 			SharedASC->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetmaxStaminaAttribute(), PersistedState.maxStamina);
 		if (PersistedState.damage     >= 0.f)
 			SharedASC->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetdamageAttribute(),     PersistedState.damage);
+	}
+
+	if (AActor* Owner = SharedASC->GetOwner())
+	{
+		if(UC_LevelUpPerkComponent* Perk = Owner->FindComponentByClass<UC_LevelUpPerkComponent>())
+		{
+			Perk->RestoreElementState(PersistedState.perkElements);
+		}
 	}
 
 	for (int32 i = 0; i < Roster.Num() && i < PersistedState.characterStates.Num(); i++)
