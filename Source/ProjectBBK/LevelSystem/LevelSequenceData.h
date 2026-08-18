@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "../PlayerCharacter/C_PerkData.h"
 #include "LevelSequenceData.generated.h"
 
 USTRUCT(BlueprintType)
@@ -59,6 +60,7 @@ struct FPersistentGameState
 	float damage              = -1.f;
 	int32 activeCharacterIndex = 0;
 	bool  bHasSavedState      = false;
+	TMap<FGameplayTag, FElementState> perkElements;
 };
 
 UCLASS(BlueprintType)

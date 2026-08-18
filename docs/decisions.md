@@ -250,3 +250,15 @@
 - **대안:** 기존 `GE_HealOverTime`(Duration+Period)을 `AC_FireZone`처럼 진입 시 1회만 적용
 - **선택 이유:** Duration GE를 1회 적용하면 장판을 스치기만 해도 전체 Duration 동안 회복이 지속돼 "장판 안에 있는 동안만 회복"이라는 의도와 어긋남. Instant GE + 존이 직접 관리하는 타이머는 실제 체류 시간과 회복이 정확히 일치함
 - **트레이드오프:** `AC_FireZone`엔 없던 `OnEndOverlap` 처리와 타이머 시작/정지 로직이 추가로 필요해 구조가 조금 더 복잡함. Instant GE는 활성 핸들이 없으므로(Debugging Checklist #12) "제거"가 아니라 "타이머 정지"로 회복을 멈춤
+
+### Foot IK 기준면 — Root 소켓 vs 캡슐 바닥
+- **선택:** `ActorLocation.Z - GetScaledCapsuleHalfHeight()`(캡슐 바닥)를 기준면으로 사용
+- **대안:** `Get Socket Location("Root")`의 Z (다수 튜토리얼의 기본 방식, `ABP_Melee` 초기 구현)
+- **선택 이유:** `Get Socket Location`은 애니메이션이 적용된 현재 포즈의 본 위치를 반환하므로, Root 본을 움직이는 애니메이션(`Root Motion Mode = Root Motion from Montages`)이 재생되면 기준면이 매 프레임 흔들림. Idle 상태에서는 두 값이 정확히 일치해 문제가 드러나지 않다가 전투 중에만 발이 어긋나는 재현 어려운 버그가 됨. 캡슐 바닥은 물리적으로 정의된 값이라 포즈와 무관하게 항상 안정적이고, 캡슐 크기 상수를 하드코딩하지 않아도 됨
+- **트레이드오프:** BP에서는 `Melee Character` 참조를 거쳐 두 노드(`Get Actor Location` / `Get Scaled Capsule Half Height`)를 조합해야 해서 Root 소켓 한 번 읽는 것보다 그래프가 조금 늘어남
+
+### Foot IK 오차 보정 — Mesh Z 상수 이동 vs 수식 정정
+- **선택:** Mesh Relative Z를 `-(Capsule Half Height)`인 정확한 값(-96)으로 되돌리고, FootTrace 수식의 하드코딩 상수를 제거해 근본 원인을 제거
+- **대안:** 계단에서 뜨는 만큼 Mesh Relative Z를 눈대중으로 내려서 상쇄 (초기 대응)
+- **선택 이유:** Mesh Z는 **모든 지형에 동일하게 적용되는 상수 평행이동**이라 지형 의존적 오차를 원리적으로 보정할 수 없음. 계단에 맞추면 평지에서 정확히 그만큼 발이 파묻히는 트레이드오프가 강제됨. 실제로 이번 문제의 원인은 ① Mesh Z가 -96이 아닌 -90/-100이었던 상수 오차와 ② FootTrace의 하드코딩 상수 두 가지였고, 둘 다 제거하자 계단·평지가 동시에 맞았음
+- **트레이드오프:** 없음. 상수 보정은 두 지형 중 하나를 반드시 포기해야 하는 구조였음

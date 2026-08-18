@@ -793,3 +793,29 @@ StopHealing()
 - Instant GE(Set by Caller) + 존 자체 타이머 조합. Duration GE를 1회 적용하는 방식(FireZone)과 달리, 체류 시간과 효과가 정확히 일치함
 - 존 액터 자체의 `ZoneLifetime`(수명 타이머)과 효과의 지속 여부(Begin/EndOverlap)는 서로 무관 — 액터는 lifetime 동안 살아있고, 효과는 그 안에서 체류 여부에 따라 켜졌다 꺼졌다 함
 - 존 액터는 스폰 주체(GA/`UC_ConsumableAction`)와 무관하게 `Skills/` 폴더에 배치 (기존 `AC_FireZone`/`AC_TrapZone` 컨벤션)
+
+### Foot IK 패턴 (`ABP_Melee` / `UC_RangeAnimInstance` 참고)
+발을 지면 높낮이에 맞춰 붙이는 IK. 근접 캐릭터는 `ABP_Melee` EventGraph(BP), 원거리 캐릭터는 `UC_RangeAnimInstance`(C++)에 구현되어 있음.
+
+```
+매 프레임 (EventGraph / NativeUpdateAnimation)
+  기준면 = ActorLocation.Z - GetScaledCapsuleHalfHeight()      ← 캡슐 바닥
+  foot_l / foot_r 소켓의 월드 X·Y를 얻어
+  SphereTrace(Start = 기준면 + 위쪽여유, End = 기준면 - 아래쪽여유, Radius)
+    → Offset.Z = Hit.ImpactPoint.Z - 기준면                     ← Location 아님 (Checklist #49)
+    → Clamp(Offset, -maxFootOffset, +maxFootOffset)             ← 절벽에서 다리 뽑힘 방지
+    → 발 회전 = ImpactNormal 기반, 급경사(dot < 0.5)면 미적용
+  VInterpTo / RInterpTo 로 스무딩 (interpSpeed)
+  Pelvis.Z = Min(L, R) 이 음수일 때만 적용                       ← 낮은 쪽 발 기준으로 골반만 내림
+
+AnimGraph
+  Source → IK Rig(FootL/FootR/Pelvis Goal) → Local To Component
+        → Transform(Modify) Bone foot_l / foot_r (Rotation만)
+        → Component To Local → Output Pose
+```
+
+**기준면은 반드시 캡슐 바닥으로.** `Get Socket Location("Root")`는 **애니메이션이 적용된 현재 포즈**의 본 위치를 반환하므로, 루트 모션 몽타주가 재생되는 순간 기준면 자체가 흔들림(`Root Motion Mode = Root Motion from Montages`인 경우 전투 중에만 재현되는 버그가 됨). `GetScaledCapsuleHalfHeight()`를 쓰면 캡슐 크기 상수(96 등)를 하드코딩하지 않게 되는 이점도 있음.
+
+**Mesh Relative Z = -(Capsule Half Height).** 튜닝값이 아니라 계산값. 어긋나면 그 차이가 상수 오차로 전 지형에 전파됨. C++ 생성자에서 `-GetCapsuleComponent()->GetScaledCapsuleHalfHeight()`로 쓰면 캡슐 크기 변경에 자동으로 따라감. BP 오버라이드가 남아 있으면 C++ 값이 무시되므로 주의(Checklist #47).
+
+**검증 절차** — 평지에서 `ImpactPoint.Z` / `Root 소켓 Z` / `캡슐 바닥 Z` / 트레이스 `Return Value` 4개를 `Format Text`로 한 줄에 묶어 출력. 합성된 결과값 하나만 보면 어느 항이 범인인지 알 수 없고, 항별로 분해하는 순간 원인이 즉시 특정됨. 기대값: Root Z == 캡슐 바닥 Z, Hit == true, Offset은 약 -2.15에서 지터 없이 고정(Checklist #50).

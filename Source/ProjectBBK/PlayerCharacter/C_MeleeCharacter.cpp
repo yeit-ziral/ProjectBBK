@@ -12,7 +12,7 @@ AC_MeleeCharacter::AC_MeleeCharacter(const class FObjectInitializer& ObjectInita
 
 	GetMesh()->SetSkeletalMesh(mesh.Object);
 
-	GetMesh()->SetRelativeLocation(FVector(0, 0, -90.0f));
+	GetMesh()->SetRelativeLocation(FVector(0, 0, -96.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0, -90.0f, 0));
 	GetMesh()->SetRelativeScale3D(FVector(0.9f, 0.9f, 0.9f));
 }

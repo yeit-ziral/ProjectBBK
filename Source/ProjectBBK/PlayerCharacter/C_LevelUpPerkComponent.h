@@ -10,26 +10,6 @@
 
 class UAbilitySystemComponent;
 
-// 속성 하나의 현재 상태
-USTRUCT()
-struct FElementState
-{
-	GENERATED_BODY()
-
-	int32 Level = 0;
-	float DamagePerLevel = 0.f;
-	int32 MaxLevel = 1;
-
-	UPROPERTY()
-	FLinearColor Color = FLinearColor::Black;
-	
-	UPROPERTY()
-	FText DisplayName;
-
-	UPROPERTY()
-	TObjectPtr<UTexture2D> Icon = nullptr;
-};
-
 // 후보 보상 3개가 준비되면 UMG가 받아서 위젯을 띄우도록 알리는 델리게이트.
 // C++는 "어떤 보상 후보가 있는지" 데이터만 넘기고, 위젯 생성/표시는 BP가 담당한다.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPerkChoicesReady, const TArray<FPerkData>&, Choices);
@@ -76,6 +56,13 @@ public:
 	//현재 해당 속성 레벨 조회(없으면 0)
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	int32 GetElementLevel(FGameplayTag ElementTag) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Perk")
+	void BroadcastCurrentState();
+
+	// 맵 이동 간 저장/ 복원용
+	const TMap<FGameplayTag, FElementState>& GetElementState() const { return elements; }
+	void RestoreElementState(const TMap<FGameplayTag, FElementState>& InElements);
 
 	// BP(UMG)가 바인딩 → 후보 3개를 받아 위젯을 띄운다.
 	UPROPERTY(BlueprintAssignable, Category = "Perk")

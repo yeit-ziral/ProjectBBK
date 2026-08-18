@@ -11,6 +11,35 @@
 class UTexture2D;
 class UNiagaraSystem;
 
+UENUM(BlueprintType)
+enum class EPerkType : uint8
+{
+	Stat UMETA(DisplayName = "Stat"),
+	Element UMETA(DisplayName = "Element"),
+	Crit UMETA(DisplayName = "Crit")
+};
+
+// 속성 하나의 현재 상태
+USTRUCT()
+struct FElementState
+{
+	GENERATED_BODY()
+
+	int32 Level = 0;
+	float DamagePerLevel = 0.f;
+	int32 MaxLevel = 1;
+
+	UPROPERTY()
+	FLinearColor Color = FLinearColor::Black;
+
+	UPROPERTY()
+	FText DisplayName;
+
+	UPROPERTY()
+	TObjectPtr<UTexture2D> Icon = nullptr;
+};
+
+
 USTRUCT(BlueprintType)
 struct FPerkDisplayInfo
 {
@@ -82,4 +111,22 @@ struct FPerkData : public FTableRowBase   // ← DataTable 행이 되려면 FTab
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Element")
 	FLinearColor elementColor = FLinearColor::Red; // 속성 부여 시 재생할 VFX. 없으면 비움.
+
+	// 목표 발동률, PRD 상수 C는 이 값에서 코드가 역산하므로 여기 넣지 않는다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Crit", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float ciritChanceBase = 0.10f;  // 기본 발동률
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Crit")
+	float critChancePerLevel = 0.05f;  // 레벨당 발동률 증가량
+
+	// 1레벨 배율 (2.0 = 2배 데미지)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Crit", meta = (ClampMin = "1.0"))
+	float critMultiplierBase = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Crit")
+	float critMultiplierPerLevel = 0.15f;  // 레벨당 배율 증가량
+
+	// 속성 퍽(elementMaxLevel = 5)과 맞출 것
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk|Crit")
+	int32 critMaxLevel = 5;  // 크리티컬 레벨 최대치
 };
