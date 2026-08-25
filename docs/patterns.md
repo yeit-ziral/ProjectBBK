@@ -832,3 +832,23 @@ AnimGraph
 **Mesh Relative Z = -(Capsule Half Height).** 튜닝값이 아니라 계산값. 어긋나면 그 차이가 상수 오차로 전 지형에 전파됨. C++ 생성자에서 `-GetCapsuleComponent()->GetScaledCapsuleHalfHeight()`로 쓰면 캡슐 크기 변경에 자동으로 따라감. BP 오버라이드가 남아 있으면 C++ 값이 무시되므로 주의(Checklist #47).
 
 **검증 절차** — 평지에서 `ImpactPoint.Z` / `Root 소켓 Z` / `캡슐 바닥 Z` / 트레이스 `Return Value` 4개를 `Format Text`로 한 줄에 묶어 출력. 합성된 결과값 하나만 보면 어느 항이 범인인지 알 수 없고, 항별로 분해하는 순간 원인이 즉시 특정됨. 기대값: Root Z == 캡슐 바닥 Z, Hit == true, Offset은 약 -2.15에서 지터 없이 고정(Checklist #50).
+
+### 스탯 증가분(+N) 표시 패턴 (`WBP_Status` / `UC_EquipmentComponent` 참고)
+장비/포션으로 인한 스탯 증가분만 "총합 (+N)" 형태로 골라 표시. 스킬 버프/디버프(`GE_SpeedBuff`, `GE_Slowed` 등)는 제외.
+```
+UpdateStatText(TextBlock, NewValue, Attribute)
+  → EquipBonus = Avatar->FindComponentByClass<UC_EquipmentComponent>()->GetTotalEquipBonuses() 에서 Attribute에 해당하는 필드
+  → PotionBonus = GetPotionBonus(Attribute)
+  → 합계가 0이면 "120", 아니면 "120 (+20)"
+
+GetPotionBonus(Attribute)
+  → FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(State.PotionBuff) → ASC->GetActiveEffects(query)
+  → 각 핸들 → ASC->GetActiveGameplayEffect(handle)->Spec
+  → Spec.Modifiers[i] ↔ Spec.Def->Modifiers[i].Attribute를 같은 인덱스로 매칭해 EvaluatedMagnitude 합산
+     (FModifierSpec 자체엔 Attribute가 없고 Def의 병렬 배열 인덱스로만 대응됨)
+
+UC_EquipmentComponent::GetTotalEquipBonuses()
+  → equipped 맵을 순회하며 DT(FEquipmentItemData)의 bonusXxx 5종을 그대로 합산 — GAS 재조회 불필요
+```
+- GAS 표준 `CurrentValue - BaseValue` 차이를 안 쓴 이유: `GE_SpeedBuff`/`GE_Sprint`/`GE_Slowed` 등 다른 Duration/Infinite GE도 같은 속성을 건드려 소스 구분이 안 됨 → `State.PotionBuff` 태그로 필터링해야 "포션발" 증가분만 정확히 분리됨
+- GE 적용/제거가 컴포넌트 자체 상태보다 먼저 델리게이트를 발화시키는 순서 문제는 Debugging Checklist #52 참고

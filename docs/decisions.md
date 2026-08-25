@@ -268,3 +268,9 @@
 - **대안:** `C_EliteMonsterSpecialAttackGA_Pull`처럼 `SetActorLocation(NewLoc, bSweep=true)`로 이동 자체를 스윕 처리
 - **선택 이유:** Blink는 이동 거리가 크고(기본 600) 즉시 텔레포트라는 의도가 명확 — sweep은 목표 지점까지 콜리전을 따라 밀어내는 방식이라 "순간이동"의 즉시성과 다르게 느껴질 수 있고, 벽에 스치듯 닿았을 때 예측하기 어려운 최종 위치가 나올 수 있음. 사전 LineTrace는 "막히면 벽 앞에서 멈춘다"는 동작이 명확
 - **트레이드오프:** LineTrace 한 번이 추가 비용. 아주 얇은 장애물(캡슐 반경보다 얇은 벽) 뒤로 착지하는 예외 케이스는 미검증
+
+### WBP_Status 증가분 계산 — 소스별 명시적 추적 vs GAS 표준 BaseValue/CurrentValue 차이
+- **선택:** 장비는 `UC_EquipmentComponent`가 아는 DT bonus 값을 합산, 포션은 `State.PotionBuff` 태그로 필터링한 활성 GE의 Modifier 평가치를 합산 — 두 소스를 독립 계산 후 합산
+- **대안:** ASC 어트리뷰트의 `CurrentValue - BaseValue` 차이를 그대로 사용
+- **선택 이유:** 이 프로젝트엔 `GE_SpeedBuff`(스킬)/`GE_SprintBuff`(Shift)/`GE_Slowed`(디버프) 등 동일 속성(moveSpeed/damage 등)을 건드리는 Duration/Infinite GE가 이미 다수 존재. 표준 차이값 방식은 이들을 전부 뭉뚱그려 표시해 "장비/포션 특유의 체감 안 되는 효과를 보여준다"는 원래 목적과 어긋남. `State.PotionBuff` 태그 필터링으로 포션발 증가분만 정확히 분리
+- **트레이드오프:** `State.PotionBuff` 태그를 포션 전용으로 계속 유지해야 함(다른 GE가 재사용하면 계산이 오염됨). 새 버프형 소모품을 추가할 때마다 이 태그를 명시적으로 부여해야 위젯에 자동 반영됨

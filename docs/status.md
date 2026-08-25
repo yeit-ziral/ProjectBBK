@@ -44,7 +44,7 @@
 | WBP_GameOverScreen | ✅ 완료 | UC_GameOverWidget 기반. 전원 사망 시 HandleCharacterDeath에서 자동 표시 |
 | WBP_MainMenu | ✅ 완료 | UC_MainMenuWidget 기반. BindWidget: StartButton·SettingsButton·QuitButton. 게임 시작: StartGame() 경유 로딩 오버레이 포함 |
 | WBP_Settings | ✅ 완료 | UC_SettingsWidget 기반. BindWidget: CloseButton·MasterVolumeSlider·BGMVolumeSlider·SFXVolumeSlider·MasterVolumeText·BGMVolumeText·SFXVolumeText. Master/BGM/SFX 볼륨 슬라이더 + 퍼센트 텍스트. UC_BBKGameUserSettings 연동, 슬라이더 조작 시 즉시 적용·저장 |
-| WBP_Status | ✅ 완료 | UC_StatusWidget 기반. BindWidget: MaxHPText·MaxStaminaText·MoveSpeedText·DefenseText·AttackText. ASC 어트리뷰트 변경 델리게이트로 실시간 반영. SizeBox WindowRoot + 드래그 이동. 캐릭터 교체·전원 사망 시 자동 처리. IA_Status 토글 키. |
+| WBP_Status | ✅ 완료 | UC_StatusWidget 기반. BindWidget: MaxHPText·MaxStaminaText·MoveSpeedText·DefenseText·AttackText. ASC 어트리뷰트 변경 델리게이트로 실시간 반영. SizeBox WindowRoot + 드래그 이동. 캐릭터 교체·전원 사망 시 자동 처리. IA_Status 토글 키. 장비/포션(State.PotionBuff)으로 인한 스탯 증가분은 "총합 (+N)" 형태로 표시(스킬 버프/디버프는 제외). |
 | WBP_UseItem | ✅ 완료 | UC_UseItemSlotWidget 기반. 퀵슬롯(2개) — 인벤토리 드래그&드롭으로 소비 아이템 참조 등록(인벤토리에서 제거 안 함), IA_UseItem0/1(1·2키)로 사용, 재고 0 시 아이콘 반투명 유지. 쿨다운(섹션 7)·재고없음 알림 사운드(섹션 8) C++ 구현 완료, PIE 확인. HUD 중복 생성으로 인한 사운드 중복 재생 이슈는 `CachedHUD` 가드 적용으로 해결. 구매/획득 등 UseItem 이외 경로의 수량 변화도 NotifyQuickSlotsForItem으로 표시 갱신. 퀵슬롯 아이템 교체 시 이전 쿨다운 오버레이가 남던 버그(`RestoreCooldownState` 리셋 누락, Debugging Checklist #46) 수정 완료 |
 | WBP_Equipment | ✅ 완료 | UC_EquipmentComponent 연동. 인벤토리 슬롯 드래그&드롭 장착, 우클릭/더블클릭 해제, 슬롯 타입 검증(GetItemSlotType), 툴팁(C_ItemTooltipWidget). 캐릭터 교체 시 장비 보너스 GE는 Suspend/ReapplyEquipBonuses로 활성 캐릭터에만 적용 |
 
@@ -76,6 +76,10 @@
 | GE_GainExperience | ✅ 완료 | Set by Caller, Data.Exp 태그, experience 어트리뷰트 가산 |
 | GE_EquipBonus | ✅ 완료 | 장비 공용 GE. Infinite Duration, SetByCaller Modifier 5개 (MaxHealth, MaxStamina, MoveSpeed, Defense, Damage). 캐릭터 교체 시 UC_EquipmentComponent::Suspend/ReapplyEquipBonuses로 활성 캐릭터에만 적용되도록 격리 |
 | GE_HealZoneTick | ✅ 완료 | Instant, Set by Caller Data.Heal — AC_HealZone이 체류 중 반복 적용 |
+| GE_IncreaseMaxST | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, maxStamina 증가 |
+| GE_IncreaseDamage | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, damage 증가 |
+| GE_IncreaseDefense | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, defense 증가 |
+| GE_IncreaseSpeed | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, moveSpeed 증가 |
 
 ### Objects
 | Object | 상태 | 비고 |
