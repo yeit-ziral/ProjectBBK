@@ -45,7 +45,7 @@
 | WBP_MainMenu | ✅ 완료 | UC_MainMenuWidget 기반. BindWidget: StartButton·SettingsButton·QuitButton. 게임 시작: StartGame() 경유 로딩 오버레이 포함 |
 | WBP_Settings | ✅ 완료 | UC_SettingsWidget 기반. BindWidget: CloseButton·MasterVolumeSlider·BGMVolumeSlider·SFXVolumeSlider·MasterVolumeText·BGMVolumeText·SFXVolumeText. Master/BGM/SFX 볼륨 슬라이더 + 퍼센트 텍스트. UC_BBKGameUserSettings 연동, 슬라이더 조작 시 즉시 적용·저장 |
 | WBP_Status | ✅ 완료 | UC_StatusWidget 기반. BindWidget: MaxHPText·MaxStaminaText·MoveSpeedText·DefenseText·AttackText. ASC 어트리뷰트 변경 델리게이트로 실시간 반영. SizeBox WindowRoot + 드래그 이동. 캐릭터 교체·전원 사망 시 자동 처리. IA_Status 토글 키. |
-| WBP_UseItem | ✅ 완료 | UC_UseItemSlotWidget 기반. 퀵슬롯(2개) — 인벤토리 드래그&드롭으로 소비 아이템 참조 등록(인벤토리에서 제거 안 함), IA_UseItem0/1(1·2키)로 사용, 재고 0 시 아이콘 반투명 유지. 쿨다운(섹션 7)·재고없음 알림 사운드(섹션 8) C++ 구현 완료, PIE 확인. HUD 중복 생성으로 인한 사운드 중복 재생 이슈는 `CachedHUD` 가드 적용으로 해결. 구매/획득 등 UseItem 이외 경로의 수량 변화도 NotifyQuickSlotsForItem으로 표시 갱신 |
+| WBP_UseItem | ✅ 완료 | UC_UseItemSlotWidget 기반. 퀵슬롯(2개) — 인벤토리 드래그&드롭으로 소비 아이템 참조 등록(인벤토리에서 제거 안 함), IA_UseItem0/1(1·2키)로 사용, 재고 0 시 아이콘 반투명 유지. 쿨다운(섹션 7)·재고없음 알림 사운드(섹션 8) C++ 구현 완료, PIE 확인. HUD 중복 생성으로 인한 사운드 중복 재생 이슈는 `CachedHUD` 가드 적용으로 해결. 구매/획득 등 UseItem 이외 경로의 수량 변화도 NotifyQuickSlotsForItem으로 표시 갱신. 퀵슬롯 아이템 교체 시 이전 쿨다운 오버레이가 남던 버그(`RestoreCooldownState` 리셋 누락, Debugging Checklist #46) 수정 완료 |
 | WBP_Equipment | ✅ 완료 | UC_EquipmentComponent 연동. 인벤토리 슬롯 드래그&드롭 장착, 우클릭/더블클릭 해제, 슬롯 타입 검증(GetItemSlotType), 툴팁(C_ItemTooltipWidget). 캐릭터 교체 시 장비 보너스 GE는 Suspend/ReapplyEquipBonuses로 활성 캐릭터에만 적용 |
 
 ### Effects
@@ -89,6 +89,7 @@
 | UC_ConsumableAction | ✅ 완료 | GE 즉시 자기 적용만으로 표현 안 되는 소비 아이템 동작(AOE 판정, 액터 스폰 등) 처리용 UObject 베이스. FConsumableItemData.actionClass로 DT 연동 |
 | UC_SpawnHealZoneAction / AC_HealZone (BP_HealZone) | ✅ 완료 | 힐장판 소비 아이템 — Instant GE(GE_HealZoneTick) + 존 자체 반복 타이머로 체류 중에만 회복 |
 | UC_KnockbackAction | ✅ 완료 | 넉백 소비 아이템 — GE 없이 순수 LaunchCharacter, State.KnockbackImmune 면역 체크 |
+| UC_BlinkAction / BP_BlinkItem | ✅ 완료 | 순간이동 소비 아이템 — GE 없이 LineTrace로 벽 충돌 체크 후 SetActorLocation, 쿨다운 있음(기존 아이템 쿨다운 시스템 재사용) |
 
 ### Level System
 | Class / Asset | 상태 | 비고 |
