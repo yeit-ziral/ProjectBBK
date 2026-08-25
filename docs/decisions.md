@@ -250,3 +250,9 @@
 - **대안:** 기존 `GE_HealOverTime`(Duration+Period)을 `AC_FireZone`처럼 진입 시 1회만 적용
 - **선택 이유:** Duration GE를 1회 적용하면 장판을 스치기만 해도 전체 Duration 동안 회복이 지속돼 "장판 안에 있는 동안만 회복"이라는 의도와 어긋남. Instant GE + 존이 직접 관리하는 타이머는 실제 체류 시간과 회복이 정확히 일치함
 - **트레이드오프:** `AC_FireZone`엔 없던 `OnEndOverlap` 처리와 타이머 시작/정지 로직이 추가로 필요해 구조가 조금 더 복잡함. Instant GE는 활성 핸들이 없으므로(Debugging Checklist #12) "제거"가 아니라 "타이머 정지"로 회복을 멈춤
+
+### Blink 벽 통과 방지 — 사전 LineTrace vs SetActorLocation(sweep=true)
+- **선택:** `LineTraceSingleByChannel`로 목표 지점까지 미리 검사 후 충돌 지점에서 캡슐 반경만큼 당긴 위치로 이동
+- **대안:** `C_EliteMonsterSpecialAttackGA_Pull`처럼 `SetActorLocation(NewLoc, bSweep=true)`로 이동 자체를 스윕 처리
+- **선택 이유:** Blink는 이동 거리가 크고(기본 600) 즉시 텔레포트라는 의도가 명확 — sweep은 목표 지점까지 콜리전을 따라 밀어내는 방식이라 "순간이동"의 즉시성과 다르게 느껴질 수 있고, 벽에 스치듯 닿았을 때 예측하기 어려운 최종 위치가 나올 수 있음. 사전 LineTrace는 "막히면 벽 앞에서 멈춘다"는 동작이 명확
+- **트레이드오프:** LineTrace 한 번이 추가 비용. 아주 얇은 장애물(캡슐 반경보다 얇은 벽) 뒤로 착지하는 예외 케이스는 미검증

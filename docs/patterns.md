@@ -776,6 +776,19 @@ UC_ConsumableAction (UObject, Abstract, Blueprintable)
 - 판단 기준: 대상이 자기 자신뿐이고 GE 적용만 필요하면 `consumeEffects`, 그 외(타 대상 AOE, 액터 스폰, GE 외 로직)는 `UC_ConsumableAction` 서브클래스
 - `FConsumableItemData.actionClass`(`TSubclassOf<UC_ConsumableAction>`)로 DataTable에서 지정 — 아이템 추가 시 새 Action Blueprint + DT row만 필요, `UseItem()` 수정 불필요
 
+### 즉시 순간이동(Blink) 액션 패턴 (`UC_BlinkAction` 참고)
+`UC_ConsumableAction` 서브클래스로 GE 없이 순수 위치 이동만 수행하는 액션. 벽/장애물을 통과하지 않도록 사전 LineTrace로 최종 위치를 확정.
+```
+Execute_Implementation(ASC, AvatarActor)
+  → TargetLocation = ActorLocation + ForwardVector * blinkDistance
+  → LineTraceSingleByChannel(Start → TargetLocation, ECC_Visibility, IgnoreActor: Self)
+  → 충돌 시: ImpactPoint - Direction * CapsuleRadius   // 벽 안쪽으로 파고들지 않게 캡슐 반경만큼 당김
+  → 미충돌 시: TargetLocation 그대로
+  → SetActorLocation(FinalLocation, bSweep=false)
+```
+- `ECC_Visibility`는 이 프로젝트에서 캐릭터 전방 트레이스에 이미 쓰이는 채널 (`AC_PlayerController`의 카메라 전방 LineTrace와 동일)
+- `C_EliteMonsterSpecialAttackGA_Pull`처럼 `SetActorLocation(sweep=true)`로 이동 자체를 스윕 처리하는 대안도 있으나, Blink는 이동 거리가 크고 즉시 텔레포트라는 의도가 명확해 사전 LineTrace로 최종 위치를 미리 확정하는 방식을 채택 (Design Decisions 참고)
+
 ### 체류 기반 반복 효과 존 패턴 (`AC_HealZone` 참고)
 "지면 AOE 존 패턴"(`GA_Ablaze`/`AC_FireZone`)의 변형 — 진입 시 1회 적용 대신, 반경 안에 머무는 동안만 효과가 지속되어야 하는 경우.
 ```
