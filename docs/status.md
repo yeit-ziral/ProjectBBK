@@ -26,6 +26,8 @@
 | BPC_RangedMonsterNormalAttackGA | ✅ 완료 | AC_RangedMonster 사용 |
 | BPC_BossBeamPatternGA | ✅ 완료 | AC_BossMonster 사용 |
 | BPC_BossStormPatternGA | ✅ 완료 | AC_BossMonster 사용 |
+| AC_BombMonster (자폭 돌진) | ✅ 완료 (PIE 검증) | BT 미사용 — Tick 상태머신(배회 ↔ S자 위빙 돌진 → 접촉 기폭 → 폭발 → 자기 사망). BPC_BombMonster + DT_MonsterData_Bomb + GE_BombExplosion + 흑백 불덩이 머티리얼 전부 연결. PIE 검증: 배회(홈 반경 263/속도 250), 인식→돌진, 폭발 데미지 정확히 30 (100→70, 최대체력 30% true damage), 자기 소멸 확인. `weaveFrequency`는 0.35 권장(1.2는 S자가 아닌 잔떨림 — 측정치 편차 29cm vs 47cm) |
+| AC_ShieldMonster (전면 방어 + 패링) | ✅ 완료 (PIE 검증 대기) | 정면 `guardHalfAngle`(90도) 반각 내 데미지를 `guardDamageReduction`(1.0 = 완전 무효)만큼 감소(방어력 감산 이전), 측/후면 정상 피해. `AC_BaseMonster::ModifyIncomingDamage` 훅 → `UC_MonsterAttributeSet::PostGameplayEffectExecute`에서 호출. 노말 공격 타격 순간 플레이어가 `State.Shield`면 패링 → `UC_GroggyComponent::ForceGroggy`로 즉시 그로기. 타이밍 링은 `M_ParryRing`(Disable Depth Test 평면 메시, Decal 아님). 에셋 전부 연결됨: `BPC_ShieldMonster` / `ABP_ShieldMonster`(GuardAlpha C++ 계산 + Apply Mesh Space Additive) / `BS_ShieldMonster` / AM_Attack·Groggy·Death / `BPC_ShieldMonsterNormalAttackGA` / `DT_MonsterData_Shield`(Row Id 1004) / `BT_Monster_Shield`. 남은 작업: PIE 검증(`bDrawGuardDebug`·`bDrawParryDebug`) |
 | UC_BTTaskReposition (Idle Reposition / Strafe) | 🔧 에디터 작업 필요 | C++ 완료. BT_Monster_Melee·Ranged·Boss에 fallback 브랜치로 배치 + TargetActorKey 바인딩 필요. FMonsterData DataTable에 Reposition 컬럼 값 입력 필요 |
 
 ### UI

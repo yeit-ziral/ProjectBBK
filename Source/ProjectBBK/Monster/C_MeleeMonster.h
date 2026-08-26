@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -20,6 +20,7 @@ public:
 
 	virtual bool CanAutoAttack() const override;
 	virtual bool IsPlayingAttackAnimation() const override;
+	virtual bool TryAutoAttack() override { return MeleeAutoAttack(); }
 
 	// BT에서 호출 — 공격 실행 시 true, 쿨타임/조건 미충족 시 false
 	UFUNCTION(BlueprintCallable, Category = "Attack")

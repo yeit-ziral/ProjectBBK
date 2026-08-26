@@ -7,6 +7,7 @@
 #include "../Items/C_ItemTooltipWidget.h"
 #include "Components/Image.h"
 #include "Blueprint/DragDropOperation.h"
+#include "Blueprint/SlateBlueprintLibrary.h"   // AbsoluteToViewport
 #include "GameFramework/PlayerController.h"
 
 void UC_EquipmentSlotWidget::NativePreConstruct()
@@ -45,16 +46,31 @@ void UC_EquipmentSlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, con
 
 	tooltip->SetItem(equipData);
 	tooltip->SetVisibility(ESlateVisibility::HitTestInvisible);   // 커서/hover 가로채지 않게
-	tooltip->AddToViewport(1000);                                 // 창·HUD 위에
 
-	// 커서 근처에 배치 (살짝 오프셋)
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		float mx = 0.f, my = 0.f;
-		if (PC->GetMousePosition(mx, my))
-			tooltip->SetPositionInViewport(FVector2D(mx + 16.f, my + 16.f), true);
-	}
+	// 뷰포트 슬롯은 추가 시점의 오프셋(크기·위치)을 잡아두므로, AddToViewport 전에 전부 확정할 것.
+	tooltip->TakeWidget();          // Slate 위젯 생성 — 프리패스 대상 확보
+	tooltip->ForceLayoutPrepass();  // desired size 확정
 
+	// FGameViewportWidgetSlot의 기본 Anchors는 (0,0,1,1) = 전체화면 스트레치.
+	// SetPositionInViewport / SetDesiredSizeInViewport가 내부에서 Anchors를 (0,0)으로 리셋해 주지만,
+	// 둘 다 스킵되면(크기 0 + 마우스 위치 취득 실패) 기본값이 남아 툴팁이 화면 전체로 늘어난다.
+	// → 앵커를 먼저 명시적으로 고정해 스트레치 가능성 자체를 제거. (반드시 다른 Set*InViewport보다 앞)
+	tooltip->SetAnchorsInViewport(FAnchors(0.f, 0.f));
+
+	// 크기가 0이면 슬롯이 AutoSize로 동작해 콘텐츠 크기에 맞춰짐 — 앵커가 스트레치가 아닐 때만 성립
+	const FVector2D tooltipSize = tooltip->GetDesiredSize();
+	if (!tooltipSize.IsNearlyZero())
+		tooltip->SetDesiredSizeInViewport(tooltipSize);
+
+	// 커서 근처에 배치 (살짝 오프셋).
+	// PlayerController::GetMousePosition은 마우스 캡처 중(드래그&드롭 등) 뷰포트 캐시 좌표가 (-1,-1)이라
+	// false를 반환한다 → 마우스 이벤트의 절대 좌표를 뷰포트 로컬 좌표로 변환해 사용(캡처 상태와 무관).
+	FVector2D pixelPos    = FVector2D::ZeroVector;
+	FVector2D viewportPos = FVector2D::ZeroVector;
+	USlateBlueprintLibrary::AbsoluteToViewport(this, InMouseEvent.GetScreenSpacePosition(), pixelPos, viewportPos);
+	tooltip->SetPositionInViewport(viewportPos + FVector2D(16.f, 16.f), false);   // 이미 뷰포트 로컬 → DPI 보정 불필요
+
+	tooltip->AddToViewport(1000);   // 창·HUD 위에
 	activeTooltip = tooltip;
 }
 

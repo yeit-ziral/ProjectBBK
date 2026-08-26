@@ -16,6 +16,8 @@
 #include "NiagaraSystem.h"
 #include "Animation/AnimInstance.h"
 #include "../Skills/C_ExpOrb.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 
 AC_BaseMonster::AC_BaseMonster()
 {
@@ -206,6 +208,11 @@ void AC_BaseMonster::TakeHitReaction()
 	}
 }
 
+float AC_BaseMonster::GetSpecial1Range()          const { return dataComponent ? dataComponent->GetSpecial1Range()          : GetAttackRange(); }
+float AC_BaseMonster::GetSpecial2Range()          const { return dataComponent ? dataComponent->GetSpecial2Range()          : GetAttackRange(); }
+float AC_BaseMonster::GetSpecial1Cooldown()       const { return dataComponent ? dataComponent->GetSpecial1Cooldown()       : GetSpecialCooldown(); }
+float AC_BaseMonster::GetSpecial2Cooldown()       const { return dataComponent ? dataComponent->GetSpecial2Cooldown()       : GetSpecialCooldown(); }
+
 bool  AC_BaseMonster::IsRepositionEnabled()       const { return dataComponent ? dataComponent->IsRepositionEnabled()       : false; }
 float AC_BaseMonster::GetRepositionDesiredRange() const { return dataComponent ? dataComponent->GetRepositionDesiredRange() : 250.f; }
 float AC_BaseMonster::GetRepositionMinRange()     const { return dataComponent ? dataComponent->GetRepositionMinRange()     : 0.f; }
@@ -234,6 +241,10 @@ void AC_BaseMonster::ExecuteDeathSequence()
 	{
 		GM->NotifyMonsterDead();
 	}
+
+	// 사망 사운드 — 몽타주보다 먼저 나가야 타격 순간과 붙는다
+	if (deathSound)
+		UGameplayStatics::PlaySoundAtLocation(this, deathSound, GetActorLocation());
 
 	// 1. 진행 중인 GA 전부 즉시 취소 (빔·스톰 오브젝트 포함)
 	if (monsterASC)

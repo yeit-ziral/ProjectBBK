@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -36,6 +36,19 @@ public:
 	bool CanSpecialAttack() const;
 
 	virtual bool CanAutoAttack() const override;
+	virtual bool TryAutoAttack() override { return EliteAutoAttack(); }
+
+	// 플레이어까지의 거리 (플레이어 없으면 FLT_MAX)
+	float GetDistanceToPlayer() const;
+
+	// 해당 스페셜 슬롯이 사거리 안인지 (bSecond=false → special1, true → special2)
+	bool IsSpecialInRange(bool bSecond) const;
+
+	// 해당 스페셜 슬롯의 개별 쿨다운이 끝났는지
+	bool IsSpecialOffCooldown(bool bSecond) const;
+
+	// 슬롯이 지금 발동 가능한지 (GA 할당 + 쿨다운 + 사거리)
+	bool CanUseSpecial(bool bSecond) const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -62,8 +75,9 @@ protected:
 	TSubclassOf<UGameplayAbility> special2GAClass;
 
 private:
-	float lastNormalAttackTime  = -999.f;
-	float lastSpecialAttackTime = -999.f;
-	bool  bNextSpecialIsSecond  = false;   // special1 ↔ special2 교대 플래그
+	float lastNormalAttackTime   = -999.f;
+	float lastSpecial1AttackTime = -999.f;   // 수렁 장판 — 독립 쿨다운
+	float lastSpecial2AttackTime = -999.f;   // 검은 구체 — 독립 쿨다운
+	bool  bNextSpecialIsSecond   = false;    // 둘 다 발동 가능할 때의 우선순위 교대 플래그
 	float debugAttackAccum      = 0.f;     // [디버그] 자동 공격 누적 시간
 };
