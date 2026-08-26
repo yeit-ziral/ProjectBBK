@@ -5,6 +5,7 @@
 #include "M_Gas/C_MonsterASC.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 AC_EliteMonster::AC_EliteMonster()
 {
@@ -50,16 +51,47 @@ void AC_EliteMonster::Tick(float DeltaSeconds)
 	}
 }
 
+float AC_EliteMonster::GetDistanceToPlayer() const
+{
+	const APawn* player = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!player) return FLT_MAX;
+	return FVector::Dist(player->GetActorLocation(), GetActorLocation());
+}
+
+bool AC_EliteMonster::IsSpecialInRange(bool bSecond) const
+{
+	const float range = bSecond ? GetSpecial2Range() : GetSpecial1Range();
+	return GetDistanceToPlayer() <= range;
+}
+
+bool AC_EliteMonster::IsSpecialOffCooldown(bool bSecond) const
+{
+	// 두 스페셜은 쿨다운을 공유하지 않는다 — 슬롯마다 마지막 발동 시각·쿨다운을 따로 본다
+	const float lastTime = bSecond ? lastSpecial2AttackTime : lastSpecial1AttackTime;
+	const float cooldown = bSecond ? GetSpecial2Cooldown()  : GetSpecial1Cooldown();
+	return GetWorld()->GetTimeSeconds() - lastTime >= cooldown;
+}
+
+bool AC_EliteMonster::CanUseSpecial(bool bSecond) const
+{
+	const TSubclassOf<UGameplayAbility> ga = bSecond ? special2GAClass : special1GAClass;
+	if (!ga) return false;
+	return IsSpecialOffCooldown(bSecond) && IsSpecialInRange(bSecond);
+}
+
 bool AC_EliteMonster::CanNormalAttack() const
 {
 	if (!monsterASC) return false;
-	return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= GetAttackCooldown();
+	if (GetWorld()->GetTimeSeconds() - lastNormalAttackTime < GetAttackCooldown()) return false;
+	// 노말은 근접 판정(전방 구체 트레이스)이므로 AttackRange 안에서만 발동
+	return GetDistanceToPlayer() <= GetAttackRange();
 }
 
 bool AC_EliteMonster::CanSpecialAttack() const
 {
 	if (!monsterASC) return false;
-	return GetWorld()->GetTimeSeconds() - lastSpecialAttackTime >= GetSpecialCooldown();
+	// 슬롯마다 쿨다운·사거리가 독립 — 하나라도 발동 가능하면 true
+	return CanUseSpecial(false) || CanUseSpecial(true);
 }
 
 bool AC_EliteMonster::CanAutoAttack() const
@@ -69,9 +101,9 @@ bool AC_EliteMonster::CanAutoAttack() const
 
 bool AC_EliteMonster::EliteAutoAttack()
 {
-	// 스페셜 쿨타임이 끝났으면 스페셜 우선, 아니면 노말
-	if (CanSpecialAttack())
-		return EliteSpecialAttack();
+	// 스페셜이 쿨타임·사거리를 모두 만족하면 우선, 실패하면 노말로 폴백
+	if (CanSpecialAttack() && EliteSpecialAttack())
+		return true;
 	return EliteNormalAttack();
 }
 
@@ -91,17 +123,24 @@ bool AC_EliteMonster::EliteSpecialAttack()
 	if (!monsterASC) return false;
 	if (!CanSpecialAttack()) return false;
 
-	// 교대 발동 — 한쪽만 할당된 경우 다른 쪽으로 폴백
-	TSubclassOf<UGameplayAbility> ga = bNextSpecialIsSecond ? special2GAClass : special1GAClass;
-	if (!ga)
-		ga = bNextSpecialIsSecond ? special1GAClass : special2GAClass;
-	if (!ga) return false;
+	// 둘 다 발동 가능하면 교대 플래그로 우선순위를 번갈아 주고,
+	// 한쪽만 가능하면(쿨다운 중이거나 사거리 밖) 가능한 쪽이 그대로 나간다
+	const bool preferSecond = bNextSpecialIsSecond;
+	const bool tryOrder[2] = { preferSecond, !preferSecond };
 
-	const bool bActivated = monsterASC->TryActivateAbilityByClass(ga);
-	if (bActivated)
+	for (const bool bSecond : tryOrder)
 	{
-		lastSpecialAttackTime = GetWorld()->GetTimeSeconds();
-		bNextSpecialIsSecond  = !bNextSpecialIsSecond;
+		if (!CanUseSpecial(bSecond)) continue;
+
+		TSubclassOf<UGameplayAbility> ga = bSecond ? special2GAClass : special1GAClass;
+		if (monsterASC->TryActivateAbilityByClass(ga))
+		{
+			// 발동한 슬롯의 쿨다운만 갱신 — 다른 슬롯은 영향 없음
+			(bSecond ? lastSpecial2AttackTime : lastSpecial1AttackTime) = GetWorld()->GetTimeSeconds();
+			// 이번에 쓴 슬롯의 반대쪽을 다음 차례로
+			bNextSpecialIsSecond = !bSecond;
+			return true;
+		}
 	}
-	return bActivated;
+	return false;
 }

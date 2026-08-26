@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -15,6 +15,7 @@
 #include "C_BaseMonster.generated.h"
 
 class UNiagaraSystem;
+class USoundBase;
 class AC_ExpOrb;
 
 class UC_AttackManagerComponent;
@@ -98,6 +99,14 @@ public:
 	UC_MonsterHPDisplayComponent*GetHPDisplayComponent()  const { return hpDisplayComponent; }
 	UC_GroggyComponent*          GetGroggyComponent()     const { return groggyComponent; }
 
+	// 스페셜 GA 슬롯 1/2의 사거리 (DataTable Special1Range/Special2Range, 미지정 시 AttackRange)
+	float GetSpecial1Range()          const;
+	float GetSpecial2Range()          const;
+
+	// 스페셜 GA 슬롯 1/2의 쿨다운 (DataTable Special1Cooldown/Special2Cooldown, 미지정 시 SpecialCooldown)
+	float GetSpecial1Cooldown()       const;
+	float GetSpecial2Cooldown()       const;
+
 	bool  IsRepositionEnabled()       const;
 	float GetRepositionDesiredRange() const;
 	float GetRepositionMinRange()     const;
@@ -108,6 +117,17 @@ public:
 
 	virtual bool CanAutoAttack() const;
 	virtual bool IsPlayingAttackAnimation() const { return false; }
+
+	// BT의 UC_BTTaskMeleeAutoAttack이 호출하는 공통 자동공격 진입점.
+	// 몬스터별 XxxAutoAttack()을 여기서 override로 연결하면 Task 클래스를 새로 만들 필요가 없다.
+	// 실행했으면 true, 쿨타임/조건 미충족이면 false.
+	virtual bool TryAutoAttack() { return false; }
+
+	// 들어온 데미지를 몬스터별로 가공할 기회 — UC_MonsterAttributeSet::PostGameplayEffectExecute에서
+	// 방어력(defense) 감산 **이전**에 호출된다. 기본 구현은 원본 값을 그대로 반환.
+	// bTrueDamage가 true면 방어력을 무시하는 DoT/상태이상 데미지 경로.
+	// DamageInstigator는 EffectContext 기준이라 null일 수 있음.
+	virtual float ModifyIncomingDamage(float RawDamage, AActor* DamageInstigator, bool bTrueDamage) { return RawDamage; }
 
 	void TakeHitReaction();
 	void StartHitFlash();
@@ -146,6 +166,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	UNiagaraSystem* deathFogVFX = nullptr;
+
+	// 사망 시퀀스 시작 순간 재생 — 몬스터마다 BP에서 지정. 미지정이면 무음
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	USoundBase* deathSound = nullptr;
 
 	// 안개 VFX 스폰 후 액터 소멸까지 대기 시간 (VFX 지속 시간보다 길어야 함)
 	UPROPERTY(EditDefaultsOnly, Category = "Death")

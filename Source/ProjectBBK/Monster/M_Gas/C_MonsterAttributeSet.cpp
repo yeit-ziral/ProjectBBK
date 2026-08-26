@@ -10,6 +10,41 @@
 #include "Net/UnrealNetwork.h"
 #include "../C_BaseMonster.h"
 #include "../Manager/C_GroggyComponent.h"
+#include "GameFramework/PlayerState.h"
+#include "GameFramework/Controller.h"
+#include "GameFramework/Pawn.h"
+
+namespace
+{
+	// 방향 기반 판정(쉴드 몬스터 가드각 등)에 쓸 "월드에 실제로 존재하는" 공격자를 뽑는다.
+	//
+	// 플레이어 ASC는 PlayerState 소유이므로 ASC::MakeEffectContext()가 만드는 컨텍스트의
+	// Instigator는 **PlayerState**다. PlayerState는 월드에 배치되지 않아 GetActorLocation()이
+	// 항상 (0,0,0) — 이걸 그대로 방향 판정에 쓰면 "월드 원점에서 맞았다"가 되어
+	// 몬스터가 원점 쪽을 보고 있을 때만 우연히 막히는 무작위 동작이 된다.
+	// EffectCauser(= 아바타 캐릭터 또는 투사체)가 실제 타격 위치에 해당한다.
+	AActor* ResolveDamageSourceActor(const FGameplayEffectContextHandle& Context)
+	{
+		AActor* causer = Context.GetEffectCauser();
+		if (IsValid(causer) && !causer->IsA<APlayerState>() && !causer->IsA<AController>())
+			return causer;
+
+		AActor* instigator = Context.GetInstigator();
+
+		if (const APlayerState* playerState = Cast<APlayerState>(instigator))
+		{
+			if (APawn* pawn = playerState->GetPawn())
+				return pawn;
+		}
+		if (const AController* controller = Cast<AController>(instigator))
+		{
+			if (APawn* pawn = controller->GetPawn())
+				return pawn;
+		}
+
+		return instigator;
+	}
+}
 
 UC_MonsterAttributeSet::UC_MonsterAttributeSet()
 {
@@ -215,7 +250,11 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
     {
         if (bInvincible) { SetReceivedDamage(0.0f); return; }
 
-        const float RawDamage = GetReceivedDamage();
+        float RawDamage = GetReceivedDamage();
+
+        // 몬스터별 데미지 가공 (예: AC_ShieldMonster의 전면 방어각 감소) — 방어력 감산 이전
+        if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
+            RawDamage = monster->ModifyIncomingDamage(RawDamage, ResolveDamageSourceActor(Data.EffectSpec.GetEffectContext()), false);
 
         const float Mitigated = FMath::Max(0.0f, RawDamage - Getdefense()); // 방어 반영
 
@@ -243,7 +282,10 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
     {
         if (bInvincible) { SetReceivedTrueDamage(0.0f); return; }
 
-        const float TrueDamage = GetReceivedTrueDamage();
+        float TrueDamage = GetReceivedTrueDamage();
+
+        if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
+            TrueDamage = monster->ModifyIncomingDamage(TrueDamage, ResolveDamageSourceActor(Data.EffectSpec.GetEffectContext()), true);
 
         const float NewHP = FMath::Clamp(GetcurHP() - TrueDamage, 0.f, GetmaxHP());
         SetcurHP(NewHP);

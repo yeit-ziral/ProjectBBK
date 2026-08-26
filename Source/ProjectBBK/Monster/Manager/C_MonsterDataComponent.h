@@ -32,6 +32,14 @@ public:
 	float GetRepositionFlipInterval() const { return repositionFlipInterval; }
 	float GetExpReward()              const { return expReward; }
 
+	// 스페셜 공격 사거리 — DT에서 0 이하면 Initialize에서 AttackRange로 해석해 둔 값
+	float GetSpecial1Range()          const { return special1Range; }
+	float GetSpecial2Range()          const { return special2Range; }
+
+	// 스페셜 슬롯별 쿨다운 — DT에서 0 이하면 Initialize에서 SpecialCooldown으로 해석해 둔 값
+	float GetSpecial1Cooldown()       const { return special1Cooldown; }
+	float GetSpecial2Cooldown()       const { return special2Cooldown; }
+
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (AllowPrivateAccess = "true"))
 	FName rowName;
@@ -50,6 +58,10 @@ private:
 	float repositionBand         = 60.f;
 	float repositionFlipInterval = 2.5f;
 	float expReward              = 0.f;
+	float special1Range          = 0.f;
+	float special2Range          = 0.f;
+	float special1Cooldown       = 0.f;
+	float special2Cooldown       = 0.f;
 
 	UPROPERTY()
 	AC_BaseMonster* ownerMonster = nullptr;

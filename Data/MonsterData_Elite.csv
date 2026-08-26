@@ -1,2 +1,2 @@
-RawName,MonsterId,MaxHP,MaxGroggy,Attack,Defense,AttackRange,MoveSpeed,NormalCoolDown,SpecialCoolDown,RepositionDesiredRange,RepositionMinRange,RepositionSpeed,RepositionStrafeWeight,RepositionFlipInterval,bEnableReposition,RepositionBand,ExpReward
-Elite,1021,450,150,75,375,200,500,3,6,180,0,280,0.4,2.5,TRUE,60,100
+RawName,MonsterId,MaxHP,MaxGroggy,Attack,Defense,AttackRange,MoveSpeed,NormalCoolDown,SpecialCoolDown,Special1Range,Special2Range,Special1Cooldown,Special2Cooldown,RepositionDesiredRange,RepositionMinRange,RepositionSpeed,RepositionStrafeWeight,RepositionFlipInterval,bEnableReposition,RepositionBand,ExpReward
+Elite,1021,450,150,75,375,200,500,3,6,0,800,8,0,180,0,450,0.4,2.5,TRUE,60,100
