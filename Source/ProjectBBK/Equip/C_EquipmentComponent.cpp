@@ -170,13 +170,65 @@ bool UC_EquipmentComponent::EquipItem(FName itemID)
 	if (!inv->RemoveItem(itemID, 1))
 		return false;
 
+	// ApplyEquipGE가 어트리뷰트 변경 델리게이트를 동기적으로 발화시키므로,
+	// GetTotalEquipBonuses()가 이 아이템을 포함해서 계산하도록 GE 적용보다 먼저 맵에 등록
 	FEquippedEntry entry;
-	entry.itemID      = itemID;
-	entry.bonusHandle = ApplyEquipGE(*row);
+	entry.itemID = itemID;
 	equipped.Add(slot, entry);
+
+	equipped[slot].bonusHandle = ApplyEquipGE(*row);
 
 	OnEquipmentChanged.Broadcast();
 	return true;
+}
+
+void UC_EquipmentComponent::SuspendEquipBonuses()
+{
+	UAbilitySystemComponent* ASC = GetASC();
+	if (!ASC)
+		return;
+
+	for (TPair<EEquipmentSlot, FEquippedEntry>& Pair : equipped)
+	{
+		if (Pair.Value.bonusHandle.IsValid())
+		{
+			ASC->RemoveActiveGameplayEffect(Pair.Value.bonusHandle);
+			Pair.Value.bonusHandle = FActiveGameplayEffectHandle();
+		}
+	}
+}
+
+void UC_EquipmentComponent::ReapplyEquipBonuses()
+{
+	if (!equipmentTable)
+		return;
+
+	for (TPair<EEquipmentSlot, FEquippedEntry>& Pair : equipped)
+	{
+		if (const FEquipmentItemData* row = equipmentTable->FindRow<FEquipmentItemData>(Pair.Value.itemID, TEXT("ReapplyEquipBonuses"), false))
+			Pair.Value.bonusHandle = ApplyEquipGE(*row);
+	}
+}
+
+FEquipBonusTotals UC_EquipmentComponent::GetTotalEquipBonuses() const
+{
+	FEquipBonusTotals totals;
+	if (!equipmentTable)
+		return totals;
+
+	for (const TPair<EEquipmentSlot, FEquippedEntry>& Pair : equipped)
+	{
+		if (const FEquipmentItemData* row = equipmentTable->FindRow<FEquipmentItemData>(Pair.Value.itemID, TEXT("GetTotalEquipBonuses"), false))
+		{
+			totals.maxHealth  += row->bonusMaxHealth;
+			totals.maxStamina += row->bonusMaxStamina;
+			totals.moveSpeed  += row->bonusMoveSpeed;
+			totals.defense    += row->bonusDefense;
+			totals.damage     += row->bonusDamage;
+		}
+	}
+
+	return totals;
 }
 
 bool UC_EquipmentComponent::UnequipItem(EEquipmentSlot slot)
@@ -189,14 +241,16 @@ bool UC_EquipmentComponent::UnequipItem(EEquipmentSlot slot)
 	const FName itemID = found->itemID;
 	const FActiveGameplayEffectHandle handle = found->bonusHandle;
 
+	// RemoveActiveGameplayEffect가 어트리뷰트 변경 델리게이트를 동기적으로 발화시키므로,
+	// GetTotalEquipBonuses()가 이 아이템을 제외하고 계산하도록 GE 제거보다 먼저 맵에서 제거
+	equipped.Remove(slot);
+
 	// 보너스 GE 제거
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
 		if (handle.IsValid())
 			ASC->RemoveActiveGameplayEffect(handle);
 	}
-
-	equipped.Remove(slot);
 
 	// 아이템을 가방으로 복귀
 	if (UC_InventoryComponent* inv = GetInventory())

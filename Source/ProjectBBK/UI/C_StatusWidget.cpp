@@ -2,8 +2,24 @@
 
 #include "C_StatusWidget.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
+#include "../Equip/C_EquipmentComponent.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
+#include "GameplayEffect.h"
+
+namespace
+{
+	// 장비 보너스 합산에서 이 Attribute에 해당하는 필드를 뽑아옴 (5종 외에는 0)
+	float GetEquipBonusForAttribute(const FEquipBonusTotals& Totals, const FGameplayAttribute& Attribute)
+	{
+		if (Attribute == UC_ChracterAttributeSetBase::GetmaxHealthAttribute())  return Totals.maxHealth;
+		if (Attribute == UC_ChracterAttributeSetBase::GetmaxStaminaAttribute()) return Totals.maxStamina;
+		if (Attribute == UC_ChracterAttributeSetBase::GetmoveSpeedAttribute())  return Totals.moveSpeed;
+		if (Attribute == UC_ChracterAttributeSetBase::GetdefenseAttribute())    return Totals.defense;
+		if (Attribute == UC_ChracterAttributeSetBase::GetdamageAttribute())     return Totals.damage;
+		return 0.f;
+	}
+}
 
 void UC_StatusWidget::InitializeStatWindow(UAbilitySystemComponent* ASC)
 {
@@ -41,46 +57,87 @@ void UC_StatusWidget::RefreshStatValues()
 	if (!cachedASC.IsValid())
 		return;
 
-	if (MaxHPText)
-		MaxHPText->SetText(FText::AsNumber(FMath::RoundToInt(cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetmaxHealthAttribute()))));
-	if (MaxStaminaText)
-		MaxStaminaText->SetText(FText::AsNumber(FMath::RoundToInt(cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetmaxStaminaAttribute()))));
-	if (MoveSpeedText)
-		MoveSpeedText->SetText(FText::AsNumber(FMath::RoundToInt(cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetmoveSpeedAttribute()))));
-	if (DefenseText)
-		DefenseText->SetText(FText::AsNumber(FMath::RoundToInt(cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetdefenseAttribute()))));
-	if (AttackText)
-		AttackText->SetText(FText::AsNumber(FMath::RoundToInt(cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetdamageAttribute()))));
+	UpdateStatText(MaxHPText,      cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetmaxHealthAttribute()),  UC_ChracterAttributeSetBase::GetmaxHealthAttribute());
+	UpdateStatText(MaxStaminaText, cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetmaxStaminaAttribute()), UC_ChracterAttributeSetBase::GetmaxStaminaAttribute());
+	UpdateStatText(MoveSpeedText,  cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetmoveSpeedAttribute()),  UC_ChracterAttributeSetBase::GetmoveSpeedAttribute());
+	UpdateStatText(DefenseText,    cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetdefenseAttribute()),    UC_ChracterAttributeSetBase::GetdefenseAttribute());
+	UpdateStatText(AttackText,     cachedASC->GetNumericAttribute(UC_ChracterAttributeSetBase::GetdamageAttribute()),     UC_ChracterAttributeSetBase::GetdamageAttribute());
 }
 
 void UC_StatusWidget::OnMaxHealthChanged(const FOnAttributeChangeData& Data)
 {
-	if (MaxHPText)
-		MaxHPText->SetText(FText::AsNumber(FMath::RoundToInt(Data.NewValue)));
+	UpdateStatText(MaxHPText, Data.NewValue, UC_ChracterAttributeSetBase::GetmaxHealthAttribute());
 }
 
 void UC_StatusWidget::OnMaxStaminaChanged(const FOnAttributeChangeData& Data)
 {
-	if (MaxStaminaText)
-		MaxStaminaText->SetText(FText::AsNumber(FMath::RoundToInt(Data.NewValue)));
+	UpdateStatText(MaxStaminaText, Data.NewValue, UC_ChracterAttributeSetBase::GetmaxStaminaAttribute());
 }
 
 void UC_StatusWidget::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	if (MoveSpeedText)
-		MoveSpeedText->SetText(FText::AsNumber(FMath::RoundToInt(Data.NewValue)));
+	UpdateStatText(MoveSpeedText, Data.NewValue, UC_ChracterAttributeSetBase::GetmoveSpeedAttribute());
 }
 
 void UC_StatusWidget::OnDefenseChanged(const FOnAttributeChangeData& Data)
 {
-	if (DefenseText)
-		DefenseText->SetText(FText::AsNumber(FMath::RoundToInt(Data.NewValue)));
+	UpdateStatText(DefenseText, Data.NewValue, UC_ChracterAttributeSetBase::GetdefenseAttribute());
 }
 
 void UC_StatusWidget::OnAttackChanged(const FOnAttributeChangeData& Data)
 {
-	if (AttackText)
-		AttackText->SetText(FText::AsNumber(FMath::RoundToInt(Data.NewValue)));
+	UpdateStatText(AttackText, Data.NewValue, UC_ChracterAttributeSetBase::GetdamageAttribute());
+}
+
+void UC_StatusWidget::UpdateStatText(UTextBlock* TextBlock, float NewValue, const FGameplayAttribute& Attribute) const
+{
+	if (!TextBlock)
+		return;
+
+	float bonus = GetPotionBonus(Attribute);
+
+	if (cachedASC.IsValid())
+	{
+		if (const AActor* Avatar = cachedASC->GetAvatarActor())
+		{
+			if (const UC_EquipmentComponent* EquipComp = Avatar->FindComponentByClass<UC_EquipmentComponent>())
+				bonus += GetEquipBonusForAttribute(EquipComp->GetTotalEquipBonuses(), Attribute);
+		}
+	}
+
+	const int32 total = FMath::RoundToInt(NewValue);
+	if (FMath::RoundToInt(bonus) != 0)
+		TextBlock->SetText(FText::FromString(FString::Printf(TEXT("%d (+%d)"), total, FMath::RoundToInt(bonus))));
+	else
+		TextBlock->SetText(FText::AsNumber(total));
+}
+
+float UC_StatusWidget::GetPotionBonus(const FGameplayAttribute& Attribute) const
+{
+	if (!cachedASC.IsValid())
+		return 0.f;
+
+	static const FGameplayTag PotionBuffTag = FGameplayTag::RequestGameplayTag(FName("State.PotionBuff"));
+
+	FGameplayEffectQuery query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(FGameplayTagContainer(PotionBuffTag));
+	const TArray<FActiveGameplayEffectHandle> handles = cachedASC->GetActiveEffects(query);
+
+	float total = 0.f;
+	for (const FActiveGameplayEffectHandle& handle : handles)
+	{
+		const FActiveGameplayEffect* activeGE = cachedASC->GetActiveGameplayEffect(handle);
+		if (!activeGE || !activeGE->Spec.Def)
+			continue;
+
+		const TArray<FGameplayModifierInfo>& defModifiers = activeGE->Spec.Def->Modifiers;
+		for (int32 i = 0; i < activeGE->Spec.Modifiers.Num(); ++i)
+		{
+			if (defModifiers.IsValidIndex(i) && defModifiers[i].Attribute == Attribute)
+				total += activeGE->Spec.Modifiers[i].GetEvaluatedMagnitude();
+		}
+	}
+
+	return total;
 }
 
 void UC_StatusWidget::NativeDestruct()

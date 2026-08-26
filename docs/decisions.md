@@ -236,6 +236,12 @@
 - **선택 이유:** 위젯 인스턴스는 HUD 재생성 등으로 파괴될 수 있지만 인벤토리 컴포넌트는 캐릭터 교체와 무관하게 PlayerController에 상주 — 등록 상태가 위젯 생명주기에 종속되지 않음
 - **트레이드오프:** 없음 (기존 `OnInventoryChanged`/`OnMoneyChanged`와 동일한 위치 원칙)
 
+### 캐릭터 교체 시 장비 보너스 격리 — Suspend/Reapply vs GE 태그 필터링
+- **선택:** `UC_EquipmentComponent::SuspendEquipBonuses()`/`ReapplyEquipBonuses()` — 교체 시 GE를 직접 제거/재적용
+- **대안:** GE_EquipBonus에 캐릭터 식별 정보를 심고 AttributeSet의 PostAttributeChange 등에서 "현재 활성 캐릭터"와 불일치하면 무시하는 필터링
+- **선택 이유:** ASC가 PlayerState 소유로 로스터 전체가 공유되는 기존 구조를 바꾸지 않고, 이미 존재하는 SaveActiveEffects/RestoreActiveEffects 패턴과 동일한 철학(교체 시점에 뗐다 다시 건다)으로 일관되게 처리 가능. 필터링 방식은 AttributeSet에 "현재 캐릭터가 누구인지" 판별 로직을 추가해야 해서 결합도가 높아짐
+- **트레이드오프:** equipped 맵의 GE handle이 교체마다 새로 발급됨 — handle을 안정적 식별자로 쓰면 안 되고 itemID 기준으로 관리해야 함
+
 ### 퀵슬롯 재고 0 처리 — 자동 해제 vs 반투명 유지
 - **선택:** 재고 0이 돼도 등록 유지, 아이콘만 반투명 처리(`RenderOpacity=0.35`) + 수량 텍스트 숨김
 - **대안:** 재고 0 시 `UnregisterQuickSlot` 자동 호출
@@ -254,3 +260,38 @@
 - **대안:** 몬스터마다 전용 Task 클래스 (`UC_BTTaskShieldAutoAttack` 등)를 만들고 BT에서 해당 노드로 교체
 - **선택 이유:** BT 에셋 내부(`root_node`·`Children`·`BlackboardKey`)가 Python에 노출되지 않아 **MCP로 노드 교체 불가** — 몬스터를 추가할 때마다 수동 에디터 작업이 강제됨. `BT_Monster_Shield`는 `BT_Monster_Melee` 복제본이라 이미 `C_BTTaskMeleeAutoAttack` 노드를 갖고 있고, Task를 일반화하면 **BT를 손대지 않고 그대로 동작**. `CanAutoAttack()` / `IsPlayingAttackAnimation()`이 이미 `AC_BaseMonster`의 가상 함수여서 `TryAutoAttack()` 하나만 추가하면 일관성이 맞음
 - **트레이드오프:** 클래스명이 `UC_BTTaskMeleeAutoAttack`으로 남아 실제 역할(공통)과 어긋남 — 기존 BT 에셋이 클래스 경로를 참조하므로 이름을 바꾸면 노드가 끊어져서 표시명(`NodeName`)만 "Monster Auto Attack"으로 변경. 기존 `UC_BTTaskEliteAutoAttack` / `UC_BTTaskRangedAutoAttack`은 각 BT 에셋이 참조 중이라 그대로 두고, 신규 `UC_BTTaskShieldAutoAttack`만 참조가 없어 삭제
+### 소비 아이템 복합 동작(AOE 판정·액터 스폰) — GA vs UC_ConsumableAction(UObject)
+- **선택:** `UC_ConsumableAction`(UObject, Blueprintable) 베이스 클래스 신설. `FConsumableItemData.actionClass`로 DataTable에서 지정, `UC_InventoryComponent::UseItem()`이 `NewObject`로 생성해 `Execute(ASC, AvatarActor)` 호출
+- **대안:** GA 신설 후 `TryActivateAbilityByClass`로 발동 (SkillWheel과 동일 방식)
+- **선택 이유:** `UseQuickSlot()`이 ASC를 거치지 않는 직접 함수 호출 경로라 GA의 핵심 이점(ActivationBlockedTags, 비용/쿨다운 GE)이 애초에 적용되지 않음. 아이템은 이미 자체 타임스탬프 쿨다운(`IsItemOnCooldown`)이 있어 GA 쿨다운과 중복됨. `UC_ConsumableAction`은 GAS 오버헤드 없이 "클래스 참조로 동작을 갈아끼우는" 확장성만 재사용
+- **트레이드오프:** 몽타주 재생·2단계 입력(조준→발사) 등 GA 고유 생명주기가 필요한 아이템은 이 구조로 못 만듦 — 필요해지면 서브클래스 내부에서 `TryActivateAbilityByClass`로 위임하는 "GA 브릿지" 액션 검토 (아직 미구현)
+
+### AC_HealZone 회복 방식 — Instant GE + 존 자체 반복 타이머 vs Duration GE(GE_HealOverTime) 1회 적용
+- **선택:** `GE_HealZoneTick`(Instant, Set by Caller `Data.Heal`) 신규 생성. `AC_HealZone`이 `OnBeginOverlap`에 반복 타이머를 시작해 매 tick마다 Instant GE를 적용하고, `OnEndOverlap`에 타이머를 멈추는 방식
+- **대안:** 기존 `GE_HealOverTime`(Duration+Period)을 `AC_FireZone`처럼 진입 시 1회만 적용
+- **선택 이유:** Duration GE를 1회 적용하면 장판을 스치기만 해도 전체 Duration 동안 회복이 지속돼 "장판 안에 있는 동안만 회복"이라는 의도와 어긋남. Instant GE + 존이 직접 관리하는 타이머는 실제 체류 시간과 회복이 정확히 일치함
+- **트레이드오프:** `AC_FireZone`엔 없던 `OnEndOverlap` 처리와 타이머 시작/정지 로직이 추가로 필요해 구조가 조금 더 복잡함. Instant GE는 활성 핸들이 없으므로(Debugging Checklist #12) "제거"가 아니라 "타이머 정지"로 회복을 멈춤
+
+### Foot IK 기준면 — Root 소켓 vs 캡슐 바닥
+- **선택:** `ActorLocation.Z - GetScaledCapsuleHalfHeight()`(캡슐 바닥)를 기준면으로 사용
+- **대안:** `Get Socket Location("Root")`의 Z (다수 튜토리얼의 기본 방식, `ABP_Melee` 초기 구현)
+- **선택 이유:** `Get Socket Location`은 애니메이션이 적용된 현재 포즈의 본 위치를 반환하므로, Root 본을 움직이는 애니메이션(`Root Motion Mode = Root Motion from Montages`)이 재생되면 기준면이 매 프레임 흔들림. Idle 상태에서는 두 값이 정확히 일치해 문제가 드러나지 않다가 전투 중에만 발이 어긋나는 재현 어려운 버그가 됨. 캡슐 바닥은 물리적으로 정의된 값이라 포즈와 무관하게 항상 안정적이고, 캡슐 크기 상수를 하드코딩하지 않아도 됨
+- **트레이드오프:** BP에서는 `Melee Character` 참조를 거쳐 두 노드(`Get Actor Location` / `Get Scaled Capsule Half Height`)를 조합해야 해서 Root 소켓 한 번 읽는 것보다 그래프가 조금 늘어남
+
+### Foot IK 오차 보정 — Mesh Z 상수 이동 vs 수식 정정
+- **선택:** Mesh Relative Z를 `-(Capsule Half Height)`인 정확한 값(-96)으로 되돌리고, FootTrace 수식의 하드코딩 상수를 제거해 근본 원인을 제거
+- **대안:** 계단에서 뜨는 만큼 Mesh Relative Z를 눈대중으로 내려서 상쇄 (초기 대응)
+- **선택 이유:** Mesh Z는 **모든 지형에 동일하게 적용되는 상수 평행이동**이라 지형 의존적 오차를 원리적으로 보정할 수 없음. 계단에 맞추면 평지에서 정확히 그만큼 발이 파묻히는 트레이드오프가 강제됨. 실제로 이번 문제의 원인은 ① Mesh Z가 -96이 아닌 -90/-100이었던 상수 오차와 ② FootTrace의 하드코딩 상수 두 가지였고, 둘 다 제거하자 계단·평지가 동시에 맞았음
+- **트레이드오프:** 없음. 상수 보정은 두 지형 중 하나를 반드시 포기해야 하는 구조였음
+
+### Blink 벽 통과 방지 — 사전 LineTrace vs SetActorLocation(sweep=true)
+- **선택:** `LineTraceSingleByChannel`로 목표 지점까지 미리 검사 후 충돌 지점에서 캡슐 반경만큼 당긴 위치로 이동
+- **대안:** `C_EliteMonsterSpecialAttackGA_Pull`처럼 `SetActorLocation(NewLoc, bSweep=true)`로 이동 자체를 스윕 처리
+- **선택 이유:** Blink는 이동 거리가 크고(기본 600) 즉시 텔레포트라는 의도가 명확 — sweep은 목표 지점까지 콜리전을 따라 밀어내는 방식이라 "순간이동"의 즉시성과 다르게 느껴질 수 있고, 벽에 스치듯 닿았을 때 예측하기 어려운 최종 위치가 나올 수 있음. 사전 LineTrace는 "막히면 벽 앞에서 멈춘다"는 동작이 명확
+- **트레이드오프:** LineTrace 한 번이 추가 비용. 아주 얇은 장애물(캡슐 반경보다 얇은 벽) 뒤로 착지하는 예외 케이스는 미검증
+
+### WBP_Status 증가분 계산 — 소스별 명시적 추적 vs GAS 표준 BaseValue/CurrentValue 차이
+- **선택:** 장비는 `UC_EquipmentComponent`가 아는 DT bonus 값을 합산, 포션은 `State.PotionBuff` 태그로 필터링한 활성 GE의 Modifier 평가치를 합산 — 두 소스를 독립 계산 후 합산
+- **대안:** ASC 어트리뷰트의 `CurrentValue - BaseValue` 차이를 그대로 사용
+- **선택 이유:** 이 프로젝트엔 `GE_SpeedBuff`(스킬)/`GE_SprintBuff`(Shift)/`GE_Slowed`(디버프) 등 동일 속성(moveSpeed/damage 등)을 건드리는 Duration/Infinite GE가 이미 다수 존재. 표준 차이값 방식은 이들을 전부 뭉뚱그려 표시해 "장비/포션 특유의 체감 안 되는 효과를 보여준다"는 원래 목적과 어긋남. `State.PotionBuff` 태그 필터링으로 포션발 증가분만 정확히 분리
+- **트레이드오프:** `State.PotionBuff` 태그를 포션 전용으로 계속 유지해야 함(다른 GE가 재사용하면 계산이 오염됨). 새 버프형 소모품을 추가할 때마다 이 태그를 명시적으로 부여해야 위젯에 자동 반영됨

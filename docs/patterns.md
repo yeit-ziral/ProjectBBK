@@ -708,6 +708,37 @@ UseItem(itemID)
 ```
 - 인벤토리는 `PlayerController` 소유이므로 ASC는 `PlayerState` 경유로 취득 (Character 직접 참조 아님 — GAS 규칙과 동일 원칙, 경로만 다름)
 
+### 공유 ASC 환경에서 캐릭터별 Infinite GE 격리 패턴 (UC_EquipmentComponent 참고)
+캐릭터 로스터가 PlayerState의 ASC 하나를 공유하는 구조에서, 특정 캐릭터에만 적용돼야 하는 Infinite GE(장비 보너스 등)를 교체 시점에 뗐다 다시 거는 패턴.
+```
+컴포넌트(캐릭터별, AC_BasePlayerCharactor에 부착)
+  SuspendEquipBonuses() → equipped 맵 순회, ASC->RemoveActiveGameplayEffect(handle) 후
+                           handle만 초기화 (equipped 항목 자체는 유지 — "장착 상태"는 보존)
+  ReapplyEquipBonuses() → equipped 맵 순회, ApplyEquipGE() 재호출로 새 handle 발급
+
+AC_PlayerController::ExecuteCharacterSwitch
+  OldChar->EquipComp->SuspendEquipBonuses()   ← OldChar->SaveCharacterState()보다 먼저 호출
+    (보너스가 반영된 채로 Health/Stamina를 스냅샷하면 안 됨)
+  ...
+  Possess(NewChar)                             ← 내부에서 RestoreCharacterState까지 끝난 뒤 리턴
+  NewChar->EquipComp->ReapplyEquipBonuses()     ← Possess 직후 호출
+```
+- SaveActiveEffects/RestoreActiveEffects(State/Effect.Cooldown 태그 매칭 기반)는 태그 없는 순수 스탯 GE는 커버하지 않으므로 별도 메커니즘 필요
+- handle은 교체마다 새로 발급되므로 안정적 식별자로 쓰지 말 것 — itemID 기준으로 관리
+
+### 퀵슬롯 표시 갱신 — 모든 수량 변경 경로에서 OnQuickSlotChanged 브로드캐스트 (UC_InventoryComponent 참고)
+WBP_UseItem(퀵슬롯 위젯)은 OnQuickSlotChanged만 구독, OnInventoryChanged는 구독하지 않음.
+```
+AddItem / RemoveItem / RemoveAtSlot 공통
+  → 수량 변경 성공 시 OnInventoryChanged.Broadcast() 뿐 아니라
+    NotifyQuickSlotsForItem(itemID)도 함께 호출
+
+NotifyQuickSlotsForItem(itemID)
+  → quickSlots 배열 순회, itemID 일치하는 인덱스만 OnQuickSlotChanged 브로드캐스트
+```
+- UseItem()의 기존 브로드캐스트 루프를 이 헬퍼로 통합
+- MoveSlot()은 총 보유 수량이 안 바뀌므로 호출 불필요 (상점 구매·바닥 아이템 획득 등 AddItem 경로, 인벤토리 제거 경로 전부에서 퀵슬롯 표시가 정확히 갱신됨)
+
 ### 다이나믹 머티리얼 기반 쿨다운 오버레이 패턴 (`C_SkillIconWidget` / `C_UseItemSlotWidget` 참고)
 스킬 쿨다운과 소비 아이템 쿨다운 양쪽에 동일하게 재사용되는 원형 웨지 오버레이 구조.
 ```
@@ -728,3 +759,96 @@ NativeTick
 ```
 - `Progress` 스칼라 파라미터를 가진 머티리얼 자체를 여러 위젯이 공유 가능 (`WBP_SkillIcon`용 머티리얼을 `WBP_UseItem`에도 그대로 할당 가능)
 - 소비 아이템 쿨다운은 GAS/GE 없이 `UC_InventoryComponent`의 `GetItemCooldownRemaining` 타임스탬프 값을 그대로 `UpdateCooldown`에 흘려보내는 방식 — 위젯 쪽 구조는 GA 기반 쿨다운과 동일하게 재사용, 데이터 소스만 다름
+
+### 소비 아이템 복합 동작 패턴 (`UC_ConsumableAction` 참고)
+GE 즉시 자기 자신 적용(`consumeEffects`)만으로 표현 안 되는 소비 아이템(AOE 판정, 액터 스폰 등)을 GA 없이 처리하는 구조.
+```
+UC_InventoryComponent::UseItem(itemID)
+  → consumeEffects 순회 적용 (기존 그대로, 자기 자신 대상 즉발 GE)
+  → data.actionClass 있으면:
+      NewObject<UC_ConsumableAction>(this, data.actionClass)->Execute(ASC, ASC->GetAvatarActor())
+  → RemoveItem
+
+UC_ConsumableAction (UObject, Abstract, Blueprintable)
+  → Execute(ASC, AvatarActor) BlueprintNativeEvent — 서브클래스가 BP/C++에서 구현
+  → 서브클래스는 EditDefaultsOnly 프로퍼티로 자체 튜닝 수치를 보유 (GA Blueprint가 자기 radius/damage를 보유하는 것과 동일한 방식)
+```
+- 판단 기준: 대상이 자기 자신뿐이고 GE 적용만 필요하면 `consumeEffects`, 그 외(타 대상 AOE, 액터 스폰, GE 외 로직)는 `UC_ConsumableAction` 서브클래스
+- `FConsumableItemData.actionClass`(`TSubclassOf<UC_ConsumableAction>`)로 DataTable에서 지정 — 아이템 추가 시 새 Action Blueprint + DT row만 필요, `UseItem()` 수정 불필요
+
+### 즉시 순간이동(Blink) 액션 패턴 (`UC_BlinkAction` 참고)
+`UC_ConsumableAction` 서브클래스로 GE 없이 순수 위치 이동만 수행하는 액션. 벽/장애물을 통과하지 않도록 사전 LineTrace로 최종 위치를 확정.
+```
+Execute_Implementation(ASC, AvatarActor)
+  → TargetLocation = ActorLocation + ForwardVector * blinkDistance
+  → LineTraceSingleByChannel(Start → TargetLocation, ECC_Visibility, IgnoreActor: Self)
+  → 충돌 시: ImpactPoint - Direction * CapsuleRadius   // 벽 안쪽으로 파고들지 않게 캡슐 반경만큼 당김
+  → 미충돌 시: TargetLocation 그대로
+  → SetActorLocation(FinalLocation, bSweep=false)
+```
+- `ECC_Visibility`는 이 프로젝트에서 캐릭터 전방 트레이스에 이미 쓰이는 채널 (`AC_PlayerController`의 카메라 전방 LineTrace와 동일)
+- `C_EliteMonsterSpecialAttackGA_Pull`처럼 `SetActorLocation(sweep=true)`로 이동 자체를 스윕 처리하는 대안도 있으나, Blink는 이동 거리가 크고 즉시 텔레포트라는 의도가 명확해 사전 LineTrace로 최종 위치를 미리 확정하는 방식을 채택 (Design Decisions 참고)
+
+### 체류 기반 반복 효과 존 패턴 (`AC_HealZone` 참고)
+"지면 AOE 존 패턴"(`GA_Ablaze`/`AC_FireZone`)의 변형 — 진입 시 1회 적용 대신, 반경 안에 머무는 동안만 효과가 지속되어야 하는 경우.
+```
+Initialize(ASC, InstigatorActor, TickEffectClass, Radius, ZoneLifetime, TickInterval, MagnitudePerTick)
+  → 스폰 시점에 이미 반경 안이면 StartHealing() 즉시 실행
+  → OnBeginOverlap(대상 필터) → StartHealing()
+  → OnEndOverlap(대상 필터) → StopHealing()   ← FireZone엔 없는 처리, 체류형 존엔 필수
+
+StartHealing()
+  → 이미 타이머 도는 중이면 무시(중복 방지) → 즉시 1틱 적용 → SetTimer(반복, TickInterval)
+
+StopHealing()
+  → ClearTimer   ← Instant GE라 "제거"할 활성 핸들이 없음 (Debugging Checklist #12), 타이머 정지만으로 충분
+```
+- Instant GE(Set by Caller) + 존 자체 타이머 조합. Duration GE를 1회 적용하는 방식(FireZone)과 달리, 체류 시간과 효과가 정확히 일치함
+- 존 액터 자체의 `ZoneLifetime`(수명 타이머)과 효과의 지속 여부(Begin/EndOverlap)는 서로 무관 — 액터는 lifetime 동안 살아있고, 효과는 그 안에서 체류 여부에 따라 켜졌다 꺼졌다 함
+- 존 액터는 스폰 주체(GA/`UC_ConsumableAction`)와 무관하게 `Skills/` 폴더에 배치 (기존 `AC_FireZone`/`AC_TrapZone` 컨벤션)
+
+### Foot IK 패턴 (`ABP_Melee` / `UC_RangeAnimInstance` 참고)
+발을 지면 높낮이에 맞춰 붙이는 IK. 근접 캐릭터는 `ABP_Melee` EventGraph(BP), 원거리 캐릭터는 `UC_RangeAnimInstance`(C++)에 구현되어 있음.
+
+```
+매 프레임 (EventGraph / NativeUpdateAnimation)
+  기준면 = ActorLocation.Z - GetScaledCapsuleHalfHeight()      ← 캡슐 바닥
+  foot_l / foot_r 소켓의 월드 X·Y를 얻어
+  SphereTrace(Start = 기준면 + 위쪽여유, End = 기준면 - 아래쪽여유, Radius)
+    → Offset.Z = Hit.ImpactPoint.Z - 기준면                     ← Location 아님 (Checklist #49)
+    → Clamp(Offset, -maxFootOffset, +maxFootOffset)             ← 절벽에서 다리 뽑힘 방지
+    → 발 회전 = ImpactNormal 기반, 급경사(dot < 0.5)면 미적용
+  VInterpTo / RInterpTo 로 스무딩 (interpSpeed)
+  Pelvis.Z = Min(L, R) 이 음수일 때만 적용                       ← 낮은 쪽 발 기준으로 골반만 내림
+
+AnimGraph
+  Source → IK Rig(FootL/FootR/Pelvis Goal) → Local To Component
+        → Transform(Modify) Bone foot_l / foot_r (Rotation만)
+        → Component To Local → Output Pose
+```
+
+**기준면은 반드시 캡슐 바닥으로.** `Get Socket Location("Root")`는 **애니메이션이 적용된 현재 포즈**의 본 위치를 반환하므로, 루트 모션 몽타주가 재생되는 순간 기준면 자체가 흔들림(`Root Motion Mode = Root Motion from Montages`인 경우 전투 중에만 재현되는 버그가 됨). `GetScaledCapsuleHalfHeight()`를 쓰면 캡슐 크기 상수(96 등)를 하드코딩하지 않게 되는 이점도 있음.
+
+**Mesh Relative Z = -(Capsule Half Height).** 튜닝값이 아니라 계산값. 어긋나면 그 차이가 상수 오차로 전 지형에 전파됨. C++ 생성자에서 `-GetCapsuleComponent()->GetScaledCapsuleHalfHeight()`로 쓰면 캡슐 크기 변경에 자동으로 따라감. BP 오버라이드가 남아 있으면 C++ 값이 무시되므로 주의(Checklist #47).
+
+**검증 절차** — 평지에서 `ImpactPoint.Z` / `Root 소켓 Z` / `캡슐 바닥 Z` / 트레이스 `Return Value` 4개를 `Format Text`로 한 줄에 묶어 출력. 합성된 결과값 하나만 보면 어느 항이 범인인지 알 수 없고, 항별로 분해하는 순간 원인이 즉시 특정됨. 기대값: Root Z == 캡슐 바닥 Z, Hit == true, Offset은 약 -2.15에서 지터 없이 고정(Checklist #50).
+
+### 스탯 증가분(+N) 표시 패턴 (`WBP_Status` / `UC_EquipmentComponent` 참고)
+장비/포션으로 인한 스탯 증가분만 "총합 (+N)" 형태로 골라 표시. 스킬 버프/디버프(`GE_SpeedBuff`, `GE_Slowed` 등)는 제외.
+```
+UpdateStatText(TextBlock, NewValue, Attribute)
+  → EquipBonus = Avatar->FindComponentByClass<UC_EquipmentComponent>()->GetTotalEquipBonuses() 에서 Attribute에 해당하는 필드
+  → PotionBonus = GetPotionBonus(Attribute)
+  → 합계가 0이면 "120", 아니면 "120 (+20)"
+
+GetPotionBonus(Attribute)
+  → FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(State.PotionBuff) → ASC->GetActiveEffects(query)
+  → 각 핸들 → ASC->GetActiveGameplayEffect(handle)->Spec
+  → Spec.Modifiers[i] ↔ Spec.Def->Modifiers[i].Attribute를 같은 인덱스로 매칭해 EvaluatedMagnitude 합산
+     (FModifierSpec 자체엔 Attribute가 없고 Def의 병렬 배열 인덱스로만 대응됨)
+
+UC_EquipmentComponent::GetTotalEquipBonuses()
+  → equipped 맵을 순회하며 DT(FEquipmentItemData)의 bonusXxx 5종을 그대로 합산 — GAS 재조회 불필요
+```
+- GAS 표준 `CurrentValue - BaseValue` 차이를 안 쓴 이유: `GE_SpeedBuff`/`GE_Sprint`/`GE_Slowed` 등 다른 Duration/Infinite GE도 같은 속성을 건드려 소스 구분이 안 됨 → `State.PotionBuff` 태그로 필터링해야 "포션발" 증가분만 정확히 분리됨
+- GE 적용/제거가 컴포넌트 자체 상태보다 먼저 델리게이트를 발화시키는 순서 문제는 Debugging Checklist #52 참고

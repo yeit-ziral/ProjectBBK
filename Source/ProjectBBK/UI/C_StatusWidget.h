@@ -15,6 +15,9 @@ class UWidget;
  * WBP_StatWindow가 이 클래스를 부모로 사용.
  * BindWidget: MaxHPText, MaxStaminaText, MoveSpeedText, DefenseText
  * BindWidgetOptional: WindowRoot (드래그 이동 대상), DragHandle (드래그 시작 영역)
+ *
+ * 각 텍스트는 "총합 (+증가분)" 형식으로 표시 — 증가분은 장비 착용(UC_EquipmentComponent)과
+ * State.PotionBuff 태그가 부여된 포션(Duration GE)으로 인한 것만 반영. 스킬 버프/디버프는 제외.
  */
 UCLASS()
 class PROJECTBBK_API UC_StatusWidget : public UUserWidget
@@ -63,6 +66,12 @@ private:
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
 	void OnDefenseChanged(const FOnAttributeChangeData& Data);
 	void OnAttackChanged(const FOnAttributeChangeData& Data);
+
+	// NewValue(총합)에 장비+포션 증가분을 더해 "총합 (+증가분)" 텍스트를 만들어 반영. 증가분 0이면 괄호 생략.
+	void UpdateStatText(UTextBlock* TextBlock, float NewValue, const FGameplayAttribute& Attribute) const;
+
+	// State.PotionBuff 태그가 부여된 활성 GameplayEffect들의 Attribute Modifier 평가치 합산
+	float GetPotionBonus(const FGameplayAttribute& Attribute) const;
 
 	TWeakObjectPtr<UAbilitySystemComponent> cachedASC;
 

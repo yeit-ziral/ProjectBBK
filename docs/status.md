@@ -46,8 +46,9 @@
 | WBP_GameOverScreen | ✅ 완료 | UC_GameOverWidget 기반. 전원 사망 시 HandleCharacterDeath에서 자동 표시 |
 | WBP_MainMenu | ✅ 완료 | UC_MainMenuWidget 기반. BindWidget: StartButton·SettingsButton·QuitButton. 게임 시작: StartGame() 경유 로딩 오버레이 포함 |
 | WBP_Settings | ✅ 완료 | UC_SettingsWidget 기반. BindWidget: CloseButton·MasterVolumeSlider·BGMVolumeSlider·SFXVolumeSlider·MasterVolumeText·BGMVolumeText·SFXVolumeText. Master/BGM/SFX 볼륨 슬라이더 + 퍼센트 텍스트. UC_BBKGameUserSettings 연동, 슬라이더 조작 시 즉시 적용·저장 |
-| WBP_Status | ✅ 완료 | UC_StatusWidget 기반. BindWidget: MaxHPText·MaxStaminaText·MoveSpeedText·DefenseText·AttackText. ASC 어트리뷰트 변경 델리게이트로 실시간 반영. SizeBox WindowRoot + 드래그 이동. 캐릭터 교체·전원 사망 시 자동 처리. IA_Status 토글 키. |
-| WBP_UseItem | ✅ 완료 | UC_UseItemSlotWidget 기반. 퀵슬롯(2개) — 인벤토리 드래그&드롭으로 소비 아이템 참조 등록(인벤토리에서 제거 안 함), IA_UseItem0/1(1·2키)로 사용, 재고 0 시 아이콘 반투명 유지. 쿨다운(섹션 7)·재고없음 알림 사운드(섹션 8) C++ 구현 완료, PIE 확인. HUD 중복 생성으로 인한 사운드 중복 재생 이슈는 `CachedHUD` 가드 적용으로 해결 |
+| WBP_Status | ✅ 완료 | UC_StatusWidget 기반. BindWidget: MaxHPText·MaxStaminaText·MoveSpeedText·DefenseText·AttackText. ASC 어트리뷰트 변경 델리게이트로 실시간 반영. SizeBox WindowRoot + 드래그 이동. 캐릭터 교체·전원 사망 시 자동 처리. IA_Status 토글 키. 장비/포션(State.PotionBuff)으로 인한 스탯 증가분은 "총합 (+N)" 형태로 표시(스킬 버프/디버프는 제외). |
+| WBP_UseItem | ✅ 완료 | UC_UseItemSlotWidget 기반. 퀵슬롯(2개) — 인벤토리 드래그&드롭으로 소비 아이템 참조 등록(인벤토리에서 제거 안 함), IA_UseItem0/1(1·2키)로 사용, 재고 0 시 아이콘 반투명 유지. 쿨다운(섹션 7)·재고없음 알림 사운드(섹션 8) C++ 구현 완료, PIE 확인. HUD 중복 생성으로 인한 사운드 중복 재생 이슈는 `CachedHUD` 가드 적용으로 해결. 구매/획득 등 UseItem 이외 경로의 수량 변화도 NotifyQuickSlotsForItem으로 표시 갱신. 퀵슬롯 아이템 교체 시 이전 쿨다운 오버레이가 남던 버그(`RestoreCooldownState` 리셋 누락, Debugging Checklist #46) 수정 완료 |
+| WBP_Equipment | ✅ 완료 | UC_EquipmentComponent 연동. 인벤토리 슬롯 드래그&드롭 장착, 우클릭/더블클릭 해제, 슬롯 타입 검증(GetItemSlotType), 툴팁(C_ItemTooltipWidget). 캐릭터 교체 시 장비 보너스 GE는 Suspend/ReapplyEquipBonuses로 활성 캐릭터에만 적용 |
 
 ### Effects
 | Effect | 상태 | 비고 |
@@ -75,7 +76,12 @@
 | GE_Recover_Stamina | ✅ 완료 | |
 | GE_Slowed | ✅ 완료 | 상태이상: 감속 — State.Slowed 태그 부여 + MoveSpeed × 0.2, Duration 5초, GA_RockSpear 사용 |
 | GE_GainExperience | ✅ 완료 | Set by Caller, Data.Exp 태그, experience 어트리뷰트 가산 |
-| GE_EquipBonus | ✅ 완료 | 장비 공용 GE. Infinite Duration, SetByCaller Modifier 5개 (MaxHealth, MaxStamina, MoveSpeed, Defense, Damage) |
+| GE_EquipBonus | ✅ 완료 | 장비 공용 GE. Infinite Duration, SetByCaller Modifier 5개 (MaxHealth, MaxStamina, MoveSpeed, Defense, Damage). 캐릭터 교체 시 UC_EquipmentComponent::Suspend/ReapplyEquipBonuses로 활성 캐릭터에만 적용되도록 격리 |
+| GE_HealZoneTick | ✅ 완료 | Instant, Set by Caller Data.Heal — AC_HealZone이 체류 중 반복 적용 |
+| GE_IncreaseMaxST | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, maxStamina 증가 |
+| GE_IncreaseDamage | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, damage 증가 |
+| GE_IncreaseDefense | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, defense 증가 |
+| GE_IncreaseSpeed | ✅ 완료 | 스탯 증가 포션 — Has Duration, State.PotionBuff 태그, moveSpeed 증가 |
 
 ### Objects
 | Object | 상태 | 비고 |
@@ -83,9 +89,13 @@
 | C_ExpOrb / BP_ExpOrb | ✅ 완료 (C++ 구현) | Overlap → GE_GainExperience 적용 후 Destroy, 스폰 주체 미구현 |
 | C_BaseItem / ItemData.h | ✅ 완료 | 상호작용 시 인벤토리에 itemID 추가 + Destroy. EnhancedInput(IA_Interact) 기반, 다중 Overlap 배열 관리. FBaseItemData·FConsumableItemData·FConsumableEffectEntry·FEquipmentItemData·EEquipmentSlot 정의 |
 | C_ConsumableItem / BP_ConsumableItem | ✅ 완료 | InitItem만 담당 (DT 로드 + Mesh). FConsumableEffectEntry 배열로 다중 GE 지원. 효과 적용은 인벤토리에서 처리 |
-| C_EquipmentItem / BP_EquipItem | ✅ 완료 | InitItem만 담당 (DT 로드 + Mesh). 장착/해제는 인벤토리에서 처리 (미구현) |
+| C_EquipmentItem / BP_EquipItem | ✅ 완료 | InitItem만 담당 (DT 로드 + Mesh). 장착/해제는 UC_EquipmentComponent에서 처리 (구현 완료) |
 | C_MoneyItem / BP_Money | ✅ 완료 | AC_BaseItem 상속. moneyAmount(EditAnywhere), BeginPlay에서 cachedItemName 포맷, OnInteract에서 AddMoney + Destroy |
 | C_InteractionWidget / WBP_Interaction | ✅ 완료 | 상호작용 UI 위젯. BindWidget: InteractionText |
+| UC_ConsumableAction | ✅ 완료 | GE 즉시 자기 적용만으로 표현 안 되는 소비 아이템 동작(AOE 판정, 액터 스폰 등) 처리용 UObject 베이스. FConsumableItemData.actionClass로 DT 연동 |
+| UC_SpawnHealZoneAction / AC_HealZone (BP_HealZone) | ✅ 완료 | 힐장판 소비 아이템 — Instant GE(GE_HealZoneTick) + 존 자체 반복 타이머로 체류 중에만 회복 |
+| UC_KnockbackAction | ✅ 완료 | 넉백 소비 아이템 — GE 없이 순수 LaunchCharacter, State.KnockbackImmune 면역 체크 |
+| UC_BlinkAction / BP_BlinkItem | ✅ 완료 | 순간이동 소비 아이템 — GE 없이 LineTrace로 벽 충돌 체크 후 SetActorLocation, 쿨다운 있음(기존 아이템 쿨다운 시스템 재사용) |
 
 ### Level System
 | Class / Asset | 상태 | 비고 |
@@ -97,3 +107,10 @@
 | AC_Portal (C_Portal) | ✅ 완료 | BP_Portal 생성 후 Niagara 에셋 할당, 각 레벨에 배치 필요. 기본 비활성화 → 몬스터 전멸 시 GameMode가 ActivatePortal() 호출 |
 | AC_MainMenuGameMode (C_MainMenuGameMode) | ✅ 완료 | 메인 메뉴 레벨 전용 GameMode. BeginPlay에서 WBP_MainMenu 생성 + UIOnly 입력 모드 설정 |
 | BGM 재생 로직 | 📋 계획 중 | 구현 예정 |
+
+### Animation / IK
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| ABP_Melee Foot IK | ✅ 완료 | EventGraph(BP) 구현. IK_Melee 리그 + Transform(Modify) Bone. Mesh Z = -96(= -CapsuleHalfHeight) 정렬, FootTrace 하드코딩 상수 제거로 평지·계단 모두 정상 동작 확인 |
+| ABP_Melee Foot IK — 잔여 개선 | 🔧 에디터 작업 필요 | ① FootTrace 기준면을 Root 소켓 → 캡슐 바닥으로 교체(루트모션 몽타주 대비) ② Offset Clamp 추가(절벽 대비) ③ 디버그 Print String/Text 노드 정리 |
+| ABP_Range Foot IK (UC_RangeAnimInstance) | ✅ 완료 (C++ 구현) | 캡슐 바닥 기준, ImpactPoint 사용, Clamp·급경사 회전 제외 포함. BP 판 대비 안전장치가 갖춰진 참조 구현 |

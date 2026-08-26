@@ -2,6 +2,7 @@
 
 #include "C_InventoryComponent.h"
 #include "../Items/ItemData.h"
+#include "../Items/C_ConsumableAction.h"
 #include "../PlayerCharacter/C_PlayerState.h"
 #include "Engine/DataTable.h"
 #include "AbilitySystemComponent.h"
@@ -125,7 +126,10 @@ int32 UC_InventoryComponent::AddItem(FName itemID, int32 count)
 	}
 
 	if (remaining != count)   // 하나라도 추가됐으면 변경 알림
+	{
 		OnInventoryChanged.Broadcast();
+		NotifyQuickSlotsForItem(itemID);
+	}
 
 	return remaining;   // 못 넣은 잔여 (0이면 전부 추가)
 }
@@ -152,6 +156,7 @@ bool UC_InventoryComponent::RemoveItem(FName itemID, int32 count)
 	}
 
 	OnInventoryChanged.Broadcast();
+	NotifyQuickSlotsForItem(itemID);
 	return true;
 }
 
@@ -161,11 +166,14 @@ bool UC_InventoryComponent::RemoveAtSlot(int32 slotIndex, int32 count)
 	EnsureSlots();
 	if (!slots.IsValidIndex(slotIndex) || slots[slotIndex].itemID.IsNone()) return false;
 
+	const FName itemID = slots[slotIndex].itemID;
+
 	slots[slotIndex].quantity -= count;
 	if (slots[slotIndex].quantity <= 0)
 		slots[slotIndex] = FInventorySlot();   // 빈칸으로 (위치 유지)
 
 	OnInventoryChanged.Broadcast();
+	NotifyQuickSlotsForItem(itemID);
 	return true;
 }
 
@@ -251,7 +259,7 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 {
 	FConsumableItemData data;
 	if (!GetConsumableData(itemID, data)) return false;      // 소비 아이템이 아님
-	if (data.consumeEffects.IsEmpty()) return false;         // 효과 없는 아이템의 무의미한 소모 방지
+	if (data.consumeEffects.IsEmpty() && !data.actionClass) return false;   // 효과 없는 아이템의 무의미한 소모 방지
 	if (IsItemOnCooldown(itemID)) return false;               // 쿨다운 확인도 GE 적용보다 먼저
 	if (!HasItem(itemID, 1)) return false;                   // 재고 확인이 GE 적용보다 먼저
 
@@ -275,19 +283,29 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 		ASC->ApplyGameplayEffectSpecToSelf(*spec.Data);
 	}
 
+	if (data.actionClass)
+	{
+		if (UC_ConsumableAction* action = NewObject<UC_ConsumableAction>(this, data.actionClass))
+			action->Execute(ASC, ASC->GetAvatarActor());
+	}
+
 	RemoveItem(itemID, 1);
 
 	if (data.cooldown > 0.f)
 		itemCooldownEndTime.Add(itemID, GetWorld()->GetTimeSeconds() + data.cooldown);
 
-	// 등록된 퀵슬롯 전부 갱신 (재고 감소분 반영, 0개 시 반투명 처리는 위젯 쪽 책임)
+	NotifyQuickSlotsForItem(itemID);   // 등록된 퀵슬롯 전부 갱신 (재고 감소분 반영, 0개 시 반투명 처리는 위젯 쪽 책임)
+
+	return true;
+}
+
+void UC_InventoryComponent::NotifyQuickSlotsForItem(FName itemID)
+{
 	for (int32 i = 0; i < quickSlots.Num(); ++i)
 	{
 		if (quickSlots[i] == itemID)
 			OnQuickSlotChanged.Broadcast(i);
 	}
-
-	return true;
 }
 
 bool UC_InventoryComponent::RegisterQuickSlot(int32 SlotIndex, FName ItemID)

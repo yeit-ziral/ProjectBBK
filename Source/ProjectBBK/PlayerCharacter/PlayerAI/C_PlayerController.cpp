@@ -506,6 +506,11 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	NewChar->SetActorHiddenInGame(false);
 	NewChar->SetActorEnableCollision(true);
 
+	// ASC가 로스터 전체에 공유되므로, 비활성화될 캐릭터의 장착 보너스 GE를 먼저 떼어둔다.
+	// (SaveCharacterState보다 먼저 — 보너스가 반영된 채로 Health/Stamina를 저장하면 안 됨)
+	if (UC_EquipmentComponent* OldEquip = OldChar->FindComponentByClass<UC_EquipmentComponent>())
+		OldEquip->SuspendEquipBonuses();
+
 	if (!OldChar->bIsDead)
 		OldChar->SaveCharacterState();
 
@@ -535,8 +540,13 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 		PerkComp->SetIgnoreLevelChanges(true);	
 
 	// Possess → PossessedBy → InitAbilityActorInfo(PS, NewChar) 자동 호출
+	// (내부에서 RestoreCharacterState()까지 끝난 뒤에 리턴됨)
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
+
+	// 새로 활성화된 캐릭터 자신의 장비 보너스만 다시 건다 (SuspendEquipBonuses와 짝)
+	if (UC_EquipmentComponent* NewEquip = NewChar->FindComponentByClass<UC_EquipmentComponent>())
+		NewEquip->ReapplyEquipBonuses();
 
 	SetControlRotation(savedControlRotation);
 

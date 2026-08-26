@@ -105,14 +105,25 @@ void UC_UseItemSlotWidget::RestoreCooldownState()
 	if (!inventoryComp.IsValid()) return;
 
 	const FName itemID = inventoryComp->GetQuickSlotItem(slotIndex);
-	if (itemID.IsNone()) return;
 
-	const float Remaining = inventoryComp->GetItemCooldownRemaining(itemID);
-	if (Remaining <= 0.f) return;
-
+	float Remaining = 0.f;
 	FConsumableItemData data;
-	if (inventoryComp->GetConsumableData(itemID, data) && data.cooldown > 0.f)
+	const bool bHasActiveCooldown = !itemID.IsNone()
+		&& (Remaining = inventoryComp->GetItemCooldownRemaining(itemID)) > 0.f
+		&& inventoryComp->GetConsumableData(itemID, data)
+		&& data.cooldown > 0.f;
+
+	if (bHasActiveCooldown)
+	{
 		UpdateCooldown(Remaining, data.cooldown);
+		return;
+	}
+
+	// 새로 등록/교체된 아이템이 쿨다운 중이 아니면 이전 아이템의 쿨다운 상태를 반드시 리셋
+	// (조기 return만 하면 currentCooldownTime이 남아 NativeTick이 이전 오버레이를 계속 표시함)
+	currentCooldownTime = 0.f;
+	maxCooldownTime     = 0.f;
+	SetCooldownVisible(false);
 }
 
 void UC_UseItemSlotWidget::UpdateCooldown(float CurrentCooldown, float MaxCooldown)

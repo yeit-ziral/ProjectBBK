@@ -180,6 +180,9 @@ private:
 	// slots 배열을 maxSlots 고정 크기로 보장 (빈칸 포함). 모든 변경 함수 진입 시 호출.
 	void EnsureSlots();
 
+	// itemID가 등록된 퀵슬롯 전부에 OnQuickSlotChanged 브로드캐스트 — 재고 변화(구매/획득/사용/제거) 시 공통 호출.
+	void NotifyQuickSlotsForItem(FName itemID);
+
 	// 퀵슬롯 개수 (요구사항상 고정 2개)
 	static constexpr int32 NumQuickSlots = 2;
 
