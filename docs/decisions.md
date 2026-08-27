@@ -51,6 +51,22 @@
 - **선택 이유:** 발동 감지 범위(좁게)와 실제 피해 범위(넓게)를 독립적으로 조정 가능. GA Blueprint 변수로 각각 노출해 디자인 조정 용이
 - **트레이드오프:** InitTrap 파라미터가 늘어남 (반경 2개 + 반높이 2개)
 
+### 자폭 몬스터 AI — Tick 상태머신 vs BehaviorTree
+- **선택:** `AC_BombMonster`의 Tick에서 배회 ↔ 돌진을 직접 전환 (`behaviorTree` 미할당, BT/BB 에셋 없음)
+- **대안:** `BB_Monster` + `BT_Monster_Bomb` 신규 생성 후 Selector + Patrol/Charge Task 2개 + `UC_MonsterBTService` 배치
+- **선택 이유:**
+  - 상태 전환 조건이 `targetActor.IsValid()` 하나뿐 — Selector로 고를 분기가 사실상 없음
+  - **비행 몬스터라 네비메시를 못 씀** → BT를 써도 `MoveTo`가 아니라 이동 수학을 직접 짜야 함.
+    실제로 기존 `UC_BTTaskReposition::TickTask`도 `MoveTo` 없이 벡터 계산 + `AddMovementInput`만 함 —
+    같은 코드가 BT Task에 있느냐 Actor Tick에 있느냐의 차이뿐
+  - `BehaviorTree`/`BlackboardData` 내부(`root_node`, `blackboard_asset`)가 Python에 노출되지 않아
+    MCP로 트리 배선 불가 → 수동 에디터 작업 필요
+  - `AC_MonsterAIController::OnPossess`가 BT null이면 스킵하므로 미할당 상태로 안전하게 동작
+- **트레이드오프:** 팀의 다른 몬스터 4종과 구조가 달라 BT를 찾다가 헤맬 수 있고, **BT 디버거로 상태 시각화 불가**.
+  전환 시 비용은 낮게 유지 — `TickPatrol()` / `TickCharge()`가 분리돼 있어 Task에서 호출만 하면 되고,
+  타겟 탐색은 `UC_MonsterBTService`로 대체 가능(`UpdateTarget()` 폐기).
+  행동이 3개 이상으로 늘거나 실행 중 인터럽트(Observer Abort)가 필요해지면 그때 전환할 것
+
 ### 몬스터 Reposition/Strafe — 단일 데이터 구동 Task vs Idle/Strafe 분리 Task
 - **선택:** `UC_BTTaskReposition` 하나로 노말 "Idle Repositioning"과 보스 "Strafe 서클링"을 통합
 - **대안:** `UC_BTTaskIdleReposition`(노말 전용) + `UC_BTTaskBossStrafe`(보스 전용) 분리
@@ -239,6 +255,11 @@
 - **선택 이유:** `UC_InventoryComponent`의 `OnQuickSlotChanged`/`OnQuickSlotUseFailed`가 PlayerController 레벨 공유 델리게이트라, 캐릭터 로스터 구조상 캐릭터별로 생성되는 `WBP_HUD` 인스턴스 수만큼 중복 바인딩됨(Debugging Checklist #40). 근본 원인(HUD 중복 생성)을 없애야 향후 비멱등적 기능이 이 델리게이트에 추가될 때 조용히 N배로 실행되는 잠재 버그를 막을 수 있음. 스킬 아이콘/게이지가 이미 쓰는 "단일 HUD 재초기화" 패턴과도 구조적으로 일치
 - **트레이드오프:** 적용 완료. 캐릭터 `BeginPlay`가 Possess보다 먼저 실행되는 구조(Debugging Checklist #18)라 `Get Controller`가 None을 반환해 참조를 얻을 수 없었음 — `Get Player Controller`(Player Index 0)로 대체해 해결(Debugging Checklist #41 참고). `OnCharacterSwitched.Broadcast(0)` 기반 재초기화 흐름은 그대로 유지되며 HUD 자체 그래프는 수정하지 않음
 
+### 몬스터별 자동공격 BT Task — 몬스터마다 Task 클래스 신설 vs 베이스 가상 함수 일반화
+- **선택:** `AC_BaseMonster::TryAutoAttack()` 가상 함수 신설. `UC_BTTaskMeleeAutoAttack`이 `AC_BaseMonster`로만 Cast하고 `TryAutoAttack()`을 호출하도록 일반화 — 몬스터별 Task 클래스 불필요
+- **대안:** 몬스터마다 전용 Task 클래스 (`UC_BTTaskShieldAutoAttack` 등)를 만들고 BT에서 해당 노드로 교체
+- **선택 이유:** BT 에셋 내부(`root_node`·`Children`·`BlackboardKey`)가 Python에 노출되지 않아 **MCP로 노드 교체 불가** — 몬스터를 추가할 때마다 수동 에디터 작업이 강제됨. `BT_Monster_Shield`는 `BT_Monster_Melee` 복제본이라 이미 `C_BTTaskMeleeAutoAttack` 노드를 갖고 있고, Task를 일반화하면 **BT를 손대지 않고 그대로 동작**. `CanAutoAttack()` / `IsPlayingAttackAnimation()`이 이미 `AC_BaseMonster`의 가상 함수여서 `TryAutoAttack()` 하나만 추가하면 일관성이 맞음
+- **트레이드오프:** 클래스명이 `UC_BTTaskMeleeAutoAttack`으로 남아 실제 역할(공통)과 어긋남 — 기존 BT 에셋이 클래스 경로를 참조하므로 이름을 바꾸면 노드가 끊어져서 표시명(`NodeName`)만 "Monster Auto Attack"으로 변경. 기존 `UC_BTTaskEliteAutoAttack` / `UC_BTTaskRangedAutoAttack`은 각 BT 에셋이 참조 중이라 그대로 두고, 신규 `UC_BTTaskShieldAutoAttack`만 참조가 없어 삭제
 ### 소비 아이템 복합 동작(AOE 판정·액터 스폰) — GA vs UC_ConsumableAction(UObject)
 - **선택:** `UC_ConsumableAction`(UObject, Blueprintable) 베이스 클래스 신설. `FConsumableItemData.actionClass`로 DataTable에서 지정, `UC_InventoryComponent::UseItem()`이 `NewObject`로 생성해 `Execute(ASC, AvatarActor)` 호출
 - **대안:** GA 신설 후 `TryActivateAbilityByClass`로 발동 (SkillWheel과 동일 방식)
@@ -262,3 +283,15 @@
 - **대안:** 계단에서 뜨는 만큼 Mesh Relative Z를 눈대중으로 내려서 상쇄 (초기 대응)
 - **선택 이유:** Mesh Z는 **모든 지형에 동일하게 적용되는 상수 평행이동**이라 지형 의존적 오차를 원리적으로 보정할 수 없음. 계단에 맞추면 평지에서 정확히 그만큼 발이 파묻히는 트레이드오프가 강제됨. 실제로 이번 문제의 원인은 ① Mesh Z가 -96이 아닌 -90/-100이었던 상수 오차와 ② FootTrace의 하드코딩 상수 두 가지였고, 둘 다 제거하자 계단·평지가 동시에 맞았음
 - **트레이드오프:** 없음. 상수 보정은 두 지형 중 하나를 반드시 포기해야 하는 구조였음
+
+### Blink 벽 통과 방지 — 사전 LineTrace vs SetActorLocation(sweep=true)
+- **선택:** `LineTraceSingleByChannel`로 목표 지점까지 미리 검사 후 충돌 지점에서 캡슐 반경만큼 당긴 위치로 이동
+- **대안:** `C_EliteMonsterSpecialAttackGA_Pull`처럼 `SetActorLocation(NewLoc, bSweep=true)`로 이동 자체를 스윕 처리
+- **선택 이유:** Blink는 이동 거리가 크고(기본 600) 즉시 텔레포트라는 의도가 명확 — sweep은 목표 지점까지 콜리전을 따라 밀어내는 방식이라 "순간이동"의 즉시성과 다르게 느껴질 수 있고, 벽에 스치듯 닿았을 때 예측하기 어려운 최종 위치가 나올 수 있음. 사전 LineTrace는 "막히면 벽 앞에서 멈춘다"는 동작이 명확
+- **트레이드오프:** LineTrace 한 번이 추가 비용. 아주 얇은 장애물(캡슐 반경보다 얇은 벽) 뒤로 착지하는 예외 케이스는 미검증
+
+### WBP_Status 증가분 계산 — 소스별 명시적 추적 vs GAS 표준 BaseValue/CurrentValue 차이
+- **선택:** 장비는 `UC_EquipmentComponent`가 아는 DT bonus 값을 합산, 포션은 `State.PotionBuff` 태그로 필터링한 활성 GE의 Modifier 평가치를 합산 — 두 소스를 독립 계산 후 합산
+- **대안:** ASC 어트리뷰트의 `CurrentValue - BaseValue` 차이를 그대로 사용
+- **선택 이유:** 이 프로젝트엔 `GE_SpeedBuff`(스킬)/`GE_SprintBuff`(Shift)/`GE_Slowed`(디버프) 등 동일 속성(moveSpeed/damage 등)을 건드리는 Duration/Infinite GE가 이미 다수 존재. 표준 차이값 방식은 이들을 전부 뭉뚱그려 표시해 "장비/포션 특유의 체감 안 되는 효과를 보여준다"는 원래 목적과 어긋남. `State.PotionBuff` 태그 필터링으로 포션발 증가분만 정확히 분리
+- **트레이드오프:** `State.PotionBuff` 태그를 포션 전용으로 계속 유지해야 함(다른 GE가 재사용하면 계산이 오염됨). 새 버프형 소모품을 추가할 때마다 이 태그를 명시적으로 부여해야 위젯에 자동 반영됨

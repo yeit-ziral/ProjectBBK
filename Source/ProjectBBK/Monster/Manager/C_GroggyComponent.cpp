@@ -32,11 +32,7 @@ void UC_GroggyComponent::AddGroggy(float GroggyAmount)
 	UC_MonsterAttributeSet* attrSet = ownerMonster->GetMonsterAttributeSet();
 	if (!IsValid(attrSet)) return;
 
-	UC_MonsterASC* asc = ownerMonster->GetMonsterASC();
-	if (IsValid(asc) && (asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))
-	                  || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")))
-	                  || asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Invincible")))))
-		return;
+	if (!CanEnterGroggy()) return;
 
 	const float cur    = attrSet->GetcurGroggy();
 	const float max    = attrSet->GetmaxGroggy();
@@ -47,16 +43,50 @@ void UC_GroggyComponent::AddGroggy(float GroggyAmount)
 	if (newVal >= max)
 	{
 		if (!world->GetTimerManager().IsTimerActive(groggyResetTimerHandle))
-		{
-			EnterGroggyState();
-			GetWorld()->GetTimerManager().SetTimer(
-				groggyResetTimerHandle,
-				this,
-				&UC_GroggyComponent::ResetGroggy,
-				5.0f,
-				false
-			);
-		}
+			StartGroggy(groggyDuration);
+	}
+}
+
+void UC_GroggyComponent::ForceGroggy(float Duration)
+{
+	if (!IsValid(ownerMonster)) return;
+
+	UWorld* world = GetWorld();
+	if (!world) return;
+
+	if (!CanEnterGroggy()) return;
+	if (world->GetTimerManager().IsTimerActive(groggyResetTimerHandle)) return;
+
+	// 게이지도 꽉 채워 둔다 — HP 위젯의 그로기 바가 진입 상태와 어긋나지 않도록
+	if (UC_MonsterAttributeSet* attrSet = ownerMonster->GetMonsterAttributeSet())
+		attrSet->SetcurGroggy(attrSet->GetmaxGroggy());
+
+	StartGroggy(Duration > 0.0f ? Duration : groggyDuration);
+}
+
+bool UC_GroggyComponent::CanEnterGroggy() const
+{
+	UC_MonsterASC* asc = ownerMonster ? ownerMonster->GetMonsterASC() : nullptr;
+	if (!IsValid(asc)) return true;   // ASC가 없으면 태그 판정 불가 — 기존 동작 유지
+
+	return !asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Dead")))
+	    && !asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Groggy")))
+	    && !asc->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Invincible")));
+}
+
+void UC_GroggyComponent::StartGroggy(float Duration)
+{
+	EnterGroggyState();
+
+	if (UWorld* world = GetWorld())
+	{
+		world->GetTimerManager().SetTimer(
+			groggyResetTimerHandle,
+			this,
+			&UC_GroggyComponent::ResetGroggy,
+			Duration,
+			false
+		);
 	}
 }
 

@@ -62,6 +62,14 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 	repositionFlipInterval = Data->RepositionFlipInterval;
 	expReward              = Data->ExpReward;
 
+	// 스페셜 사거리 미지정(0 이하)이면 노말 사거리와 동일하게 취급
+	special1Range = (Data->Special1Range > 0.f) ? Data->Special1Range : Data->AttackRange;
+	special2Range = (Data->Special2Range > 0.f) ? Data->Special2Range : Data->AttackRange;
+
+	// 슬롯별 쿨다운 미지정(0 이하)이면 공유 SpecialCooldown 사용
+	special1Cooldown = (Data->Special1Cooldown > 0.f) ? Data->Special1Cooldown : Data->SpecialCooldown;
+	special2Cooldown = (Data->Special2Cooldown > 0.f) ? Data->Special2Cooldown : Data->SpecialCooldown;
+
 	if (UCharacterMovementComponent* Move = ownerMonster->GetCharacterMovement())
 	{
 		Move->MaxWalkSpeed = attrSet->GetmoveSpeed();

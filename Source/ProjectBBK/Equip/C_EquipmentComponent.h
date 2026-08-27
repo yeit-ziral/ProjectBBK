@@ -26,6 +26,30 @@ struct FEquippedEntry
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEquipmentChanged);
 
 /**
+ * 현재 장착 중인 아이템들의 보너스 합산치 — WBP_Status의 "(+증가분)" 표시용.
+ */
+USTRUCT(BlueprintType)
+struct FEquipBonusTotals
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	float maxHealth = 0.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	float maxStamina = 0.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	float moveSpeed = 0.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	float defense = 0.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	float damage = 0.f;
+};
+
+/**
  * 장비 착용/해제 핸들러 (캐릭터별). AC_BasePlayerCharactor에 부착.
  * - 인벤토리(공유, PlayerController 보유)에서 아이템을 빼/넣고,
  *   GE_EquipBonus(SetByCaller 5종)를 현재 캐릭터 ASC에 적용/제거한다.
@@ -80,6 +104,10 @@ public:
 	// 공유 인벤토리 접근(소유 캐릭터 → 컨트롤러 → GetInventory). UI 드롭 처리 등에서 사용.
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	UC_InventoryComponent* GetInventory() const;
+
+	// 현재 장착 중인 모든 아이템의 보너스 5종 합산 — WBP_Status "(+증가분)" 표시용
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	FEquipBonusTotals GetTotalEquipBonuses() const;
 
 	// 장착 상태 변경 시 브로드캐스트 (장비창 UI 갱신용)
 	UPROPERTY(BlueprintAssignable, Category = "Equipment")

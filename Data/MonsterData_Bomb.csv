@@ -1,0 +1,2 @@
+RawName,MonsterId,MaxHP,MaxGroggy,Attack,Defense,AttackRange,MoveSpeed,NormalCoolDown,SpecialCoolDown,Special1Range,Special2Range,Special1Cooldown,Special2Cooldown,RepositionDesiredRange,RepositionMinRange,RepositionSpeed,RepositionStrafeWeight,RepositionFlipInterval,bEnableReposition,RepositionBand,ExpReward
+Bomb,1003,30,50,0,0,150,700,0,0,0,0,0,0,200,0,300,0,2.5,FALSE,60,15

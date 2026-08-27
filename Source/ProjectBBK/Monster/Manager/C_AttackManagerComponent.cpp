@@ -64,27 +64,22 @@ bool UC_AttackManagerComponent::DoNormalAttack()
 {
 	if (!ownerMonster) return false;
 
-	const int32 id = ownerMonster->GetMonsterID();
+	// 몬스터 ID로 분기하지 않는다 — 실제 공격(몽타주·발사체·GA)은 각 몬스터 클래스가 담당하고
+	// 여기서는 쿨타임만 관리하므로 모든 몬스터가 동일하게 동작한다.
+	// 예전엔 ID switch였는데, 신규 몬스터를 추가할 때마다 case 누락으로 공격이 아예 안 나갔다
+	// (쉴드 몬스터 1004 사례). 쿨타임 수치는 FMonsterData의 NormalCoolDown에서 온다
+	if (!CanAttack()) return false;
 
-	switch (id)
+	const float cooldown = ownerMonster->GetAttackCooldown();
+	if (cooldown <= 0.f)
 	{
-	case MONSTER_ID_TANK:
-	{
-		if (!CanAttack()) return false;
-		StartCooldown(ownerMonster->GetAttackCooldown());
-		return true;
+		UE_LOG(LogTemp, Warning,
+			TEXT("[AttackMgr] MonsterId=%d NormalCooldown이 0 — DataTable 미로드 의심"),
+			ownerMonster->GetMonsterID());
 	}
-	case MONSTER_ID_ROCKET:
-	{
-		// 실제 공격(몽타주+발사체)은 C_RangedMonster에서 처리 — 여기선 쿨타임만 관리
-		if (!CanAttack()) return false;
-		StartCooldown(ownerMonster->GetAttackCooldown());
-		return true;
-	}
-	default:
-		UE_LOG(LogTemp, Warning, TEXT("[AttackMgr] No NormalAttack for MonsterId=%d — DataTable 미로드 또는 ID 불일치"), id);
-		return false;
-	}
+
+	StartCooldown(cooldown);
+	return true;
 }
 
 bool UC_AttackManagerComponent::DoSpecialAttack()
