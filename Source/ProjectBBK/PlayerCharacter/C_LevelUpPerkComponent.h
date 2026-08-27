@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -91,6 +91,9 @@ protected:
 private:
 	// 다음 후보 세트를 뽑아 broadcast.
 	void PresentNextChoices();
+
+	// 이 퍽을 아직 후보로 낼 수 있는가. (속성 퍽이 만렙이면 false)
+	bool IsPerkAvailable(const FPerkData& Perk) const;
 
 	// 지금 화면에 띄워둔 후보들.
 	UPROPERTY()

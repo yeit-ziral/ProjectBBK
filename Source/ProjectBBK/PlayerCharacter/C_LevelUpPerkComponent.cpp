@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_LevelUpPerkComponent.h"
 #include "C_PlayerState.h"
@@ -45,17 +45,31 @@ void UC_LevelUpPerkComponent::PresentNextChoices()
 		return;
 	}
 
-	// 2) 서로 다른 ChoiceCount개를 랜덤으로 뽑는다(행이 부족하면 있는 만큼).
-	//    인덱스 풀에서 뽑은 것을 RemoveAtSwap으로 빼서 중복을 막는다.
+	// 2) 아직 뽑을 수 있는 행만 풀에 넣는다. 만렙 퍽은 여기서 걸러지므로
+	//    "3개 자리 중 하나를 만렙 퍽이 낭비하는" 일이 생기지 않는다.
 	PendingChoices.Reset();
 
 	TArray<int32> Pool;
 	Pool.Reserve(Rows.Num());
 	for (int32 i = 0; i < Rows.Num(); ++i)
 	{
-		Pool.Add(i);
+		if (IsPerkAvailable(*Rows[i]))
+		{
+			Pool.Add(i);
+		}
 	}
 
+	// 남은 후보가 하나도 없으면(전부 만렙) 선택창을 띄우지 않고 큐만 비운다.
+	// 안 그러면 빈 창이 뜬 채로 SelectPerk를 못 눌러 게임이 멈춘다.
+	if (Pool.Num() == 0)
+	{
+		PendingLevelUps = 0;
+		OnPerkSelectionFinished.Broadcast();
+		return;
+	}
+
+	// 3) 풀에서 서로 다른 ChoiceCount개를 랜덤으로 뽑는다(부족하면 있는 만큼).
+	//    RemoveAtSwap으로 뽑은 인덱스를 빼서 중복을 막는다.
 	const int32 Pick = FMath::Min(ChoiceCount, Pool.Num());
 	for (int32 i = 0; i < Pick; ++i)
 	{
@@ -64,8 +78,19 @@ void UC_LevelUpPerkComponent::PresentNextChoices()
 		Pool.RemoveAtSwap(r);
 	}
 
-	// 3) BP(UMG)에게 "이 후보들을 띄워라" 통보.
+	// 4) BP(UMG)에게 "이 후보들을 띄워라" 통보. 배열 길이가 3보다 작을 수 있으므로
+	//    위젯은 Length를 보고 남는 버튼을 Collapsed 처리해야 한다.
 	OnPerkChoicesReady.Broadcast(PendingChoices);
+}
+
+bool UC_LevelUpPerkComponent::IsPerkAvailable(const FPerkData& Perk) const
+{
+	// 속성 퍽만 레벨 개념이 있다. 스탯 퍽은 elements에 안 들어가므로 항상 후보.
+	if (Perk.elementTag.IsValid())
+	{
+		return GetElementLevel(Perk.elementTag) < Perk.elementMaxLevel;
+	}
+	return true;
 }
 
 void UC_LevelUpPerkComponent::SelectPerk(int32 Index)
