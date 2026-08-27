@@ -27,16 +27,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FootIK|Config")
 	float interpSpeed = 15.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FootIK|Config")
-	float animatedFootOffset = 17.7f;
+	float animatedFootOffset = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FootIK|Config")
-	float traceExtentUp = 30.f;
+	float traceExtentUp = 60.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FootIK|Config")
-	float traceExtentDown = 60.f;
+	float traceExtentDown = 100.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FootIK|Config")
-	float traceRadius = 8.f;
+	float traceRadius = 3.f;
 	// 발이 올라가거나 내려갈 수 있는 최대 범위 — 모서리에서 극단값 방지
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FootIK|Config")
-	float maxFootOffset = 40.f;
+	float maxFootOffset = 50.f;
 	// 발목 회전 최대 각도 — 이 이상이면 발이 뒤집힘
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FootIK|Config")
 	float maxRotationAngle = 30.f;
