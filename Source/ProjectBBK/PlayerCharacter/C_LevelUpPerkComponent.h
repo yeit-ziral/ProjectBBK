@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "C_PerkData.h"
+#include "ProjectBBK/Core/C_Probability.h"
 #include "C_LevelUpPerkComponent.generated.h"
 
 
@@ -57,12 +58,45 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	int32 GetElementLevel(FGameplayTag ElementTag) const;
 
+	// 종류를 가리지 않는 "이 퍽의 현재 레벨". UI는 이것만 부르면 되고
+	// 속성/크리 분기를 알 필요가 없다. 레벨 개념이 없는 스탯 퍽은 0.
+	UFUNCTION(BlueprintPure, Category = "Perk")
+	int32 GetPerkLevel(const FPerkData& Perk) const;
+
+	// 이 퍽의 최대 레벨. 스탯 퍽은 0을 돌려주며 "상한 없음"을 뜻한다.
+	UFUNCTION(BlueprintPure, Category = "Perk")
+	int32 GetPerkMaxLevel(const FPerkData& Perk) const;
+	// Txt Damage에 넣을 "이 퍽을 찍으면 어떻게 되는지" 한 줄.
+	// 퍽 종류마다 보여줄 수치가 달라서, 그 분기를 여기서 흡수한다.
+	// BP는 결과를 SET Text에 그대로 꽂기만 하면 된다.
+	UFUNCTION(BlueprintPure, Category = "Perk")
+	FText GetPerkEffectText(const FPerkData& Perk) const;
+
+	// 데미지를 확정하기 직전에 호출한다. 크리티컬이 터지면 배율을 곱해서 돌려준다.
+	// 미보유(Lv.0)면 BaseDamage를 그대로 돌려주므로 호출부에 분기가 필요 없다.
+	// 주의: 한 번의 타격당 정확히 한 번만 호출할 것. 두 번 부르면 PRD 카운터가 두 번 돈다.
+	UFUNCTION(BlueprintCallable, Category = "Perk|Crit")
+	float RollCriticalDamage(float BaseDamage, bool& bOutCritical);
+
+	// UI 표시용 (현재 레벨 / 발동률 / 배율)
+	UFUNCTION(BlueprintPure, Category = "Perk|Crit")
+	int32 GetCritLevel() const { return crit.Level; }
+
+	UFUNCTION(BlueprintPure, Category = "Perk|Crit")
+	float GetCritChance() const { return crit.GetChance(); }
+
+	UFUNCTION(BlueprintPure, Category = "Perk|Crit")
+	float GetCritMultiplier() const { return crit.GetMultiplier(); }
+
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	void BroadcastCurrentState();
 
 	// 맵 이동 간 저장/ 복원용
 	const TMap<FGameplayTag, FElementState>& GetElementState() const { return elements; }
 	void RestoreElementState(const TMap<FGameplayTag, FElementState>& InElements);
+
+	const FCritState& GetCritState() const { return crit; }
+	void RestoreCritState(const FCritState& InCrit);
 
 	// BP(UMG)가 바인딩 → 후보 3개를 받아 위젯을 띄운다.
 	UPROPERTY(BlueprintAssignable, Category = "Perk")
@@ -108,8 +142,20 @@ private:
 
 	FGameplayTag primaryElement;				 // 현재 최고 레벨 속성
 
+	// 크리티컬 상태. 레벨/계수는 저장 대상이고, PRD 카운터는 세션 한정이다.
+	UPROPERTY()
+	FCritState crit;
+
+	// 연속 실패 보정을 들고 있는 판정 채널. 맵을 넘어가면 리셋돼도 무방해서 저장 안 한다.
+	FPrdChannel critPrd;
+
 	void AddElementLevel(const FPerkData& Perk); // 속성 레벨 +1, primary 속성 갱신
+	void AddCritLevel(const FPerkData& Perk);    // 크리 레벨 +1, PRD 상수 재역산
 	float ComputeElementalTrueDamage() const;		 // 이번 타격의 속성 true 데미지 합
+
+	// 선택 1회 처리를 마무리한다(큐 감소 -> 다음 세트 or 종료 알림).
+	// 세 갈래(스탯/속성/크리)가 똑같은 마무리를 해야 해서 한 곳으로 모았다.
+	void FinishSelection();
 
 	bool bIgnoreLevelChanges = false; // 캐릭터 바꿀 때 레벨 변화가 퍽 띄우지 않게 잠깐 끔
 };

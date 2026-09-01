@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -39,6 +39,44 @@ struct FElementState
 	TObjectPtr<UTexture2D> Icon = nullptr;
 };
 
+// 크리티컬 퍽의 현재 상태. FElementState와 같은 역할이고, 맵 이동 시 통째로 저장된다.
+// 발동률/배율을 여기서 파생시켜 "레벨 -> 수치" 규칙이 한 군데에만 있게 한다.
+USTRUCT()
+struct FCritState
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 Level = 0;             // 0 = 아직 미보유
+
+	UPROPERTY()
+	float ChanceBase = 0.f;
+
+	UPROPERTY()
+	float ChancePerLevel = 0.f;
+
+	UPROPERTY()
+	float MultiplierBase = 1.f;
+
+	UPROPERTY()
+	float MultiplierPerLevel = 0.f;
+
+	UPROPERTY()
+	int32 MaxLevel = 1;
+
+	// Lv.1이 ChanceBase가 되도록 (Level-1)을 곱한다. Lv.0은 미보유이므로 0.
+	float GetChance() const
+	{
+		return Level > 0 ? ChanceBase + (Level - 1) * ChancePerLevel : 0.f;
+	}
+
+	// 미보유일 때 1.0을 돌려주면 호출부에서 분기 없이 곱하기만 하면 된다.
+	float GetMultiplier() const
+	{
+		return Level > 0 ? MultiplierBase + (Level - 1) * MultiplierPerLevel : 1.f;
+	}
+};
+
 
 USTRUCT(BlueprintType)
 struct FPerkDisplayInfo
@@ -71,6 +109,11 @@ USTRUCT(BlueprintType)
 struct FPerkData : public FTableRowBase   // ← DataTable 행이 되려면 FTableRowBase 상속 필수
 {
 	GENERATED_BODY()
+
+	// 이 행이 어떤 종류의 보상인지. 크리티컬 퍽을 구분하는 데 쓴다.
+	// 속성 퍽은 기존대로 elementTag 유효성으로 판별하므로 기존 DT 행은 손댈 필요 없다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk")
+	EPerkType perkType = EPerkType::Stat;
 
 	// UI에 표시될 이름 (예: "발이 빨라진다")
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Perk")
