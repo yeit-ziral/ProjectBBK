@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BBKGameInstance.h"
 #include "C_BBKGameUserSettings.h"
@@ -305,6 +305,7 @@ void UC_BBKGameInstance::SaveGameState(const TArray<AC_BasePlayerCharactor*>& Ro
 			if (UC_LevelUpPerkComponent* Perk = Owner->FindComponentByClass<UC_LevelUpPerkComponent>())
 			{
 				PersistedState.perkElements = Perk->GetElementState();
+				PersistedState.perkCrit     = Perk->GetCritState();
 			}
 		}
 	}
@@ -338,6 +339,7 @@ void UC_BBKGameInstance::RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roste
 		if(UC_LevelUpPerkComponent* Perk = Owner->FindComponentByClass<UC_LevelUpPerkComponent>())
 		{
 			Perk->RestoreElementState(PersistedState.perkElements);
+			Perk->RestoreCritState(PersistedState.perkCrit);
 		}
 	}
 
