@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -38,6 +38,10 @@ private:
 	//private functions
 
 	void DoMeleeNormalAttack();
+
+	// 쿨타임 기준 시간축. 그로기·공격 모션 중에는 멈추는 AC_BaseMonster의 공격 시계를 쓴다
+	// (몬스터가 없으면 월드 시간으로 폴백 — 정지 기능은 동작하지 않음).
+	float GetAttackClock() const;
 	void ApplyGEDamage(ACharacter* Target, float DamageValue);
 	void ApplyDirectDamage(ACharacter* Target, float DamageValue);
 

@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BossMonster.h"
 #include "M_Gas/C_MonsterASC.h"
@@ -54,23 +54,9 @@ void AC_BossMonster::BeginPlay()
             OnInvincibleTagChanged(Tag, NewCount);
         });
 
-        // 패턴 종료(태그 제거) 시 쿨타임을 종료 시점 기준으로 리셋
-        // — 패턴 시작 시점 기준으로 카운트하면 패턴 지속 시간보다 쿨타임이 짧을 때 즉시 재발동됨
-        auto resetPatternCooldown = [this](const FGameplayTag&, int32 NewCount)
-        {
-            if (NewCount == 0)
-                lastPatternAttackTime = GetWorld()->GetTimeSeconds();
-        };
-
-        monsterASC->RegisterGameplayTagEvent(
-            FGameplayTag::RequestGameplayTag(TEXT("State.Boss.BeamPattern")),
-            EGameplayTagEventType::NewOrRemoved
-        ).AddWeakLambda(this, resetPatternCooldown);
-
-        monsterASC->RegisterGameplayTagEvent(
-            FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern")),
-            EGameplayTagEventType::NewOrRemoved
-        ).AddWeakLambda(this, resetPatternCooldown);
+        // 패턴 지속 시간 동안 쿨타임이 소진되는 문제는 AC_BaseMonster의 공격 시계가 해결한다
+        // — 패턴 GA가 활성인 동안 IsPlayingAttackAnimation()이 true라 시계 자체가 멈추므로,
+        //   패턴 종료 시점에 lastPatternAttackTime을 다시 찍을 필요가 없다.
     }
 
     // GA 등록 — BT Task에서 활성화
@@ -102,6 +88,14 @@ void AC_BossMonster::ExecuteDeathSequence()
 
 // ─── 공격 쿨다운 체크 ─────────────────────────────────────────────────────────
 
+bool AC_BossMonster::IsPlayingAttackAnimation() const
+{
+    return IsAbilityActive(bossNormalAttackGA)
+        || IsAbilityActive(bossStormPatternGA)
+        || IsAbilityActive(bossBeamPatternGA)
+        || IsAbilityActive(bossGridLaserPatternGA);
+}
+
 bool AC_BossMonster::CanAutoAttack() const
 {
     if (!monsterASC) return false;
@@ -122,14 +116,14 @@ bool AC_BossMonster::CanNormalAttack() const
         monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Boss.StormPattern"))))
         return false;
 
-    return GetWorld()->GetTimeSeconds() - lastNormalAttackTime >= GetAttackCooldown();
+    return GetAttackClock() - lastNormalAttackTime >= GetAttackCooldown();
 }
 
 bool AC_BossMonster::CanPatternAttack() const
 {
     if (monsterASC && monsterASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Invincible"))))
         return false;
-    return GetWorld()->GetTimeSeconds() - lastPatternAttackTime >= GetSpecialCooldown();
+    return GetAttackClock() - lastPatternAttackTime >= GetSpecialCooldown();
 }
 
 // ─── BT Task 호출 진입점 ──────────────────────────────────────────────────────
@@ -140,7 +134,7 @@ void AC_BossMonster::BossNormalAttack()
         return;
     if (!CanNormalAttack()) return;
 
-    lastNormalAttackTime = GetWorld()->GetTimeSeconds();
+    lastNormalAttackTime = GetAttackClock();
     monsterASC->TryActivateAbilityByClass(bossNormalAttackGA);
 }
 
@@ -149,7 +143,7 @@ void AC_BossMonster::BossPatternAttack()
     if (!monsterASC) return;
     if (!CanPatternAttack()) return;
 
-    lastPatternAttackTime = GetWorld()->GetTimeSeconds();
+    lastPatternAttackTime = GetAttackClock();
 
     // Storm → Beam → Storm 교대
     if (bNextPatternIsStorm)
@@ -278,7 +272,7 @@ void AC_BossMonster::OnInvincibleTagChanged(const FGameplayTag& Tag, int32 NewCo
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
         // 반피 패턴 지속 시간만큼 쿨타임이 소진됐으므로 종료 시점 기준으로 리셋
-        const float now = GetWorld()->GetTimeSeconds();
+        const float now = GetAttackClock();
         lastNormalAttackTime  = now;
         lastPatternAttackTime = now;
 

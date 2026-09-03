@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -16,6 +16,8 @@ class PROJECTBBK_API UC_GroggyComponent : public UActorComponent
 
 public:
 	UC_GroggyComponent();
+
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	void Initialize(AC_BaseMonster* InOwner, UC_MonsterHPDisplayComponent* InHPDisplay);
 
@@ -46,6 +48,15 @@ private:
 	UC_MonsterHPDisplayComponent* hpDisplayComponent = nullptr;
 
 	FTimerHandle groggyResetTimerHandle;
+
+	// 그로기 지속 동안 curGroggy를 max → 0으로 선형 감소시키기 위한 상태.
+	// 타이머 하나만으로는 게이지가 종료 순간에 툭 끊기므로 매 프레임 직접 보간한다.
+	bool  bGroggyDraining   = false;
+	float groggyElapsedTime = 0.0f;
+	float groggyTotalTime   = 0.0f;
+
+	// curGroggy를 남은 시간 비율에 맞춰 갱신 (TickComponent에서 호출)
+	void TickGroggyDrain(float DeltaTime);
 
 	// State.Dead / State.Groggy / State.Invincible 중 하나라도 있으면 false
 	bool CanEnterGroggy() const;

@@ -38,6 +38,10 @@ public:
 	virtual bool CanAutoAttack() const override;
 	virtual bool TryAutoAttack() override { return EliteAutoAttack(); }
 
+	// 공격 몽타주를 GA 블루프린트가 내부에서 재생해 C++에 몽타주 레퍼런스가 없다 —
+	// 대신 공격 GA 활성 여부로 "공격 중"을 판정한다 (쿨타임 정지 조건에 사용).
+	virtual bool IsPlayingAttackAnimation() const override;
+
 	// 플레이어까지의 거리 (플레이어 없으면 FLT_MAX)
 	float GetDistanceToPlayer() const;
 

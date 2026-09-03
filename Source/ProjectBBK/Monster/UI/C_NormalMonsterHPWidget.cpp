@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "C_NormalMonsterHPWidget.h"
@@ -37,8 +37,8 @@ void UC_NormalMonsterHPWidget::UpdateWidget()
 
     if (HpBar)
     {
-        const float HpPercent = (maxHp > 0.0f) ? (curHp / maxHp) : 0.0f;
-        HpBar->SetPercent(HpPercent);
+        const float HpRatio = (maxHp > 0.0f) ? (curHp / maxHp) : 0.0f;
+        HpBar->SetPercent(MapFillPercent(HpRatio, hpFillStart, hpFillEnd));
     }
 
     if (HpText)
@@ -47,11 +47,7 @@ void UC_NormalMonsterHPWidget::UpdateWidget()
         HpText->SetText(FText::FromString(HpString));
     }
 
-    if (GroggyBar)
-    {
-        const float GroggyPercent = (maxGroggy > 0.0f) ? (curGroggy / maxGroggy) : 0.0f;
-        GroggyBar->SetPercent(GroggyPercent);
-    }
+    UpdateGroggyBar(GroggyBar);
 }
 
 

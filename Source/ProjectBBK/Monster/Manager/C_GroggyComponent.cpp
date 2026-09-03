@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_GroggyComponent.h"
 #include "../C_BaseMonster.h"
@@ -13,7 +13,41 @@
 
 UC_GroggyComponent::UC_GroggyComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	// 그로기 지속 중에만 켠다 (StartGroggy에서 활성화, ResetGroggy에서 해제)
+	PrimaryComponentTick.bCanEverTick          = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
+}
+
+void UC_GroggyComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	TickGroggyDrain(DeltaTime);
+}
+
+void UC_GroggyComponent::TickGroggyDrain(float DeltaTime)
+{
+	if (!bGroggyDraining) return;
+
+	if (!IsValid(ownerMonster) || groggyTotalTime <= 0.0f)
+	{
+		bGroggyDraining = false;
+		SetComponentTickEnabled(false);
+		return;
+	}
+
+	UC_MonsterAttributeSet* attrSet = ownerMonster->GetMonsterAttributeSet();
+	if (!IsValid(attrSet))
+	{
+		bGroggyDraining = false;
+		SetComponentTickEnabled(false);
+		return;
+	}
+
+	groggyElapsedTime += DeltaTime;
+
+	const float remainRatio = FMath::Clamp(1.0f - (groggyElapsedTime / groggyTotalTime), 0.0f, 1.0f);
+	attrSet->SetcurGroggy(attrSet->GetmaxGroggy() * remainRatio);
 }
 
 void UC_GroggyComponent::Initialize(AC_BaseMonster* InOwner, UC_MonsterHPDisplayComponent* InHPDisplay)
@@ -78,6 +112,15 @@ void UC_GroggyComponent::StartGroggy(float Duration)
 {
 	EnterGroggyState();
 
+	// 게이지 감소 시작 — 진입 시점 값이 max가 아닐 수 있으므로 여기서 max로 맞춘다
+	if (UC_MonsterAttributeSet* attrSet = ownerMonster ? ownerMonster->GetMonsterAttributeSet() : nullptr)
+		attrSet->SetcurGroggy(attrSet->GetmaxGroggy());
+
+	bGroggyDraining   = true;
+	groggyElapsedTime = 0.0f;
+	groggyTotalTime   = Duration;
+	SetComponentTickEnabled(true);
+
 	if (UWorld* world = GetWorld())
 	{
 		world->GetTimerManager().SetTimer(
@@ -92,6 +135,9 @@ void UC_GroggyComponent::StartGroggy(float Duration)
 
 void UC_GroggyComponent::ResetGroggy()
 {
+	bGroggyDraining = false;
+	SetComponentTickEnabled(false);
+
 	if (!ownerMonster) return;
 
 	ExitGroggyState();

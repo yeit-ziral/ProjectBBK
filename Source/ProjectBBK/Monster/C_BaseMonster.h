@@ -118,6 +118,19 @@ public:
 	virtual bool CanAutoAttack() const;
 	virtual bool IsPlayingAttackAnimation() const { return false; }
 
+	// 그로기 중이거나 공격 애니메이션 재생 중에는 멈추는 시계(초).
+	// 모든 몬스터의 공격 쿨타임은 GetWorld()->GetTimeSeconds() 대신 이 값을 기준으로 재야
+	// "그로기/공격 모션 동안 쿨타임이 흐르지 않는다"가 몬스터 종류와 무관하게 성립한다.
+	// (쿨타임을 UC_AttackManagerComponent가 관리하든 몬스터 클래스가 직접 관리하든 동일)
+	float GetAttackClock() const { return attackClock; }
+
+	// 공격 시계를 멈춰야 하는 상태인지 — 기본: State.Groggy 태그 또는 IsPlayingAttackAnimation()
+	virtual bool IsAttackCooldownPaused() const;
+
+	// 해당 GA가 지금 활성 중인지. 공격 몽타주를 GA 블루프린트가 내부에서 재생해
+	// C++에 몽타주 레퍼런스가 없는 몬스터(엘리트·보스)의 IsPlayingAttackAnimation() 구현용.
+	bool IsAbilityActive(TSubclassOf<UGameplayAbility> AbilityClass) const;
+
 	// BT의 UC_BTTaskMeleeAutoAttack이 호출하는 공통 자동공격 진입점.
 	// 몬스터별 XxxAutoAttack()을 여기서 override로 연결하면 Task 클래스를 새로 만들 필요가 없다.
 	// 실행했으면 true, 쿨타임/조건 미충족이면 false.
@@ -191,6 +204,9 @@ public:
 	float repositionNextFlipTime = -1.f;   // -1: 미초기화 sentinel
 
 private:
+	// IsAttackCooldownPaused()가 false인 프레임에만 DeltaTime만큼 증가 (Tick에서 갱신)
+	float attackClock = 0.0f;
+
 	FTimerHandle deathDestroyTimerHandle;
 	FTimerHandle deathVFXTimerHandle;
 	bool bDeathVFXTriggered = false;

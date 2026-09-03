@@ -18,6 +18,8 @@ class PROJECTBBK_API UC_BossMonsterHPWidget : public UC_MonsterHPWidgetBase
 	GENERATED_BODY()
 
 public:
+    UC_BossMonsterHPWidget(const FObjectInitializer& ObjectInitializer);
+
     void SetInvincible(bool bInvincible);
 
 private:

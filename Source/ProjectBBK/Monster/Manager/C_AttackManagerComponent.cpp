@@ -20,9 +20,8 @@ UC_AttackManagerComponent::UC_AttackManagerComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
+	// 정지 판정은 AC_BaseMonster의 공격 시계가 담당하므로 여기선 Tick이 필요 없다
 	PrimaryComponentTick.bCanEverTick = false;
-
-	// ...
 }
 
 void UC_AttackManagerComponent::Initialize(AC_BaseMonster* OwnerMonster)
@@ -31,31 +30,36 @@ void UC_AttackManagerComponent::Initialize(AC_BaseMonster* OwnerMonster)
 }
 
 
+float UC_AttackManagerComponent::GetAttackClock() const
+{
+	if (ownerMonster) return ownerMonster->GetAttackClock();
+
+	const UWorld* world = GetWorld();
+	return world ? world->GetTimeSeconds() : 0.0f;
+}
+
 bool UC_AttackManagerComponent::CanAttack() const
 {
-	const float nowTime = GetWorld()->GetTimeSeconds();
-
 	const float cooldown = ownerMonster ? ownerMonster->GetAttackCooldown()
 		                                : coolDownTime;
 
-	return (nowTime - lastAttackTime) >= cooldown;
+	return (GetAttackClock() - lastAttackTime) >= cooldown;
 }
 
 void UC_AttackManagerComponent::StartCooldown(float Seconds)
 {
-	lastAttackTime = GetWorld()->GetTimeSeconds();
+	lastAttackTime = GetAttackClock();
 }
 
 bool UC_AttackManagerComponent::CanSpecialAttack() const
 {
 	if (!ownerMonster) return false;
-	const float now = GetWorld()->GetTimeSeconds();
-	return (now - lastSpecialAttackTime) >= ownerMonster->GetSpecialCooldown();
+	return (GetAttackClock() - lastSpecialAttackTime) >= ownerMonster->GetSpecialCooldown();
 }
 
 void UC_AttackManagerComponent::StartSpecialCooldown()
 {
-	lastSpecialAttackTime = GetWorld()->GetTimeSeconds();
+	lastSpecialAttackTime = GetAttackClock();
 }
 
 
@@ -255,7 +259,5 @@ void UC_AttackManagerComponent::BeginPlay()
 void UC_AttackManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
 }
 
