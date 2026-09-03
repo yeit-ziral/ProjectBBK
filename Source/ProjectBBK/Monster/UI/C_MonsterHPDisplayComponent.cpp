@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_MonsterHPDisplayComponent.h"
 #include "../C_BaseMonster.h"
@@ -68,14 +68,18 @@ void UC_MonsterHPDisplayComponent::UpdateWidgetRotation()
 
 void UC_MonsterHPDisplayComponent::ShowGroggyStatus()
 {
-	if (monsterHpWidget)
-		monsterHpWidget->SetStatusText(FText::FromString(TEXT("Groggy")));
+	if (!monsterHpWidget) return;
+
+	monsterHpWidget->SetGroggyActive(true);
+	monsterHpWidget->SetStatusText(FText::FromString(TEXT("Groggy")));
 }
 
 void UC_MonsterHPDisplayComponent::ClearGroggyStatus()
 {
-	if (monsterHpWidget)
-		monsterHpWidget->ClearStatusText();
+	if (!monsterHpWidget) return;
+
+	monsterHpWidget->SetGroggyActive(false);
+	monsterHpWidget->ClearStatusText();
 }
 
 void UC_MonsterHPDisplayComponent::BindAttributeDelegates()

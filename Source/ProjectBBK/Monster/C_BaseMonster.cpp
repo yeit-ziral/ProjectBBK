@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_BaseMonster.h"
 #include "../LevelSystem/C_BBKGameMode.h"
@@ -121,9 +121,31 @@ void AC_BaseMonster::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// 정지 상태가 아닐 때만 공격 시계를 굴린다 — 쿨타임 계산의 유일한 시간축
+	if (!IsAttackCooldownPaused())
+		attackClock += DeltaTime;
+
 	if (hpDisplayComponent)
 		hpDisplayComponent->UpdateWidgetRotation();
 
+}
+
+bool AC_BaseMonster::IsAttackCooldownPaused() const
+{
+	// 공격 모션이 나가는 동안은 쿨타임을 세지 않는다 — 모션이 끝난 시점부터 쿨타임 시작
+	if (IsPlayingAttackAnimation()) return true;
+
+	// State.Groggy는 DT_MonsterTag에서 등록됨. 매 프레임 경로라 조회를 한 번만 한다.
+	static const FGameplayTag groggyTag = FGameplayTag::RequestGameplayTag(FName("State.Groggy"));
+	return monsterASC && monsterASC->HasMatchingGameplayTag(groggyTag);
+}
+
+bool AC_BaseMonster::IsAbilityActive(TSubclassOf<UGameplayAbility> AbilityClass) const
+{
+	if (!monsterASC || !AbilityClass) return false;
+
+	const FGameplayAbilitySpec* spec = monsterASC->FindAbilitySpecFromClass(AbilityClass);
+	return spec && spec->IsActive();
 }
 
 void AC_BaseMonster::ApplyMonsterTypeTag()

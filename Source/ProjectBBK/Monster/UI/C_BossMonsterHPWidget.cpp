@@ -1,9 +1,18 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "C_BossMonsterHPWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
+
+UC_BossMonsterHPWidget::UC_BossMonsterHPWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	// 보스는 채움 텍스처가 FullHPBossBar(일반 몬스터의 OnlyHP와 여백이 다름)라 구간을 따로 잡는다.
+	hpFillStart = 0.125561f;
+	hpFillEnd   = 0.868460f;
+	// 그로기 바는 일반 몬스터와 동일한 GroogyBar 텍스처 — 베이스 기본값 그대로 사용.
+}
 
 void UC_BossMonsterHPWidget::NativeConstruct()
 {
@@ -47,13 +56,9 @@ void UC_BossMonsterHPWidget::UpdateWidget()
 
     if (BossHpBar)
     {
-        const float HpPercent = (maxHp > 0.0f) ? (curHp / maxHp) : 0.0f;
-        BossHpBar->SetPercent(HpPercent);
+        const float HpRatio = (maxHp > 0.0f) ? (curHp / maxHp) : 0.0f;
+        BossHpBar->SetPercent(MapFillPercent(HpRatio, hpFillStart, hpFillEnd));
     }
 
-    if (BossGroggyBar)
-    {
-        const float GroggyPercent = (maxGroggy > 0.0f) ? (curGroggy / maxGroggy) : 0.0f;
-        BossGroggyBar->SetPercent(GroggyPercent);
-    }
+    UpdateGroggyBar(BossGroggyBar);
 }
