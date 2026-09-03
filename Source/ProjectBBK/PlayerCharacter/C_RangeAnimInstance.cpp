@@ -32,8 +32,7 @@ void UC_RangeAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	footLGoalPosition = FVector(0.f, 0.f, footLCurrentOffset);
 	footRGoalPosition = FVector(0.f, 0.f, footRCurrentOffset);
 
-	float PelvisOffset = (FMath::Min(footLCurrentOffset, footRCurrentOffset)
-		- FMath::Max(footLCurrentOffset, footRCurrentOffset)) * 0.5f;
+	float PelvisOffset = FMath::Min(footLCurrentOffset, footRCurrentOffset);
 	pelvisGoalPosition = FVector(0.f, 0.f, PelvisOffset);
 
 	FVector CharForward = Character->GetActorForwardVector();
@@ -79,8 +78,14 @@ bool UC_RangeAnimInstance::PerformFootTrace(
 		FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(traceRadius), Params);
 	if (bHit)
 	{
-		float RawOffset = HitResult.ImpactPoint.Z - CapsuleBottomZ - animatedFootOffset;
-		// 모서리/낭떠러지에서 극단값이 들어오면 clamp — 캐릭터가 땅 속으로 꺼지는 현상 방지
+		// 스피어 스윕은 평면에 법선 방향으로 접하므로, 경사면에서 ImpactPoint가
+		// 발밑 실제 지면보다 r·sin²θ/cosθ 만큼 높게 잡힌다. cosθ = ImpactNormal.Z
+		// 이므로 추가 트레이스 없이 정확히 상쇄 가능.
+		// 평지(n_z = 1)에서는 (1 - 1) = 0 이라 기존 평지 동작에 영향이 없다.
+		const float NZ = FMath::Max(HitResult.ImpactNormal.Z, KINDA_SMALL_NUMBER);
+		const float SphereBias = traceRadius * (1.f - NZ * NZ) / NZ;
+
+		float RawOffset = HitResult.ImpactPoint.Z - CapsuleBottomZ - SphereBias;
 		OutTargetOffsetZ = FMath::Clamp(RawOffset, -maxFootOffset, maxFootOffset);
 		OutSurfaceNormal = HitResult.ImpactNormal;
 		return true;

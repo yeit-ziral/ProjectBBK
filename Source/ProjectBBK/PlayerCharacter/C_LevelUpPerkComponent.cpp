@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_LevelUpPerkComponent.h"
 #include "C_PlayerState.h"
@@ -45,17 +45,31 @@ void UC_LevelUpPerkComponent::PresentNextChoices()
 		return;
 	}
 
-	// 2) 서로 다른 ChoiceCount개를 랜덤으로 뽑는다(행이 부족하면 있는 만큼).
-	//    인덱스 풀에서 뽑은 것을 RemoveAtSwap으로 빼서 중복을 막는다.
+	// 2) 아직 뽑을 수 있는 행만 풀에 넣는다. 만렙 퍽은 여기서 걸러지므로
+	//    "3개 자리 중 하나를 만렙 퍽이 낭비하는" 일이 생기지 않는다.
 	PendingChoices.Reset();
 
 	TArray<int32> Pool;
 	Pool.Reserve(Rows.Num());
 	for (int32 i = 0; i < Rows.Num(); ++i)
 	{
-		Pool.Add(i);
+		if (IsPerkAvailable(*Rows[i]))
+		{
+			Pool.Add(i);
+		}
 	}
 
+	// 남은 후보가 하나도 없으면(전부 만렙) 선택창을 띄우지 않고 큐만 비운다.
+	// 안 그러면 빈 창이 뜬 채로 SelectPerk를 못 눌러 게임이 멈춘다.
+	if (Pool.Num() == 0)
+	{
+		PendingLevelUps = 0;
+		OnPerkSelectionFinished.Broadcast();
+		return;
+	}
+
+	// 3) 풀에서 서로 다른 ChoiceCount개를 랜덤으로 뽑는다(부족하면 있는 만큼).
+	//    RemoveAtSwap으로 뽑은 인덱스를 빼서 중복을 막는다.
 	const int32 Pick = FMath::Min(ChoiceCount, Pool.Num());
 	for (int32 i = 0; i < Pick; ++i)
 	{
@@ -64,8 +78,76 @@ void UC_LevelUpPerkComponent::PresentNextChoices()
 		Pool.RemoveAtSwap(r);
 	}
 
-	// 3) BP(UMG)에게 "이 후보들을 띄워라" 통보.
+	// 4) BP(UMG)에게 "이 후보들을 띄워라" 통보. 배열 길이가 3보다 작을 수 있으므로
+	//    위젯은 Length를 보고 남는 버튼을 Collapsed 처리해야 한다.
 	OnPerkChoicesReady.Broadcast(PendingChoices);
+}
+
+int32 UC_LevelUpPerkComponent::GetPerkLevel(const FPerkData& Perk) const
+{
+	// 퍽 종류별로 레벨이 다른 곳에 저장돼 있다. 그 분기를 여기 한 곳에만 둔다.
+	// (예전엔 IsPerkAvailable과 위젯이 각자 분기해서 크리 레벨이 UI에 안 잡혔다)
+	if (Perk.elementTag.IsValid())
+	{
+		return GetElementLevel(Perk.elementTag);
+	}
+
+	if (Perk.perkType == EPerkType::Crit)
+	{
+		return crit.Level;
+	}
+
+	return 0; // 스탯 퍽은 레벨 개념이 없다
+}
+
+int32 UC_LevelUpPerkComponent::GetPerkMaxLevel(const FPerkData& Perk) const
+{
+	if (Perk.elementTag.IsValid())
+	{
+		return Perk.elementMaxLevel;
+	}
+
+	if (Perk.perkType == EPerkType::Crit)
+	{
+		return Perk.critMaxLevel;
+	}
+
+	return 0; // 0 = 상한 없음(무한 반복 가능)
+}
+
+FText UC_LevelUpPerkComponent::GetPerkEffectText(const FPerkData& Perk) const
+{
+	const int32 NextLevel = GetPerkLevel(Perk) + 1;
+
+	if (Perk.elementTag.IsValid())
+	{
+		const float Damage = Perk.elementDamagePerLevel * NextLevel;
+		return FText::Format(
+			NSLOCTEXT("Perk", "ElementEffect", "Elemental Damage : {0}"),
+			FText::AsNumber(Damage));
+	}
+
+	if(Perk.perkType == EPerkType::Crit)
+	{
+		// FCritState::GetChance/GetMultiplier와 같은 식이지만, 아직 미보유(Lv.0)일 수 있어
+		// 컴포넌트 상태가 아니라 DT 행의 계수에서 직접 계산한다.
+		const float Chance = Perk.ciritChanceBase + (NextLevel - 1) * Perk.critChancePerLevel;
+		const float Mult = Perk.critMultiplierBase + (NextLevel - 1) * Perk.critMultiplierPerLevel;
+
+		return FText::Format(
+			NSLOCTEXT("Perk", "CritEffect", "Crit : {0} / Multiplier : {1}x"),
+			FText::AsPercent(Chance), FText::AsNumber(Mult));
+	}
+
+	return FText::GetEmpty();
+}
+
+bool UC_LevelUpPerkComponent::IsPerkAvailable(const FPerkData& Perk) const
+{
+	const int32 MaxLevel = GetPerkMaxLevel(Perk);
+
+	// 상한이 없는 퍽(스탯)은 언제나 후보. 있으면 만렙인지 본다.
+	return MaxLevel <= 0 || GetPerkLevel(Perk) < MaxLevel;
 }
 
 void UC_LevelUpPerkComponent::SelectPerk(int32 Index)
@@ -82,16 +164,17 @@ void UC_LevelUpPerkComponent::SelectPerk(int32 Index)
 	if (Chosen.elementTag.IsValid())
 	{
 		AddElementLevel(Chosen);
-
-		//선택 처리 마무리 (기존 SelectPerk 끝부분과 동일하게 큐 정리)
-		PendingChoices.Reset();
-		PendingLevelUps = FMath::Max(0, PendingLevelUps - 1);
-		if (PendingLevelUps > 0) 
-			PresentNextChoices();
-		else
-			OnPerkSelectionFinished.Broadcast();
-
+		FinishSelection();
 		return; // 속성 보상은 여기서 끝. 아래 GE 적용 코드는 실행하지 않는다.
+	}
+
+	// 크리티컬 보상도 GE가 아니라 컴포넌트 내부 상태로 관리한다.
+	// (어트리뷰트로 빼면 몬스터 공격에도 크리가 걸릴 위험이 있어 일부러 분리했다)
+	if (Chosen.perkType == EPerkType::Crit)
+	{
+		AddCritLevel(Chosen);
+		FinishSelection();
+		return;
 	}
 
 	// ASC는 CLAUDE.md 규칙대로 PlayerState에서 취득. (Character 직접 참조 금지)
@@ -123,14 +206,65 @@ void UC_LevelUpPerkComponent::SelectPerk(int32 Index)
 	}
 
 	// 이번 선택 처리 완료. 큐에 남은 레벨업이 있으면 다음 선택창을 띄운다.
+	FinishSelection();
+}
+
+void UC_LevelUpPerkComponent::FinishSelection()
+{
 	PendingChoices.Reset();
 	PendingLevelUps = FMath::Max(0, PendingLevelUps - 1);
+
 	if (PendingLevelUps > 0)
 	{
 		PresentNextChoices();
 	}
+	else
+	{
+		// 예전엔 스탯 경로에서 이걸 안 불러서, 마지막 선택이 스탯 퍽이면
+		// 창 닫기 신호가 안 나갔다. 한 곳으로 모으면서 같이 해결.
+		OnPerkSelectionFinished.Broadcast();
+	}
 }
 
+
+void UC_LevelUpPerkComponent::AddCritLevel(const FPerkData& Perk)
+{
+	// DT의 계수들을 상태로 옮겨둔다. 이후엔 DT를 다시 안 봐도 레벨만으로 수치가 나온다.
+	crit.ChanceBase         = Perk.ciritChanceBase;
+	crit.ChancePerLevel     = Perk.critChancePerLevel;
+	crit.MultiplierBase     = Perk.critMultiplierBase;
+	crit.MultiplierPerLevel = Perk.critMultiplierPerLevel;
+	crit.MaxLevel           = Perk.critMaxLevel;
+
+	crit.Level = FMath::Min(crit.Level + 1, crit.MaxLevel);
+
+	// 목표 발동률이 바뀌었으니 PRD 상수 C를 다시 역산한다.
+	// 역산은 여기서 딱 한 번. 타격 때는 캐시된 C만 읽는다.
+	critPrd.SetTargetChance(crit.GetChance());
+}
+
+float UC_LevelUpPerkComponent::RollCriticalDamage(float BaseDamage, bool& bOutCritical)
+{
+	bOutCritical = false;
+
+	// 미보유면 판정 자체를 하지 않는다. PRD 카운터도 건드리지 않아야
+	// 나중에 퍽을 얻었을 때 깨끗한 상태에서 시작한다.
+	if (crit.Level <= 0)
+	{
+		return BaseDamage;
+	}
+
+	bOutCritical = critPrd.Roll();
+	return bOutCritical ? BaseDamage * crit.GetMultiplier() : BaseDamage;
+}
+
+void UC_LevelUpPerkComponent::RestoreCritState(const FCritState& InCrit)
+{
+	crit = InCrit;
+
+	// 저장된 건 레벨/계수뿐이라, 파생값인 PRD 상수는 여기서 다시 만들어야 한다.
+	critPrd.SetTargetChance(crit.GetChance());
+}
 
 void UC_LevelUpPerkComponent::AddElementLevel(const FPerkData& Perk)
 {
