@@ -3,6 +3,7 @@
 #include "C_BlinkAction.h"
 #include "GameFramework/Character.h"
 #include "Components/CapsuleComponent.h"
+#include "NiagaraFunctionLibrary.h"
 
 void UC_BlinkAction::Execute_Implementation(UAbilitySystemComponent* ASC, AActor* AvatarActor)
 {
@@ -27,4 +28,14 @@ void UC_BlinkAction::Execute_Implementation(UAbilitySystemComponent* ASC, AActor
 	const FVector TargetLocation = bBlockingHit ? (Hit.ImpactPoint - Direction * CapsuleRadius) : End;
 
 	Character->SetActorLocation(TargetLocation, false);
+
+	if (arrivalVFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			arrivalVFX,
+			TargetLocation,
+			Character->GetActorRotation()
+		);
+	}
 }

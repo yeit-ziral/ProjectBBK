@@ -7,6 +7,7 @@
 #include "Engine/DataTable.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 
 UC_InventoryComponent::UC_InventoryComponent()
 {
@@ -269,6 +270,12 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 	UAbilitySystemComponent* ASC = PS ? PS->GetAbilitySystemComponent() : nullptr;
 	if (!ASC) return false;
 
+	AActor* AvatarActor = ASC->GetAvatarActor();
+
+	// consumeEffects/actionClass 실행 전 재생 — Blink처럼 위치를 바꾸는 액션이 있어도 "사용 시점" 위치를 잡기 위함
+	if (data.useSound && AvatarActor)
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), data.useSound, AvatarActor->GetActorLocation());
+
 	FGameplayEffectContextHandle ctx = ASC->MakeEffectContext();
 	ctx.AddSourceObject(GetOwner());
 
@@ -286,7 +293,7 @@ bool UC_InventoryComponent::UseItem(FName itemID)
 	if (data.actionClass)
 	{
 		if (UC_ConsumableAction* action = NewObject<UC_ConsumableAction>(this, data.actionClass))
-			action->Execute(ASC, ASC->GetAvatarActor());
+			action->Execute(ASC, AvatarActor);
 	}
 
 	RemoveItem(itemID, 1);

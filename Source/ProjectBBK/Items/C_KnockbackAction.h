@@ -6,6 +6,8 @@
 #include "C_ConsumableAction.h"
 #include "C_KnockbackAction.generated.h"
 
+class UNiagaraSystem;
+
 /**
  * 사용 시 AvatarActor 주변 몬스터를 순수 물리적으로 밀어내는(넉백) 소비 아이템 액션.
  * GE 적용 없음 — LaunchCharacter만 수행 (C_RangedUltimate::HandleNotifyEvent 패턴 재사용).
@@ -23,4 +25,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Knockback")
 	float knockbackForce = 800.f;
+
+	// 사용 위치에서 재생할 원샷 VFX. None이면 재생 안 함.
+	UPROPERTY(EditDefaultsOnly, Category = "Knockback")
+	UNiagaraSystem* useVFX = nullptr;
 };
