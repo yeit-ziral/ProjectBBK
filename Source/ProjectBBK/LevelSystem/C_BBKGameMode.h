@@ -22,11 +22,15 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	// 몬스터 전멸만으로 포탈을 열어도 되는지. 튜토리얼처럼 별도 완료 조건이 있는 레벨은 false를 반환하고
+	// 자체 타이밍에 ActivateAllPortals()를 직접 호출한다.
+	virtual bool ShouldAutoActivatePortals() const { return true; }
+
+	void ActivateAllPortals();
+
 private:
 	UFUNCTION()
 	void OnPortalEntered_Handler(AC_Portal* Portal);
-
-	void ActivateAllPortals();
 
 	TArray<TWeakObjectPtr<AC_Portal>> RegisteredPortals;
 	int32 RemainingMonsterCount = 0;
