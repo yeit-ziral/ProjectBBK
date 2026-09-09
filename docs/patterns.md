@@ -852,3 +852,23 @@ UC_EquipmentComponent::GetTotalEquipBonuses()
 ```
 - GAS 표준 `CurrentValue - BaseValue` 차이를 안 쓴 이유: `GE_SpeedBuff`/`GE_Sprint`/`GE_Slowed` 등 다른 Duration/Infinite GE도 같은 속성을 건드려 소스 구분이 안 됨 → `State.PotionBuff` 태그로 필터링해야 "포션발" 증가분만 정확히 분리됨
 - GE 적용/제거가 컴포넌트 자체 상태보다 먼저 델리게이트를 발화시키는 순서 문제는 Debugging Checklist #52 참고
+
+### 소비 아이템 사용 사운드/VFX 패턴 (`UC_InventoryComponent::UseItem` / `UC_BlinkAction` / `UC_KnockbackAction` 참고)
+사운드는 DT 필드로 공통 관리, VFX는 각 액션이 개별 소유 — 재생 위치의 "고정성" 여부로 책임 소재를 나눔.
+```
+사운드 — FConsumableItemData.useSound (USoundBase*, DT 필드)
+  UseItem(itemID)
+    → 검증 통과 + ASC/AvatarActor 취득
+    → useSound 있으면 PlaySoundAtLocation(AvatarActor 위치)   ← consumeEffects/actionClass 실행보다 먼저
+    → consumeEffects 순회 적용
+    → actionClass 있으면 Execute()   ← Blink는 여기서 위치 이동
+  "먼저" 재생하는 이유: actionClass(Blink 등)가 위치를 바꾸는 액션이어도
+  실행되기 전 "사용 시점 플레이어 위치"를 캡처하기 위함 (SkillData.castSound와 동일 패턴)
+
+VFX — 각 UC_ConsumableAction 서브클래스가 EditDefaultsOnly로 개별 소유 (DT 필드 아님)
+  UC_BlinkAction.arrivalVFX   → TargetLocation(벽 충돌 보정 반영된 최종 좌표)에서 원샷 스폰 = 도착 위치
+  UC_KnockbackAction.useVFX   → AvatarActor 위치에서 원샷 스폰 = 사용 위치 (오버랩 루프와 무관, 1회만)
+  스폰: UNiagaraFunctionLibrary::SpawnSystemAtLocation (Attach 아님, 원샷)
+```
+- 판단 기준: 사운드처럼 재생 위치가 항상 "사용 시점 플레이어 위치"로 고정이면 DT 필드 하나로 충분하지만, VFX처럼 스폰 위치의 의미가 액션마다 다르고(도착 vs 사용) 그 위치를 아는 것도 액션 내부 로직뿐이면(Blink의 LineTrace 결과) DT/`UseItem()`에서 처리 불가 — 기존 `blinkDistance`/`radius`/`knockbackForce`처럼 "액션이 자기 튜닝 수치를 갖는" 컨벤션 재사용
+- Niagara 에셋 레벨 보정(코드 수정 없이): 바닥 정렬 = `Shape Location` 모듈 `Offset.Z`(Debugging Checklist #59), 1회만 재생 = 각 Emitter의 `Emitter State → Life Cycle Mode`(Debugging Checklist #60)

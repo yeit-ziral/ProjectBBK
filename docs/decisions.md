@@ -295,3 +295,9 @@
 - **대안:** ASC 어트리뷰트의 `CurrentValue - BaseValue` 차이를 그대로 사용
 - **선택 이유:** 이 프로젝트엔 `GE_SpeedBuff`(스킬)/`GE_SprintBuff`(Shift)/`GE_Slowed`(디버프) 등 동일 속성(moveSpeed/damage 등)을 건드리는 Duration/Infinite GE가 이미 다수 존재. 표준 차이값 방식은 이들을 전부 뭉뚱그려 표시해 "장비/포션 특유의 체감 안 되는 효과를 보여준다"는 원래 목적과 어긋남. `State.PotionBuff` 태그 필터링으로 포션발 증가분만 정확히 분리
 - **트레이드오프:** `State.PotionBuff` 태그를 포션 전용으로 계속 유지해야 함(다른 GE가 재사용하면 계산이 오염됨). 새 버프형 소모품을 추가할 때마다 이 태그를 명시적으로 부여해야 위젯에 자동 반영됨
+
+### 아이템 사용 사운드/VFX — 사운드는 DT 필드, VFX는 Action 서브클래스 필드로 분리
+- **선택:** 사운드는 `FConsumableItemData.useSound`로 모든 소비 아이템 공통 DT 관리, VFX는 `UC_BlinkAction`/`UC_KnockbackAction` 등 각 `UC_ConsumableAction` 서브클래스가 `EditDefaultsOnly` 필드(`arrivalVFX`/`useVFX`)로 개별 소유
+- **대안:** VFX도 사운드와 동일하게 `FConsumableItemData`에 `useEffect` 단일 필드로 통합
+- **선택 이유:** 사운드는 재생 위치가 항상 "사용 시점 플레이어 위치"로 고정이라 DT 필드 하나로 충분하지만, VFX는 스폰 위치의 의미가 아이템마다 다름(Blink=도착 위치, Knockback=사용 위치). 그 위치를 계산하는 로직 자체가 각 액션 내부에만 있어(Blink의 LineTrace 결과 등) `UseItem()`이나 DT에서는 알 수 없음
+- **트레이드오프:** VFX가 필요한 아이템을 추가할 때마다 DT Row만으로는 안 되고 해당 `UC_ConsumableAction` 서브클래스에 C++ 필드 추가가 필요. 3번째 이상 액션이 같은 패턴(필드 + 원샷 스폰)을 필요로 하면 `UC_ConsumableAction` 베이스로 필드를 끌어올리는 리팩토링 고려 가능(현재는 사용처 2곳뿐이라 보류)
