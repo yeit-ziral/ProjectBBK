@@ -20,6 +20,10 @@ private:
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget, AllowPrivateAccess = "true"))
 	UButton* StartButton;
 
+	// 튜토리얼 레벨 진입 버튼. WBP_MainMenu에 아직 버튼이 없어도 컴파일되도록 Optional.
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	UButton* TutorialButton;
+
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget, AllowPrivateAccess = "true"))
 	UButton* SettingsButton;
 
@@ -31,6 +35,9 @@ private:
 
 	UFUNCTION()
 	void OnStartClicked();
+
+	UFUNCTION()
+	void OnTutorialClicked();
 
 	UFUNCTION()
 	void OnSettingsClicked();

@@ -7,6 +7,8 @@
 #include "GameplayEffectExtension.h"
 #include "C_MonsterASC.h"
 #include "AbilitySystemGlobals.h"
+#include "Abilities/GameplayAbility.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "Net/UnrealNetwork.h"
 #include "../C_BaseMonster.h"
 #include "../Manager/C_GroggyComponent.h"
@@ -116,6 +118,72 @@ void UC_MonsterAttributeSet::OnRep_NormalCooldown(const FGameplayAttributeData& 
 void UC_MonsterAttributeSet::OnRep_SpecialCooldown(const FGameplayAttributeData& OldValue)
 {
     GAMEPLAYATTRIBUTE_REPNOTIFY(UC_MonsterAttributeSet, specialCooldown, OldValue);
+}
+
+void UC_MonsterAttributeSet::NotifyAttackerUltimateHit(const FGameplayEffectModCallbackData& Data) const
+{
+	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
+
+	AActor* Instigator = EffectContext.GetInstigator();
+	if (!Instigator)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* InstigatorASC =
+		UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Instigator);
+	if (!InstigatorASC)
+	{
+		return;
+	}
+
+	// 판별 1순위: GE Spec을 만든 어빌리티의 Asset Tag.
+	// GA_MeleeUltimate/GA_RangedUltimate 모두 Ability.Skill.Ultimate을 갖고 있고,
+	// 두 GA가 "Make Outgoing Gameplay Effect Spec(Target is Gameplay Ability)"로
+	// 스펙을 만들기 때문에 컨텍스트에 어빌리티가 실려 온다.
+	bool bFromUltimate = false;
+
+	const FGameplayTag UltimateAbilityTag =
+		FGameplayTag::RequestGameplayTag(FName("Ability.Skill.Ultimate"), false);
+
+	if (UltimateAbilityTag.IsValid())
+	{
+		if (const UGameplayAbility* SourceAbility = EffectContext.GetAbility())
+		{
+			bFromUltimate = SourceAbility->GetAssetTags().HasTag(UltimateAbilityTag);
+		}
+	}
+
+	// 판별 2순위: 어빌리티를 거치지 않고 만들어진 스펙(컨텍스트에 어빌리티 없음) 대비.
+	// 궁극기 시전 중에는 시전자에게 State.UsingUltimate이 붙어 있다
+	// (ChargeAttackerMana도 같은 태그로 궁극기 여부를 판단한다).
+	if (!bFromUltimate)
+	{
+		const FGameplayTag UsingUltimateTag =
+			FGameplayTag::RequestGameplayTag(FName("State.UsingUltimate"), false);
+
+		bFromUltimate = UsingUltimateTag.IsValid()
+			&& InstigatorASC->HasMatchingGameplayTag(UsingUltimateTag);
+	}
+
+	if (!bFromUltimate)
+	{
+		return;
+	}
+
+	const FGameplayTag HitEventTag =
+		FGameplayTag::RequestGameplayTag(FName("Event.Player.UltimateHit"), false);
+	if (!HitEventTag.IsValid())
+	{
+		return;
+	}
+
+	FGameplayEventData Payload;
+	Payload.EventTag   = HitEventTag;
+	Payload.Instigator = Instigator;
+	Payload.Target     = GetOwningActor();
+
+	InstigatorASC->HandleGameplayEvent(HitEventTag, &Payload);
 }
 
 void UC_MonsterAttributeSet::ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage)
@@ -265,6 +333,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 		if (Mitigated > 0.0f)
 		{
 			ChargeAttackerMana(Data, Mitigated);
+			NotifyAttackerUltimateHit(Data);
 
 			if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
 			{
@@ -294,6 +363,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
         if (TrueDamage > 0.0f)
         {
             ChargeAttackerMana(Data, TrueDamage);
+            NotifyAttackerUltimateHit(Data);
         }
 
         CheckAndHandleDeath(NewHP);

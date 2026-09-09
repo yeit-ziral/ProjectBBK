@@ -52,14 +52,42 @@ void UC_BBKGameInstance::StartGame()
 	if (!Sequence || !Sequence->IsValidIndex(0)) return;
 
 	bIsTransitioning = true;
+	bInTutorial = false;
 	CurrentLevelIndex = 0;
 	const FLevelEntry& Entry = Sequence->Levels[0];
 	ShowLoadingOverlay(Entry);
 	UGameplayStatics::OpenLevelBySoftObjectPtr(GetWorld(), Entry.Level);
 }
 
+void UC_BBKGameInstance::StartTutorial()
+{
+	if (bIsTransitioning) return;
+
+	if (TutorialLevel.Level.IsNull())
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("[UC_BBKGameInstance] BP_GameInstance의 TutorialLevel이 비어 있어 튜토리얼을 시작할 수 없습니다."));
+		return;
+	}
+
+	bIsTransitioning = true;
+	bInTutorial = true;
+
+	// 이전 플레이의 저장 상태를 물고 들어가지 않도록 초기화
+	PersistedState = FPersistentGameState();
+
+	// 튜토리얼은 LevelSequence 밖에 있다. -1로 두면 포탈의 TravelToNextLevel()이
+	// HasNextLevel(-1) → Levels[0]으로 판정해 본편 첫 레벨로 이어진다.
+	CurrentLevelIndex = -1;
+
+	ShowLoadingOverlay(TutorialLevel);
+	UGameplayStatics::OpenLevelBySoftObjectPtr(GetWorld(), TutorialLevel.Level);
+}
+
 void UC_BBKGameInstance::TravelToMainMenu()
 {
+	bInTutorial = false;
+
 	if (!MainMenuLevel.IsNull())
 	{
 		UGameplayStatics::OpenLevelBySoftObjectPtr(GetWorld(), MainMenuLevel);
@@ -81,11 +109,20 @@ void UC_BBKGameInstance::TravelToNextLevel()
 
 	bIsTransitioning = true;
 
-	// 레벨 이동 전 캐릭터 상태 저장
-	if (APlayerController* PC = GetFirstLocalPlayerController(GetWorld()))
+	if (bInTutorial)
 	{
-		if (AC_PlayerController* BBK_PC = Cast<AC_PlayerController>(PC))
-			BBK_PC->SaveStateForLevelTransition();
+		// 튜토리얼에서 입은 피해·소모한 자원을 본편으로 가져가지 않는다
+		PersistedState = FPersistentGameState();
+		bInTutorial = false;
+	}
+	else
+	{
+		// 레벨 이동 전 캐릭터 상태 저장
+		if (APlayerController* PC = GetFirstLocalPlayerController(GetWorld()))
+		{
+			if (AC_PlayerController* BBK_PC = Cast<AC_PlayerController>(PC))
+				BBK_PC->SaveStateForLevelTransition();
+		}
 	}
 
 	CurrentLevelIndex++;

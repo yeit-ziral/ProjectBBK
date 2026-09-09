@@ -108,6 +108,17 @@
 | AC_MainMenuGameMode (C_MainMenuGameMode) | ✅ 완료 | 메인 메뉴 레벨 전용 GameMode. BeginPlay에서 WBP_MainMenu 생성 + UIOnly 입력 모드 설정 |
 | BGM 재생 로직 | 📋 계획 중 | 구현 예정 |
 
+### Tutorial
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| UC_TutorialComponent / AC_TutorialGameMode | ✅ 완료 (PIE 검증 대기) | 단계 진행·입력 관찰·화살표·문구. 문구/pointer/hint/reveal은 `Tutorial/TutorialText.txt`로 재빌드 없이 수정 |
+| DT_TutorialSteps (17단계) | ✅ 완료 (PIE 검증 대기) | order 1~17. 07·09·10에 Idle 더미, 08에 Attacker 더미 스폰 설정 |
+| 단계별 아이템 등장 | ✅ 완료 (PIE 검증 대기) | `bRevealItemsOnEnter`/`revealActorTag` — 시작 시 숨김(렌더+콜리전), 14_Interact에서 공개. **L_Tutorial에 아이템 배치 필요** |
+| 단계별 더미 스폰/제거 | ✅ 완료 (PIE 검증 대기) | `spawnActorClass`/`spawnDistance` — 진입 시 플레이어 앞 지면에 스폰, 다음 단계 진입·완료·중단 시 Destroy |
+| BPC_TutorialDummy_Idle / _Attacker | ✅ 완료 (PIE 검증 대기) | BPC_MeleeMonster 자식. DT_MonsterData_TutorialDummy(Idle 1006 / Attacker 1007). MoveSpeed 0 + bEnableReposition false로 제자리, SpecialCooldown 9999로 특수공격 봉인 |
+| 08_Shield 완료 조건 | ✅ 완료 (PIE 검증 대기) | `Event.Player.ShieldBlocked` × 2회. UC_ChracterAttributeSetBase의 실드 무효화 지점에서 HandleGameplayEvent 발신 → 튜토리얼이 ASC 구독으로 수신 |
+| 10_Ultimate 완료 조건 | ✅ 완료 (PIE 검증 대기) | 시전이 아니라 **명중** 기준 — `Event.Player.UltimateHit` × 1회. UC_MonsterAttributeSet이 데미지 소스의 `Ability.Skill.Ultimate` 태그(2순위: 시전자 `State.UsingUltimate`)를 보고 시전자 ASC에 발신. 빗나가도 재시도 가능하도록 `bFillManaOnEnter` 단계는 1초 주기로 마나 유지 |
+
 ### Animation / IK
 | 항목 | 상태 | 비고 |
 |------|------|------|

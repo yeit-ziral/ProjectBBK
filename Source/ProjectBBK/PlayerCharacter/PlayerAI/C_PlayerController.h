@@ -20,6 +20,7 @@ class UC_EquipmentWidget;
 class UC_MerchantDialogueWidget;
 class UC_ShopWidget;
 class UC_StatusWidget;
+class UC_TutorialComponent;
 class UDataTable;
 class UUserWidget;
 
@@ -82,6 +83,10 @@ public:
 	// 인벤토리 컴포넌트 접근 (아이템 픽업 등에서 AddItem 호출용)
 	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Inventory")
 	UC_InventoryComponent* GetInventory() const { return inventory; }
+
+	// 튜토리얼 컴포넌트 접근 — AC_TutorialGameMode가 StartTutorial 호출에 사용
+	UFUNCTION(BlueprintPure, Category = "ProjectBBK|Tutorial")
+	UC_TutorialComponent* GetTutorial() const { return tutorial; }
 
 	// 인벤토리 열기/닫기/토글 — I키 입력 또는 다른 시스템에서 호출 가능
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|Inventory")
@@ -248,6 +253,11 @@ protected:
 	// 캐릭터 교체와 무관하게 유지되는 인벤토리 보관소
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectBBK|Inventory")
 	UC_InventoryComponent* inventory;
+
+	// 튜토리얼 진행 컴포넌트. AC_TutorialGameMode가 StartTutorial을 호출하기 전까지 휴면 상태.
+	// 컨트롤러의 InputComponent에 바인딩하므로 캐릭터 교체와 무관하게 유지된다.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectBBK|Tutorial")
+	UC_TutorialComponent* tutorial;
 
 	// 인벤토리 컴포넌트에 주입할 아이템 조회용 DataTable (BP에서 DT_ConsumableItem / DT_EquipmentItem 지정)
 	UPROPERTY(EditDefaultsOnly, Category = "ProjectBBK|Inventory")

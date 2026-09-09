@@ -75,6 +75,12 @@ public:
 protected:
 
 	void ChargeAttackerMana(const FGameplayEffectModCallbackData& Data, float ActualDamage);
+
+	// 이 데미지가 플레이어 궁극기(Ability.Skill.Ultimate)에서 온 것이면
+	// 시전자 ASC에 Event.Player.UltimateHit 게임플레이 이벤트를 보낸다.
+	// "궁극기를 적에게 실제로 맞혔다"를 구독자(튜토리얼 등)가 알 수 있게 하는 용도로,
+	// 이 AttributeSet이 구독자를 직접 알 필요가 없도록 GAS 표준 경로만 쓴다.
+	void NotifyAttackerUltimateHit(const FGameplayEffectModCallbackData& Data) const;
 	void CheckAndHandleDeath(float NewHP);
 	TSubclassOf<UGameplayEffect> GE_ChargeMana;
 	float ManaChargeRate = 0.05f;

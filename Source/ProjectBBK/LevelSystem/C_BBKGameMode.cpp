@@ -31,7 +31,7 @@ void AC_BBKGameMode::BeginPlay()
 	}
 
 	// 몬스터가 없는 레벨은 즉시 포탈 활성화
-	if (RemainingMonsterCount <= 0)
+	if (RemainingMonsterCount <= 0 && ShouldAutoActivatePortals())
 	{
 		ActivateAllPortals();
 	}
@@ -40,7 +40,7 @@ void AC_BBKGameMode::BeginPlay()
 void AC_BBKGameMode::NotifyMonsterDead()
 {
 	RemainingMonsterCount--;
-	if (RemainingMonsterCount <= 0)
+	if (RemainingMonsterCount <= 0 && ShouldAutoActivatePortals())
 	{
 		ActivateAllPortals();
 	}
