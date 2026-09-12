@@ -31,6 +31,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Level")
 	void StartGame();
 
+	// 메인 메뉴 "튜토리얼" 버튼용 진입점. 튜토리얼 레벨은 LevelSequence 밖에 있으므로
+	// CurrentLevelIndex를 -1로 두어, 튜토리얼 포탈의 TravelToNextLevel()이 자연스럽게
+	// Levels[0](본편 첫 레벨)로 이어지게 한다.
+	UFUNCTION(BlueprintCallable, Category = "Level")
+	void StartTutorial();
+
 	UFUNCTION(BlueprintCallable, Category = "Level")
 	void TravelToNextLevel();
 
@@ -75,8 +81,16 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Level")
 	TSoftObjectPtr<UWorld> MainMenuLevel;
 
+	// 튜토리얼 레벨 — BP_GameInstance에서 할당. LevelSequence의 Levels 배열에는 넣지 않는다.
+	// FLevelEntry를 쓰므로 로딩 화면 문구·팁·최소 표시 시간을 본편 레벨과 동일하게 지정할 수 있다.
+	UPROPERTY(EditDefaultsOnly, Category = "Level")
+	FLevelEntry TutorialLevel;
+
 	int32 CurrentLevelIndex = 0;
 	bool  bIsTransitioning  = false;
+
+	// 현재 튜토리얼 레벨을 플레이 중인지 — 본편으로 넘어갈 때 상태를 저장하지 않고 비우기 위함
+	bool  bInTutorial       = false;
 
 	// ── 로딩 오버레이 ─────────────────────────────────────
 	// WBP_LoadingScreen 클래스 할당 — 미할당 시 순수 Slate 폴백 사용

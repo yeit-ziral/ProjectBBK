@@ -10,6 +10,7 @@
 #include "../C_PlayerState.h"
 #include "../C_BasePlayerCharactor.h"
 #include "../../Inventory/C_InventoryComponent.h"
+#include "../../Tutorial/C_TutorialComponent.h"
 #include "../../Inventory/C_InventoryWidget.h"
 #include "../../Equip/C_EquipmentComponent.h"
 #include "../../Equip/C_EquipmentWidget.h"
@@ -35,6 +36,9 @@ AC_PlayerController::AC_PlayerController()
 {
 	// 캐릭터 교체와 무관하게 유지되도록 컨트롤러에 부착 (DataTable은 BP 컴포넌트 디테일에서 지정)
 	inventory = CreateDefaultSubobject<UC_InventoryComponent>(TEXT("Inventory"));
+
+	// 튜토리얼 맵에서만 AC_TutorialGameMode가 StartTutorial을 호출한다 — 그 외 레벨에선 휴면
+	tutorial = CreateDefaultSubobject<UC_TutorialComponent>(TEXT("Tutorial"));
 }
 
 float AC_PlayerController::GetSwitchCooldownRemaining() const

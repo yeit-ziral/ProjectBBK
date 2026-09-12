@@ -1,6 +1,6 @@
 # Task: useItem (소비 아이템 사용 + 퀵슬롯 UI)
 
-> **상태:** 진행 중
+> **상태:** 완료
 > **작성일:** 2026-07-11
 > **담당:** 기용
 
@@ -90,7 +90,15 @@
 ### 9. 퀵슬롯 아이템 교체 시 쿨다운 UI 잔존 버그 수정
 - [x] `UC_UseItemSlotWidget::RestoreCooldownState()`에서 새로 등록된 아이템에 쿨다운이 없는 경우(`GetItemCooldownRemaining(itemID) <= 0.f`) 조기 `return` 대신 `currentCooldownTime = 0.f` / `maxCooldownTime = 0.f` 리셋 후 `SetCooldownVisible(false)` 호출
   - 원인: 드래그&드롭으로 슬롯에 아이템을 교체 등록하면 `RegisterQuickSlot`(`C_InventoryComponent.cpp:311`) → `OnQuickSlotChanged` 브로드캐스트 → `OnQuickSlotChangedHandler`(`C_UseItemSlotWidget.cpp:87`) → `RestoreCooldownState()` 경로를 타는데, 새 아이템이 쿨다운 중이 아니면 조기 return되어 이전 아이템의 `currentCooldownTime`이 리셋되지 않음. `NativeTick`이 이 값을 계속 감소시키며 오버레이를 그대로 표시 (`SetSlotIndex`의 리셋 로직(69~73줄)은 이 경로에서 호출되지 않음 — Debugging Checklist #25와 동일 원인)
-- [ ] 테스트(PIE): 쿨다운 진행 중인 아이템 슬롯에 (a) 쿨다운 없는 소비 아이템으로 교체 등록 → 오버레이 즉시 사라짐 확인 (b) 쿨다운 중인 다른 소비 아이템으로 교체 등록 → 새 아이템의 남은 시간으로 오버레이 갱신 확인
+- [x] 테스트(PIE): 쿨다운 진행 중인 아이템 슬롯에 (a) 쿨다운 없는 소비 아이템으로 교체 등록 → 오버레이 즉시 사라짐 확인 (b) 쿨다운 중인 다른 소비 아이템으로 교체 등록 → 새 아이템의 남은 시간으로 오버레이 갱신 확인
+
+### 10. 아이템 사용 사운드/VFX (추가 요구사항)
+- [x] `FConsumableItemData`에 `useSound`(`USoundBase*`, `EditAnywhere`, Category "Consumable") 필드 추가 — DT에서 아이템별 사운드 지정, 하드코딩 금지. `SkillData.castSound`(스킬 시스템)와 동일 패턴 재사용
+- [x] `UC_InventoryComponent::UseItem()`에 사운드 재생 로직 추가 — 검증 통과 + ASC/AvatarActor 취득 직후, `consumeEffects`/`actionClass` 실행보다 **먼저** `UGameplayStatics::PlaySoundAtLocation(GetWorld(), data.useSound, AvatarActor->GetActorLocation())` 호출 (`useSound`가 null이면 스킵). `actionClass`(Blink 등)가 위치를 바꾸기 전 시점의 "사용 위치"를 캡처하기 위해 실행 순서를 앞에 둠
+- [x] `UC_BlinkAction`에 `arrivalVFX`(`UNiagaraSystem*`, `EditDefaultsOnly`, Category "Blink") 필드 추가 — `TargetLocation`(벽 충돌 보정 반영된 최종 좌표) 계산 완료 시점에 `UNiagaraFunctionLibrary::SpawnSystemAtLocation`으로 원샷 스폰. `SetActorLocation`에 쓰는 것과 동일한 `TargetLocation` 값 사용 (= 도착 위치)
+- [x] `UC_KnockbackAction`에 `useVFX`(`UNiagaraSystem*`, `EditDefaultsOnly`, Category "Knockback") 필드 추가 — `AvatarActor->GetActorLocation()`에서 1회 원샷 스폰 (오버랩 대상별 반복 아님, 캐릭터가 이동하지 않으므로 루프 전/후 타이밍 무관)
+- [x] 에디터 작업: `DT_ConsumableItem`에 각 소비 아이템별 `useSound` 값 입력, Blink/Knockback 아이템 BP의 `arrivalVFX`/`useVFX`에 Niagara 에셋 할당
+- [x] 테스트(PIE): Blink 사용 시 도착 위치에서 VFX 원샷 재생 + 사용 시점 플레이어 위치에서 사운드 재생 확인 / Knockback 사용 시 사용 위치에서 VFX 원샷 재생 + 동일 위치에서 사운드 재생 확인 / 사운드·VFX 미할당 아이템 사용 시 크래시 없이 정상 동작(null 체크) 확인
 
 ---
 
@@ -118,7 +126,7 @@
 | 항목 | 내용 |
 |------|------|
 | 관련 문서 | @docs/patterns.md (Set by Caller 데미지 적용 패턴, Set by Caller + CurveTable 레벨 스케일링 패턴, 상호작용형 픽업 아이템 패턴, 스폰형 픽업 아이템 패턴), @docs/decisions.md (쿨다운 오버레이 방향 — 줄어드는 방향 vs 차오르는 방향) |
-| 관련 클래스 | `UC_InventoryComponent`, `UC_InventorySlotWidget`, `UC_EquipmentComponent`(ASC 취득 패턴 참고), `AC_PlayerController`, `UC_PlayerState`, `ItemData.h`(`FConsumableEffectEntry`), `C_UltimateGaugeWidget`(UI 알림 사운드 패턴 참고) |
+| 관련 클래스 | `UC_InventoryComponent`, `UC_InventorySlotWidget`, `UC_EquipmentComponent`(ASC 취득 패턴 참고), `AC_PlayerController`, `UC_PlayerState`, `ItemData.h`(`FConsumableEffectEntry`), `C_UltimateGaugeWidget`(UI 알림 사운드 패턴 참고), `UC_ConsumableAction`/`UC_BlinkAction`/`UC_KnockbackAction`(섹션 10 VFX), `C_SkillBase`(`castSound`/`castEffect` 재생 패턴 참고) |
 | 선행 태스크 | `tasks/task_Inventory.md` (인벤토리 코어, 완료) |
 | 관련 Tag | 아이템별 `consumeEffects[i].magnitudeTag` (DT에서 지정, 예: `Data.Heal` 등 — GE의 Set by Caller 태그와 일치 필수) |
 
@@ -134,3 +142,11 @@
 - 2026-08-18: 퀵슬롯 아이템 교체 시 이전 아이템 쿨다운 UI가 남는 버그 확인 — `RestoreCooldownState()`가 새 아이템 쿨다운 없을 때 조기 return하며 이전 상태를 리셋하지 않는 것이 원인. 섹션 9로 작업 범위 추가, 아직 미구현.
 - 2026-08-18: 섹션 9 C++ 수정 완료 — `RestoreCooldownState()`를 "쿨다운 활성 여부"를 먼저 판별한 뒤, 비활성이면 무조건 `currentCooldownTime`/`maxCooldownTime`을 0으로 리셋하고 `SetCooldownVisible(false)`를 호출하도록 변경(기존엔 조건별로 조기 return만 하고 리셋이 없었음). 빌드 필요. 남은 작업은 PIE 테스트.
 - 2026-07-21: 섹션 7·8 C++ 구현 완료 — `FConsumableItemData.cooldown` 필드, `UC_InventoryComponent`에 `itemCooldownEndTime`(TMap 타임스탬프)/`IsItemOnCooldown`/`GetItemCooldownRemaining` 추가 + `UseItem`에 쿨다운 체크(재고 확인 다음, GE 적용 전)·성공 시 종료시각 기록, `OnQuickSlotUseFailed` 델리게이트(등록됨+재고 0일 때만 브로드캐스트) 추가. `UC_UseItemSlotWidget`에 `C_SkillIconWidget`과 동일한 패턴(다이나믹 머티리얼 Progress 파라미터 + NativeTick 폴링)으로 `CooldownOverlay`/`CooldownText`/`UpdateCooldown`/`SetCooldownVisible` 추가, `SetSlotIndex`/`OnQuickSlotChanged` 양쪽에서 `RestoreCooldownState()`로 진행 중 쿨다운 복원, `outOfStockSound` + `OnQuickSlotUseFailed` 바인딩으로 `PlaySound2D` 재생. 빌드 필요. 남은 작업은 전부 에디터: DT_ConsumableItem에 `cooldown` 컬럼 값 입력, `WBP_UseItem`에 `CooldownOverlay`(Image)·`CooldownText`(TextBlock) 위젯 추가+머티리얼 할당(`WBP_SkillIcon`의 쿨다운 머티리얼 재사용 가능), `outOfStockSound` 사운드 할당, PIE 테스트.
+- 2026-09-08: 섹션 1~9 전체 완료 처리(섹션 9 PIE 테스트 포함). 추가 요구사항으로 "아이템 사용 시 사운드/VFX" 설계 확정, 섹션 10으로 범위 추가 (아직 미구현). 설계 논의 결과:
+  - 사운드는 `FConsumableItemData.useSound` DT 필드로 아이템별 개별 관리(`SkillData.castSound`와 동일 패턴), `UseItem()`에서 `consumeEffects`/`actionClass` 실행보다 먼저 재생 — Blink처럼 위치를 바꾸는 액션이 실행되기 전 "사용 시점 플레이어 위치"를 캡처하기 위함. GameplayCue 방식은 채택 안 함(actionClass만 있고 GE 없는 Blink 같은 아이템을 커버 못하고, 아이템마다 GC 액터 에셋을 새로 만들어야 해서 유지비용이 큼)
+  - VFX는 Blink(도착 위치)·Knockback(사용 위치)만 우선 지원, DT가 아니라 각 `UC_ConsumableAction` 서브클래스(`UC_BlinkAction.arrivalVFX`, `UC_KnockbackAction.useVFX`)에 `EditDefaultsOnly`로 개별 소유 — 기존 `blinkDistance`/`radius`/`knockbackForce`와 동일하게 "액션이 자기 튜닝 수치를 갖는" 컨벤션 재사용. 사운드와 달리 DT 단일 필드로 뺄 수 없는 이유는 두 액션의 스폰 위치 의미가 서로 다르고(도착 vs 사용), 그 위치를 아는 것도 각 액션 내부(Blink의 LineTrace 결과)뿐이기 때문. `UC_ConsumableAction` 베이스로 필드를 끌어올리는 것은 현재는 보류(사용처 2곳뿐이라 절약되는 코드가 적음) — 3번째 액션이 같은 패턴을 필요로 하면 그때 재검토
+- 2026-09-08: 섹션 10 C++ 구현 완료 — `FConsumableItemData.useSound`(`USoundBase*`) 필드 추가. `UC_InventoryComponent::UseItem()`에서 `ASC->GetAvatarActor()`를 로컬 변수로 캐시(`actionClass->Execute()`에도 재사용)해 `consumeEffects`/`actionClass` 실행 전에 `UGameplayStatics::PlaySoundAtLocation`으로 재생. `UC_BlinkAction`에 `arrivalVFX`(`UNiagaraSystem*`) 추가, `SetActorLocation` 직후 동일한 `TargetLocation`에서 `SpawnSystemAtLocation` 원샷. `UC_KnockbackAction`에 `useVFX`(`UNiagaraSystem*`) 추가, 오버랩 루프 진입 전 `AvatarActor` 위치에서 원샷(대상별 반복 아님). 빌드 필요. 남은 작업은 전부 에디터: `DT_ConsumableItem`에 `useSound` 값 입력, Blink/Knockback 아이템 BP의 `arrivalVFX`/`useVFX`에 Niagara 에셋 할당, PIE 테스트.
+- 2026-09-08: 에디터 작업 + PIE 테스트 완료, 태스크 완료 처리. 과정에서 발견한 이슈 2건은 코드 변경 없이 Niagara 에셋 자체에서 해결:
+  - Blink VFX가 바닥이 아닌 허리 높이에서 스폰됨 — `TargetLocation`이 `Character->GetActorLocation()` 기준인데 `ACharacter`의 액터 위치는 캡슐 중심(허리 높이)이라 발생. Niagara System의 `Shape Location` 모듈 `Offset.Z`를 캡슐 Half Height만큼 음수로 설정해 에셋 레벨에서 보정
+  - Blink/Knockback VFX가 한 번만 재생되지 않고 반복됨 — System State의 Loop Behavior를 Once로 바꿔도 각 Emitter의 `Emitter State` 모듈이 `Life Cycle Mode = Self`면 System State를 무시하고 자체 루프를 따르는 게 원인. 각 Emitter의 `Emitter State`를 `Life Cycle Mode = System`으로 변경(또는 해당 모듈의 Loop Behavior도 Once로 직접 설정)해 해결
+- 2026-09-08: 작업 완료.

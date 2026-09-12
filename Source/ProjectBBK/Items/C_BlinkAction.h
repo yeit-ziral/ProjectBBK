@@ -6,6 +6,8 @@
 #include "C_ConsumableAction.h"
 #include "C_BlinkAction.generated.h"
 
+class UNiagaraSystem;
+
 /**
  * 사용 시 AvatarActor를 전방(ForwardVector)으로 즉시 순간이동시키는 소비 아이템 액션.
  * GE 적용 없음 — LineTrace로 벽/장애물을 체크해 통과하지 않도록 거리를 단축한 뒤 SetActorLocation만 수행.
@@ -20,4 +22,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Blink")
 	float blinkDistance = 600.f;
+
+	// 도착 위치에서 재생할 원샷 VFX. None이면 재생 안 함.
+	UPROPERTY(EditDefaultsOnly, Category = "Blink")
+	UNiagaraSystem* arrivalVFX = nullptr;
 };

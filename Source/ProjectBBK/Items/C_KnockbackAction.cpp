@@ -7,6 +7,7 @@
 #include "GameFramework/Character.h"
 #include "AIController.h"
 #include "../Monster/C_BaseMonster.h"
+#include "NiagaraFunctionLibrary.h"
 
 void UC_KnockbackAction::Execute_Implementation(UAbilitySystemComponent* ASC, AActor* AvatarActor)
 {
@@ -14,6 +15,16 @@ void UC_KnockbackAction::Execute_Implementation(UAbilitySystemComponent* ASC, AA
 
 	UWorld* World = AvatarActor->GetWorld();
 	if (!World) return;
+
+	if (useVFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			useVFX,
+			AvatarActor->GetActorLocation(),
+			AvatarActor->GetActorRotation()
+		);
+	}
 
 	// Sphere Overlap — Pawn 채널, AC_BaseMonster 필터 (C_RangedUltimate::HandleNotifyEvent와 동일 스타일, Box 대신 Sphere)
 	FCollisionObjectQueryParams ObjectQueryParams;

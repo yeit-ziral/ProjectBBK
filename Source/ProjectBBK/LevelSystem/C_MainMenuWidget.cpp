@@ -12,6 +12,8 @@ void UC_MainMenuWidget::NativeConstruct()
 
 	if (StartButton)
 		StartButton->OnClicked.AddDynamic(this, &UC_MainMenuWidget::OnStartClicked);
+	if (TutorialButton)
+		TutorialButton->OnClicked.AddDynamic(this, &UC_MainMenuWidget::OnTutorialClicked);
 	if (SettingsButton)
 		SettingsButton->OnClicked.AddDynamic(this, &UC_MainMenuWidget::OnSettingsClicked);
 	if (QuitButton)
@@ -23,6 +25,14 @@ void UC_MainMenuWidget::OnStartClicked()
 	if (UC_BBKGameInstance* GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
 	{
 		GI->StartGame();
+	}
+}
+
+void UC_MainMenuWidget::OnTutorialClicked()
+{
+	if (UC_BBKGameInstance* GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
+	{
+		GI->StartTutorial();
 	}
 }
 

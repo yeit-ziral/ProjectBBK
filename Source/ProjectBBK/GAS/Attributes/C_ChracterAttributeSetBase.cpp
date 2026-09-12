@@ -6,6 +6,7 @@
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
 #include "../Abilities/C_CharacterASC.h"
+#include "Abilities/GameplayAbilityTypes.h"
 
 
 void UC_ChracterAttributeSetBase::OnRep_level(const FGameplayAttributeData& OldLevel)
@@ -259,6 +260,21 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 
 				//GE에서 넣어준 태그라면 아래 방식으로 제거 (실드 효과 자체를 제거)
 				ASC->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(ShieldTag));
+
+				// "막아냈다"는 사실을 게임플레이 이벤트로 알린다.
+				// 이 AttributeSet이 튜토리얼·UI·사운드 같은 구독자를 직접 알 필요가 없도록
+				// GAS 표준 경로(HandleGameplayEvent)로만 전달한다.
+				{
+					const FGameplayTag BlockedTag = FGameplayTag::RequestGameplayTag(FName("Event.Player.ShieldBlocked"));
+
+					FGameplayEventData BlockedPayload;
+					BlockedPayload.EventTag   = BlockedTag;
+					BlockedPayload.Instigator = Data.EffectSpec.GetContext().GetInstigator();
+					BlockedPayload.Target     = GetOwningActor();
+					BlockedPayload.EventMagnitude = RemainingDamage;   // 무효화한 원래 데미지
+
+					ASC->HandleGameplayEvent(BlockedTag, &BlockedPayload);
+				}
 
 				// 무효화되었으므로 이후 로직 중단
 				return;
