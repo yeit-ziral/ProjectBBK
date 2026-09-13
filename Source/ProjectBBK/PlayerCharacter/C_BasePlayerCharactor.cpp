@@ -173,6 +173,16 @@ void AC_BasePlayerCharactor::OnAbilityInputPressed(const FInputActionInstance &I
 	if (!abilitySystemComponent.IsValid())
 		return;
 
+	// 이벤트를 먼저 보낸다. 활성중인 Ability가 있다면 이벤트를 수신할 수 있다.
+	if (const FGameplayTag* PressTag = pressEventTagMap.Find(Instance.GetSourceAction()))
+	{
+		if (PressTag->IsValid())
+		{
+			FGameplayEventData EventData;
+			abilitySystemComponent->HandleGameplayEvent(*PressTag, &EventData);
+		}
+	}
+
 	const FGameplayTag *Tag = abilityTagMap.Find(Instance.GetSourceAction());
 	if (!Tag || !Tag->IsValid())
 		return;
@@ -214,6 +224,7 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent *PlayerIn
 		// Ability input → GAS 연결
 		abilityTagMap.Empty();
 		releaseEventTagMap.Empty();
+		pressEventTagMap.Empty();
 		for (const FAbilityInputBinding &Binding : abilityInputBindings)
 		{
 			if (!Binding.inputAction)
@@ -221,6 +232,8 @@ void AC_BasePlayerCharactor::SetupPlayerInputComponent(UInputComponent *PlayerIn
 			abilityTagMap.Add(Binding.inputAction, Binding.abilityTag);
 			if (Binding.releaseEventTag.IsValid())
 				releaseEventTagMap.Add(Binding.inputAction, Binding.releaseEventTag);
+			if(Binding.pressEventTag.IsValid())
+				pressEventTagMap.Add(Binding.inputAction, Binding.pressEventTag);
 			EnhancedInputComponent->BindAction(Binding.inputAction, ETriggerEvent::Started, this, &AC_BasePlayerCharactor::OnAbilityInputPressed);
 			EnhancedInputComponent->BindAction(Binding.inputAction, ETriggerEvent::Completed, this, &AC_BasePlayerCharactor::OnAbilityInputReleased);
 		}
