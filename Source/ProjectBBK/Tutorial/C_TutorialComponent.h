@@ -109,6 +109,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Tutorial")
 	FString textOverrideFile = TEXT("Tutorial/TutorialText.txt");
 
+	// 튜토리얼 시작 직후 카메라 회전 입력을 막아둘 시간 (초, 게임 시간 기준).
+	// 로딩 오버레이(UC_BBKGameInstance — MinLoadingTime 2초, 역시 게임 시간 타이머)가 떠 있는 동안이나
+	// 첫 프레임 멈춤 중에 움직인 마우스가 한꺼번에 반영돼 시점이 바닥·하늘로 튀는 것을 막는다.
+	// 끝나면 시점을 수평으로 되돌린다. 0이면 사용하지 않는다.
+	UPROPERTY(EditDefaultsOnly, Category = "Tutorial", meta = (ClampMin = "0.0"))
+	float startLookLockDuration = 2.0f;
+
 private:
 	// ETriggerEvent::Started — 횟수 조건 단계용
 	void HandleActionStarted(const FInputActionInstance& Instance);
@@ -222,6 +229,9 @@ private:
 	// 마나(궁극기 게이지)를 최대치로 채운다 — bFillManaOnEnter 단계용
 	void FillManaToMax();
 
+	// startLookLockDuration이 지나면 회전 입력 잠금을 풀고, Pitch가 틀어져 있으면 수평으로 되돌린다
+	void ReleaseStartLookLock();
+
 	// textOverrideFile을 읽어 RowName → 문구 맵을 채운다. 파일이 없으면 빈 맵.
 	void LoadTextOverrides(TMap<FName, FString>& OutOverrides) const;
 
@@ -275,6 +285,11 @@ private:
 	// 화살표 대상 재탐색 타이머 (가리킬 대상이 있는 단계 동안만 동작)
 	FTimerHandle pointerRetryTimer;
 	static constexpr float pointerRetryInterval = 0.5f;
+
+	FTimerHandle startLookLockTimer;
+
+	// SetIgnoreLookInput은 카운터라 잠근 만큼만 풀어야 한다 — 인벤토리 등 다른 UI의 잠금을 건드리지 않게
+	bool bStartLookLocked = false;
 
 	// BindGameObservers로 구독한 대상들 — 해제에 필요
 	TWeakObjectPtr<UC_InventoryComponent> observedInventory;

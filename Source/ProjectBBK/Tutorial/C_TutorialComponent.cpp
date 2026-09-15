@@ -29,6 +29,7 @@
 #include "Abilities/GameplayAbilityTypes.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Blueprint/UserWidget.h"
 #include "TimerManager.h"
 #include "Misc/FileHelper.h"
@@ -227,6 +228,19 @@ void UC_TutorialComponent::StartTutorial(UDataTable* StepTable, TSubclassOf<UC_T
 	bIsRunning = true;
 	currentStepIndex = 0;
 
+	// 로딩 오버레이·첫 프레임 멈춤 동안 움직인 마우스로 시점이 튀지 않게 잠깐 회전 입력을 막는다.
+	// 오버레이 숨김도 게임 시간 타이머라, 같은 시간 기준으로 오버레이보다 늦게(또는 같이) 풀린다.
+	if (startLookLockDuration > 0.f)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			OwnerPC->SetIgnoreLookInput(true);
+			bStartLookLocked = true;
+			World->GetTimerManager().SetTimer(
+				startLookLockTimer, this, &UC_TutorialComponent::ReleaseStartLookLock, startLookLockDuration, false);
+		}
+	}
+
 	BindInputActions();
 
 	// 반드시 ShowCurrentStep보다 먼저 — 0번 단계가 등장 단계인 경우
@@ -285,6 +299,17 @@ void UC_TutorialComponent::AbortTutorial()
 		World->GetTimerManager().ClearTimer(advanceTimer);
 		World->GetTimerManager().ClearTimer(manaRefillTimer);
 		World->GetTimerManager().ClearTimer(pointerRetryTimer);
+		World->GetTimerManager().ClearTimer(startLookLockTimer);
+	}
+
+	// 시작 직후 잠금이 남은 채 중단되면 회전이 영영 막힌다 — 잠근 만큼 풀어준다 (시점 리셋은 하지 않음)
+	if (bStartLookLocked)
+	{
+		if (APlayerController* OwnerPC = Cast<APlayerController>(GetOwner()))
+		{
+			OwnerPC->SetIgnoreLookInput(false);
+		}
+		bStartLookLocked = false;
 	}
 
 	UnbindInputActions();
@@ -312,6 +337,34 @@ void UC_TutorialComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	AbortTutorial();
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void UC_TutorialComponent::ReleaseStartLookLock()
+{
+	APlayerController* OwnerPC = Cast<APlayerController>(GetOwner());
+	if (!OwnerPC || !bStartLookLocked)
+	{
+		return;
+	}
+
+	OwnerPC->SetIgnoreLookInput(false);
+	bStartLookLocked = false;
+
+	// 잠금이 걸리기 전(시작 재시도 대기 중 등)에 들어온 입력으로 Pitch가 틀어졌을 수 있다.
+	// Yaw는 캐릭터가 이동하며 바뀐 방향 그대로 두고 Pitch만 수평으로 되돌린다.
+	FRotator ControlRot = OwnerPC->GetControlRotation();
+	if (!FMath::IsNearlyZero(FRotator::NormalizeAxis(ControlRot.Pitch), 1.f))
+	{
+		ControlRot.Pitch = 0.f;
+		ControlRot.Roll = 0.f;
+		OwnerPC->SetControlRotation(ControlRot);
+
+		// 시점이 크게 바뀌므로 카메라 컷 — 모션블러·TAA 잔상과 노출 적응 없이 바로 새 시점으로 전환
+		if (OwnerPC->PlayerCameraManager)
+		{
+			OwnerPC->PlayerCameraManager->SetGameCameraCutThisFrame();
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
