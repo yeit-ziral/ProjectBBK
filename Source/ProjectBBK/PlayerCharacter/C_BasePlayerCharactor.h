@@ -41,6 +41,9 @@ struct FAbilityInputBinding
 	FGameplayTag releaseEventTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FGameplayTag pressEventTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction *inputAction = nullptr;
 };
 
@@ -323,6 +326,7 @@ protected:
 private:
 	TMap<const UInputAction *, FGameplayTag> abilityTagMap;
 	TMap<const UInputAction *, FGameplayTag> releaseEventTagMap;
+	TMap<const UInputAction*, FGameplayTag> pressEventTagMap;
 
 	void OnAbilityInputPressed(const FInputActionInstance &Instance);
 	void OnAbilityInputReleased(const FInputActionInstance &Instance);
