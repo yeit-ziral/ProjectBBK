@@ -37,4 +37,8 @@ struct FMonsterData : public FTableRowBase
     UPROPERTY(EditAnywhere, Category = "Reposition") float RepositionFlipInterval = 2.5f;
 
     UPROPERTY(EditAnywhere, Category = "Reward") float ExpReward = 0.0f;
+
+    // HP 위젯에 표시할 이름. 비워두면 Row Name을 그대로 표시한다.
+    // Row Name은 중복될 수 없으므로 같은 이름을 여러 행이 써야 할 때(튜토리얼 더미 등) 사용.
+    UPROPERTY(EditAnywhere, Category = "UI") FText DisplayName;
 };

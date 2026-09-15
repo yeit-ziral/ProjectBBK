@@ -23,7 +23,6 @@ void UC_TutorialPromptWidget::SetStep(const FText& Instruction, int32 StepIndex,
 
 	OnStepChanged();
 }
-
 void UC_TutorialPromptWidget::SetStepProgress(float Ratio)
 {
 	if (!StepProgressBar)

@@ -7,11 +7,14 @@
 #   - 빈 줄과 # · // 로 시작하는 줄은 무시됩니다.
 #   - "RowName.pointer=위젯이름" 은 화살표로 가리킬 UI 위젯입니다.
 #     WBP_HUD 디자이너에 있는 이름을 그대로 적습니다 (StaminaBar / HealthBar / ExpBar 등).
+#     @EquippableSlot 을 적으면 인벤토리에서 지금 캐릭터가 장착할 수 있는 장비가 든 칸 하나를 가리킵니다.
 #   - "RowName.hint=문구" 는 화살표 옆에 뜨는 보조 설명입니다.
 #     (pointer 또는 DataTable의 pointerTargetClass가 설정된 단계에서만 표시됩니다.)
 #   - "RowName.reveal=items" 는 그 단계에 진입할 때 레벨의 아이템을 등장시킵니다.
 #     튜토리얼 시작 시점에는 숨겨져 있어 보이지도, 주울 수도 없습니다.
 #     items 대신 Actor Tag 이름을 적으면 그 태그를 가진 액터가 등장합니다.
+#   - "RowName.pauseHit=문구" 를 적으면 그 단계에서 스폰한 몬스터의 공격이 맞기 직전에 멈추고 이 문구가 뜹니다.
+#     "RowName.resumeTag=태그" 를 가진 순간(예: State.Shield — 실드를 켠 순간) 공격이 이어집니다. 둘 다 있어야 동작합니다.
 #   - "_Completed=문구" 는 모든 단계를 마쳤을 때 마지막으로 뜨는 문구입니다.
 #
 # 저장할 때 인코딩을 반드시 UTF-8로 하세요. ANSI로 저장하면 한글이 깨집니다.
@@ -33,17 +36,28 @@
 07_Attack.pointer=StaminaBar
 07_Attack.hint=공격을 할 시 스태미나를 소모합니다
 08_Shield=C를 눌러 적의 공격을 2번 막으세요
+08_Shield.pauseHit=지금 C를 눌러 몬스터의 공격을 막으세요
+08_Shield.resumeTag=State.Shield
 09_UniqueSkill=E를 눌러 고유 스킬을 사용하세요
 10_Ultimate=Q를 눌러 궁극기로 적을 공격하세요
 10_Ultimate.hint=이것이 마나입니다.\n마나가 가득 차면 궁극기를 사용 할 수 있습니다
 11_SwitchChar=Tab을 눌러 캐릭터를 교체하세요
-12_SkillWheel=Z를 눌러 스킬 휠을 여세요
-13_CommonSkill=F를 눌러 스킬을 사용하세요
-14_Interact=G를 눌러 아이템을 획득하세요
-14_Interact.reveal=items
-15_Inventory=I를 눌러 인벤토리를 여세요
-16_Equipment=O를 눌러 장비창을 여세요
-17_QuickSlot=1을 눌러 퀵슬롯 아이템을 사용하세요
+12_RangedAttack=좌클릭으로 공격하세요
+12_RangedAttack.pointer=WBP_AmmoCylinder
+12_RangedAttack.hint=원거리 캐릭터가 일반공격을 하면 탄알을 소모합니다
+13_SkillWheel=Z를 눌러 스킬 휠을 여세요
+14_CommonSkill=F를 눌러 스킬을 사용하세요
+15_Interact=G를 눌러 포션과 장비를 획득하세요
+15_Interact.reveal=items
+16_Inventory=I를 눌러 인벤토리를 여세요
+17_RegisterQuickSlot=인벤토리의 포션을 퀵슬롯으로 드래그하세요
+17_RegisterQuickSlot.pointer=HorizontalBox_115
+17_RegisterQuickSlot.hint=포션을 이곳에 끌어다 놓으면 숫자키로 바로 사용할 수 있습니다
+18_QuickSlot=1을 눌러 퀵슬롯 아이템을 사용하세요
+19_Equipment=O를 눌러 장비창을 여세요
+20_EquipItem=장비를 장착하세요
+20_EquipItem.pointer=@EquippableSlot
+20_EquipItem.hint=장비를 더블 클릭 혹은 드래그로 장비를 장착할 수 있습니다
 
 # 전체 완료 문구
 _Completed=튜토리얼 완료! 포탈로 이동하세요

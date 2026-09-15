@@ -46,6 +46,11 @@ struct FTutorialStepData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial", meta = (ClampMin = "-1.0", ClampMax = "1.0"))
 	float directionTolerance = 0.7f;
 
+	// 반대 방향 입력도 인정할지 — "A 또는 D"처럼 축만 맞으면 되는 단계용.
+	// requiredDirection이 (1,0)이면 D와 A 모두, (0,1)이면 W와 S 모두 통과한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	bool bAcceptOppositeDirection = false;
+
 	// 횟수 조건 — requiredHoldSeconds가 0일 때만 사용
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial", meta = (ClampMin = "1"))
 	int32 requiredCount = 1;
@@ -77,6 +82,22 @@ struct FTutorialStepData : public FTableRowBase
 	// 스폰 위치 — 플레이어 전방으로 떨어뜨릴 거리(cm). 지면 높이는 LineTrace로 찾는다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial|Spawn", meta = (ClampMin = "0.0"))
 	float spawnDistance = 400.f;
+
+	// 이 단계에서 스폰한 몬스터의 공격 몽타주를 데미지 판정(히트 노티파이) 직전에 멈추고 이 문구를 띄운다.
+	// 비워두면 멈추지 않는다. 막기처럼 타이밍 맞추기가 어려운 단계에서 플레이어에게 여유를 주기 위함.
+	// TutorialText.txt에서 "RowName.pauseHit=문구" 형식으로 지정할 수 있다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial|HitPause")
+	FText pauseBeforeHitPrompt;
+
+	// 플레이어 ASC가 이 태그를 가지면 멈춘 공격을 이어서 재생한다 (예: State.Shield).
+	// 비어 있으면 풀 방법이 없으므로 pauseBeforeHitPrompt가 있어도 멈추지 않는다.
+	// TutorialText.txt에서 "RowName.resumeTag=태그" 형식으로 지정할 수 있다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial|HitPause")
+	FGameplayTag pauseResumeTag;
+
+	// 히트 노티파이보다 몇 초 앞에서 멈출지
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial|HitPause", meta = (ClampMin = "0.01"))
+	float pauseLeadSeconds = 0.15f;
 
 	// 이 단계에 진입할 때 레벨의 모든 픽업 아이템(AC_BaseItem)을 나타나게 한다.
 	// 튜토리얼 시작 시점에 미리 숨겨두므로, 아이템 획득 단계 전에는 월드에 보이지 않는다.

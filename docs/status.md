@@ -112,12 +112,17 @@
 | 항목 | 상태 | 비고 |
 |------|------|------|
 | UC_TutorialComponent / AC_TutorialGameMode | ✅ 완료 (PIE 검증 대기) | 단계 진행·입력 관찰·화살표·문구. 문구/pointer/hint/reveal은 `Tutorial/TutorialText.txt`로 재빌드 없이 수정 |
-| DT_TutorialSteps (17단계) | ✅ 완료 (PIE 검증 대기) | order 1~17. 07·09·10에 Idle 더미, 08에 Attacker 더미 스폰 설정 |
-| 단계별 아이템 등장 | ✅ 완료 (PIE 검증 대기) | `bRevealItemsOnEnter`/`revealActorTag` — 시작 시 숨김(렌더+콜리전), 14_Interact에서 공개. **L_Tutorial에 아이템 배치 필요** |
+| DT_TutorialSteps (20단계) | ✅ 완료 (PIE 검증 대기) | order 1~20. 07·09·10·12에 Idle 더미, 08에 Attacker 더미 스폰 설정. 03_MoveSide는 `bAcceptOppositeDirection`으로 A/D 모두 인정 |
+| 단계별 아이템 등장 | ✅ 완료 (PIE 검증 대기) | `bRevealItemsOnEnter`/`revealActorTag` — 시작 시 숨김(렌더+콜리전), 15_Interact에서 공개. L_Tutorial에 `HpPotion`(400,-600) + `IronChest`(-400,-600, 공용 장비 — 이 시점엔 원거리 캐릭터라 근접 전용 장비는 장착 불가) 배치 완료 |
 | 단계별 더미 스폰/제거 | ✅ 완료 (PIE 검증 대기) | `spawnActorClass`/`spawnDistance` — 진입 시 플레이어 앞 지면에 스폰, 다음 단계 진입·완료·중단 시 Destroy |
-| BPC_TutorialDummy_Idle / _Attacker | ✅ 완료 (PIE 검증 대기) | BPC_MeleeMonster 자식. DT_MonsterData_TutorialDummy(Idle 1006 / Attacker 1007). MoveSpeed 0 + bEnableReposition false로 제자리, SpecialCooldown 9999로 특수공격 봉인 |
-| 08_Shield 완료 조건 | ✅ 완료 (PIE 검증 대기) | `Event.Player.ShieldBlocked` × 2회. UC_ChracterAttributeSetBase의 실드 무효화 지점에서 HandleGameplayEvent 발신 → 튜토리얼이 ASC 구독으로 수신 |
+| BPC_TutorialDummy_Idle / _Attacker | ✅ 완료 (PIE 검증 대기) | BPC_MeleeMonster 자식. DT_MonsterData_TutorialDummy(Idle 1006 / Attacker 1007). MoveSpeed 0 + bEnableReposition false로 제자리, SpecialCooldown 9999로 특수공격 봉인. HP 위젯 이름은 `FMonsterData.DisplayName`("튜토리얼") — 비워두면 Row Name 표시 |
+| 08_Shield 완료 조건 | ✅ 완료 (PIE 검증 대기) | `Event.Player.ShieldBlocked` × 2회. UC_ChracterAttributeSetBase의 실드 무효화 지점에서 HandleGameplayEvent 발신 → 튜토리얼이 ASC 구독으로 수신. 타이밍 완화: Attacker 더미 공격 몽타주를 히트 노티파이 0.15초 전에 `Montage_Pause` + 플레이어 몸 옆 말풍선(`UC_TutorialPointerWidget::ShowWorldCallout`, 매 프레임 월드→화면 투영)으로 "지금 C를 눌러 몬스터의 공격을 막으세요" 표시(우상단 단계 문구는 유지), 플레이어가 `State.Shield`를 얻으면 `Montage_Resume` (TutorialText `08_Shield.pauseHit`/`.resumeTag`, 몬스터·GA 코드 미수정) |
 | 10_Ultimate 완료 조건 | ✅ 완료 (PIE 검증 대기) | 시전이 아니라 **명중** 기준 — `Event.Player.UltimateHit` × 1회. UC_MonsterAttributeSet이 데미지 소스의 `Ability.Skill.Ultimate` 태그(2순위: 시전자 `State.UsingUltimate`)를 보고 시전자 ASC에 발신. 빗나가도 재시도 가능하도록 `bFillManaOnEnter` 단계는 1초 주기로 마나 유지 |
+| 12_RangedAttack (원거리 일반공격·탄알) | ✅ 완료 (PIE 검증 대기) | 11_SwitchChar(근거리→원거리) 직후. `IA_Attack` × 3회, Idle 더미 400cm 스폰. 우하단 `WBP_AmmoCylinder`를 노란 박스+화살표로 강조하고 "원거리 캐릭터가 일반공격을 하면 탄알을 소모합니다" hint 표시. C++ 변경 없음(DT 행 + TutorialText.txt만). ⚠️ 원거리 공격이 첫 발 이후 막히는 문제는 `GA_RangeAttack` 치명타 Branch False 핀 미연결이 원인(담당 팀원 파일 — 미수정) |
+| 15_Interact 완료 조건 | ✅ 완료 (PIE 검증 대기) | `Event.Tutorial.ItemPickedUp` × 2 — UC_TutorialComponent가 AC_BaseItem의 OnDestroyed를 관찰(획득 성공 시 Destroy). 아이템 코드 미수정 |
+| 17_RegisterQuickSlot (포션 퀵슬롯 등록) | ✅ 완료 (PIE 검증 대기) | `Event.Tutorial.QuickSlotRegistered` — UC_InventoryComponent::OnQuickSlotChanged 관찰, 슬롯 아이템이 바뀌어 채워진 경우만 인정. 화살표 대상 `HorizontalBox_115`(퀵슬롯 2칸) |
+| 20_EquipItem (장비 장착) | ✅ 완료 (PIE 검증 대기) | `Event.Tutorial.ItemEquipped` — 로스터 전원의 UC_EquipmentComponent::OnEquipmentChanged 관찰, 장착 슬롯 수 증가 시 인정. 화살표 대상 `@EquippableSlot`(인벤토리에서 현재 캐릭터가 장착 가능한 장비가 든 칸 하나 — SlotGrid 전체는 스크롤 영역보다 커서 박스가 창을 넘어감) + "장비를 더블 클릭 혹은 드래그로 장비를 장착할 수 있습니다" |
+| 튜토리얼 화살표 재탐색 | ✅ 완료 (PIE 검증 대기) | 대상이 있는 단계 동안 0.5초마다 재탐색 — 단계 진입 후에 연 창도 가리킴. 닫힌 창(RemoveFromParent)은 캐시 지오메트리가 남아도 가리키지 않음(`UC_TutorialPointerWidget::IsWidgetOnScreen`) |
 
 ### Animation / IK
 | 항목 | 상태 | 비고 |
