@@ -61,6 +61,7 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 	repositionBand         = Data->RepositionBand;
 	repositionFlipInterval = Data->RepositionFlipInterval;
 	expReward              = Data->ExpReward;
+	displayName            = Data->DisplayName;
 
 	// 스페셜 사거리 미지정(0 이하)이면 노말 사거리와 동일하게 취급
 	special1Range = (Data->Special1Range > 0.f) ? Data->Special1Range : Data->AttackRange;

@@ -12,6 +12,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "AIController.h"
 #include "BrainComponent.h"
+#include "Manager/C_MonsterDataComponent.h"
 
 AC_BossMonster::AC_BossMonster()
 {
@@ -185,7 +186,7 @@ void AC_BossMonster::InitializeBossHpWidget()
     bossHpWidget->SetMaxGroggy(GetmaxGroggy());
     bossHpWidget->SetCurrentGroggy(GetcurGroggy());
     bossHpWidget->SetMonsterLevel(50);
-    bossHpWidget->SetMonsterName(FText::FromName(GetRowName()));
+    bossHpWidget->SetMonsterName(GetDataComponent() ? GetDataComponent()->GetDisplayName() : FText::FromName(GetRowName()));
 
     // 컷신 트리거가 미리 숨김을 요청했다면 생성 직후 숨김 적용
     if (bSuppressHpWidget)

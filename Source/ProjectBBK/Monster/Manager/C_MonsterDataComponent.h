@@ -23,6 +23,9 @@ public:
 	FName GetRowName() const { return rowName; }
 	int32 GetMonsterId() const { return monsterId; }
 
+	// HP 위젯 표시 이름 — DT의 DisplayName이 비었거나 아직 Initialize 전이면 Row Name
+	FText GetDisplayName() const { return displayName.IsEmpty() ? FText::FromName(rowName) : displayName; }
+
 	bool  IsRepositionEnabled()       const { return bEnableReposition; }
 	float GetRepositionDesiredRange() const { return repositionDesiredRange; }
 	float GetRepositionMinRange()     const { return repositionMinRange; }
@@ -58,6 +61,7 @@ private:
 	float repositionBand         = 60.f;
 	float repositionFlipInterval = 2.5f;
 	float expReward              = 0.f;
+	FText displayName;
 	float special1Range          = 0.f;
 	float special2Range          = 0.f;
 	float special1Cooldown       = 0.f;

@@ -8,6 +8,7 @@
 
 class UBorder;
 class UTextBlock;
+class AActor;
 
 /**
  * 튜토리얼 단계에서 특정 HUD 위젯(궁극기 게이지 등)을 화살표로 가리키고
@@ -39,6 +40,22 @@ public:
 	// 화살표·문구를 모두 감춘다 (대상 없는 단계로 넘어갈 때)
 	void ClearPointer();
 
+	// 월드 액터(플레이어) 옆에 화살표 없는 말풍선 문구를 띄운다. 화면 좌표는 매 프레임 다시 투영한다.
+	// PointAt(HUD 위젯 가리키기)과 독립적이라 둘을 동시에 띄울 수 있다.
+	void ShowWorldCallout(AActor* AnchorActor, const FText& Text, const FSlateFontInfo& Font, const FSlateColor& TextColor);
+	void HideWorldCallout();
+
+	// 지금 가리키고 있는 대상 (없거나 파괴됐으면 nullptr)
+	UWidget* GetTargetWidget() const { return targetWidget.Get(); }
+
+	// 가리키는 대상이 지금 화면에 떠 있는지 (창이 닫혔으면 false)
+	bool IsTargetOnScreen() const { return IsWidgetOnScreen(targetWidget.Get()); }
+
+	// 위젯이 뷰포트에 붙은 위젯 트리 안에서 보이는 상태인지.
+	// 닫힌 창(RemoveFromParent)은 인스턴스와 캐시 지오메트리가 남아 있어도 false —
+	// 부모 패널과 소유 UUserWidget을 따라 뷰포트에 붙은 루트까지 올라가며 확인한다.
+	static bool IsWidgetOnScreen(const UWidget* Widget);
+
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
@@ -54,6 +71,21 @@ private:
 	UPROPERTY()
 	TObjectPtr<UTextBlock> hintText;
 
+	UPROPERTY()
+	TObjectPtr<UBorder> calloutBorder;
+
+	UPROPERTY()
+	TObjectPtr<UTextBlock> calloutText;
+
+	// 말풍선을 따라 붙일 액터 — 캐릭터 교체·사망으로 사라질 수 있으므로 약참조
+	TWeakObjectPtr<AActor> calloutActor;
+
+	// 말풍선 위치를 앵커 액터의 화면 투영점으로 갱신 (투영 실패 시 숨김)
+	void UpdateWorldCallout();
+
+	// 앵커 액터(캡슐 중심) 투영점에서 화면 오른쪽으로 띄울 거리(px) — 몸을 가리지 않게 옆에 둔다
+	static constexpr float calloutSideOffset = 70.f;
+
 	// 가리킬 대상. 대상 위젯이 먼저 파괴될 수 있으므로 약참조.
 	TWeakObjectPtr<UWidget> targetWidget;
 
@@ -65,6 +97,9 @@ private:
 
 	// 대상 위젯의 캐시 지오메트리가 아직 0이면 그리지 않는다 (첫 프레임 대비)
 	bool bPointerVisible = false;
+
+	// 보조 문구가 있는지 — 대상이 화면에서 사라졌다 돌아올 때 문구 표시 여부를 되살리기 위함
+	bool bHasHint = false;
 
 	// 강조 표시 깜빡임 계수 (0~1)
 	float pulseAlpha = 1.f;

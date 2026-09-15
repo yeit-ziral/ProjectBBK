@@ -5,6 +5,16 @@
 #include "C_TutorialPointerWidget.h"
 #include "../PlayerCharacter/C_PlayerState.h"
 #include "../Items/C_BaseItem.h"
+#include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
+#include "../PlayerCharacter/C_BasePlayerCharactor.h"
+#include "../Inventory/C_InventoryComponent.h"
+#include "../Equip/C_EquipmentComponent.h"
+#include "../Inventory/C_InventorySlotWidget.h"
+#include "../Monster/Anim/ANC_MeleeNormalAttack.h"
+#include "../Monster/Anim/ANC_MonsterGameplayEvent.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "AbilitySystemComponent.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
@@ -25,10 +35,22 @@
 #include "Misc/Paths.h"
 
 const FName UC_TutorialComponent::completedMessageKey(TEXT("_Completed"));
+const FName UC_TutorialComponent::equippableSlotPointerToken(TEXT("@EquippableSlot"));
+
+namespace TutorialEventTags
+{
+	// ini 반영 전(에디터 미재시작)이면 무효 태그를 돌려준다 — ensure로 PIE를 멈추지 않게 ErrorIfNotFound=false.
+	// 무효 태그는 NotifyExternalEvent에서 무시된다.
+	static FGameplayTag ItemPickedUp()        { return FGameplayTag::RequestGameplayTag(TEXT("Event.Tutorial.ItemPickedUp"), false); }
+	static FGameplayTag QuickSlotRegistered() { return FGameplayTag::RequestGameplayTag(TEXT("Event.Tutorial.QuickSlotRegistered"), false); }
+	static FGameplayTag ItemEquipped()        { return FGameplayTag::RequestGameplayTag(TEXT("Event.Tutorial.ItemEquipped"), false); }
+}
 
 UC_TutorialComponent::UC_TutorialComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	// 공격 일시정지 단계(pauseBeforeHitPrompt)에서만 켜고 평소에는 끈다
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	completedMessage = NSLOCTEXT("Tutorial", "TutorialCompleted", "튜토리얼 완료! 포탈로 이동하시오");
 }
@@ -155,6 +177,28 @@ void UC_TutorialComponent::StartTutorial(UDataTable* StepTable, TSubclassOf<UC_T
 				}
 			}
 
+			// 히트 직전 일시정지 문구·재개 태그는 "RowName.pauseHit=" / "RowName.resumeTag=" 키로 지정한다
+			const FName PauseHitKey(*(RowPair.Key.ToString() + TEXT(".pauseHit")));
+			if (const FString* PauseHitOverride = TextOverrides.Find(PauseHitKey))
+			{
+				Step.pauseBeforeHitPrompt = FText::FromString(*PauseHitOverride);
+			}
+
+			const FName ResumeTagKey(*(RowPair.Key.ToString() + TEXT(".resumeTag")));
+			if (const FString* ResumeTagOverride = TextOverrides.Find(ResumeTagKey))
+			{
+				const FString Trimmed = ResumeTagOverride->TrimStartAndEnd();
+				// ini에 없는 태그면 무효 태그가 된다 — ensure로 PIE를 멈추지 않게 ErrorIfNotFound=false
+				Step.pauseResumeTag = Trimmed.IsEmpty() ? FGameplayTag() : FGameplayTag::RequestGameplayTag(FName(*Trimmed), false);
+			}
+
+			if (!Step.pauseBeforeHitPrompt.IsEmpty() && !Step.pauseResumeTag.IsValid())
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("[UC_TutorialComponent] 행 '%s'에 pauseHit 문구는 있지만 유효한 resumeTag가 없어 공격을 멈추지 않습니다."),
+					*RowPair.Key.ToString());
+			}
+
 			steps.Add(Step);
 			resolvedActions.Add(Action);
 		}
@@ -240,9 +284,13 @@ void UC_TutorialComponent::AbortTutorial()
 	{
 		World->GetTimerManager().ClearTimer(advanceTimer);
 		World->GetTimerManager().ClearTimer(manaRefillTimer);
+		World->GetTimerManager().ClearTimer(pointerRetryTimer);
 	}
 
 	UnbindInputActions();
+	UnbindGameObservers();
+	ResumeAttackMontage();
+	SetComponentTickEnabled(false);
 	RemovePointerWidget();
 	RemovePromptWidget();
 
@@ -366,7 +414,14 @@ bool UC_TutorialComponent::MatchesCurrentStep(const FInputActionInstance& Instan
 			return false;
 		}
 
-		const float Dot = FVector2D::DotProduct(InputDir.GetSafeNormal(), Step->requiredDirection.GetSafeNormal());
+		float Dot = FVector2D::DotProduct(InputDir.GetSafeNormal(), Step->requiredDirection.GetSafeNormal());
+
+		// 좌우(A/D)처럼 반대 방향도 같은 단계로 인정하면 축만 맞으면 통과
+		if (Step->bAcceptOppositeDirection)
+		{
+			Dot = FMath::Abs(Dot);
+		}
+
 		if (Dot < Step->directionTolerance)
 		{
 			return false;
@@ -399,6 +454,11 @@ void UC_TutorialComponent::ShowCurrentStep()
 		return;
 	}
 
+	// 이전 단계에서 멈춰 둔 공격이 남아 있으면 풀고, 이 단계가 일시정지 단계일 때만 매 프레임 감시한다
+	ResumeAttackMontage();
+	lastReleasedMontageInstanceId = INDEX_NONE;
+	SetComponentTickEnabled(!Step->pauseBeforeHitPrompt.IsEmpty() && Step->pauseResumeTag.IsValid());
+
 	if (promptWidget)
 	{
 		promptWidget->SetStep(Step->instruction, currentStepIndex, steps.Num());
@@ -419,6 +479,9 @@ void UC_TutorialComponent::ShowCurrentStep()
 	// 이전 단계에서 스폰한 더미는 반드시 여기서 정리 — 다음 단계까지 남으면 안 된다
 	DestroyStepActors();
 	SpawnStepActors(*Step);
+
+	// 아이템 획득·퀵슬롯 등록·장비 장착 관찰 — 새로 생긴 대상(드롭 아이템 등)까지 매 단계 보강한다
+	BindGameObservers();
 
 	// externalEventTag 단계는 ASC 게임플레이 이벤트로도 완료될 수 있게 구독을 갈아끼운다
 	BindStepGameplayEvent(*Step);
@@ -510,10 +573,14 @@ void UC_TutorialComponent::FinishTutorial()
 	// 마지막 단계의 더미가 튜토리얼이 끝난 뒤에도 남아 플레이어를 때리는 일이 없게 한다
 	DestroyStepActors();
 	UnbindStepGameplayEvent();
+	UnbindGameObservers();
+	ResumeAttackMontage();
+	SetComponentTickEnabled(false);
 
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(manaRefillTimer);
+		World->GetTimerManager().ClearTimer(pointerRetryTimer);
 	}
 
 	bIsRunning = false;
@@ -728,21 +795,66 @@ void UC_TutorialComponent::RemovePointerWidget()
 	}
 }
 
+UC_TutorialPointerWidget* UC_TutorialComponent::EnsurePointerWidget()
+{
+	if (pointerWidget)
+	{
+		return pointerWidget;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetOwner());
+	if (!PC)
+	{
+		return nullptr;
+	}
+
+	pointerWidget = CreateWidget<UC_TutorialPointerWidget>(PC, UC_TutorialPointerWidget::StaticClass());
+	if (!pointerWidget)
+	{
+		return nullptr;
+	}
+
+	// 앵커·크기를 지정하지 않아 뷰포트 슬롯 기본값(0,0,1,1)으로 전체 화면을 덮는다 (Debugging Checklist #56)
+	pointerWidget->AddToViewport(pointerZOrder);
+	return pointerWidget;
+}
+
 // ---------------------------------------------------------------------------
 // 화살표 / 자원 보정
 // ---------------------------------------------------------------------------
 
-void UC_TutorialComponent::UpdateStepPointer(const FTutorialStepData& Step)
+void UC_TutorialComponent::UpdateStepPointer(const FTutorialStepData& Step, bool bFromRetry)
 {
 	UClass* TargetClass = Step.pointerTargetClass.IsNull() ? nullptr : Step.pointerTargetClass.LoadSynchronous();
 	const FName TargetName = Step.pointerTargetWidgetName;
 	const bool bHasTarget = (TargetClass != nullptr) || !TargetName.IsNone();
 
-	UWidget* Target = bHasTarget ? FindPointerTarget(TargetClass, TargetName) : nullptr;
+	// 대상이 사용자가 여는 창(인벤토리·장비창)이면 단계 진입 시점엔 아직 없을 수 있고,
+	// 장비창은 열 때마다 새 인스턴스가 생긴다 — 대상이 있는 단계 동안은 주기적으로 다시 찾는다
+	if (UWorld* World = GetWorld())
+	{
+		FTimerManager& TimerManager = World->GetTimerManager();
+		if (!bHasTarget)
+		{
+			TimerManager.ClearTimer(pointerRetryTimer);
+		}
+		else if (!TimerManager.IsTimerActive(pointerRetryTimer))
+		{
+			TimerManager.SetTimer(pointerRetryTimer, this, &UC_TutorialComponent::RetryStepPointer, pointerRetryInterval, true);
+		}
+	}
+
+	UWidget* Target = nullptr;
+	if (bHasTarget)
+	{
+		Target = (TargetName == equippableSlotPointerToken)
+			? FindEquippableInventorySlot()
+			: FindPointerTarget(TargetClass, TargetName);
+	}
 
 	if (!Target)
 	{
-		if (bHasTarget)
+		if (bHasTarget && !bFromRetry)
 		{
 			UE_LOG(LogTemp, Warning,
 				TEXT("[UC_TutorialComponent] 화면에서 화살표 대상을 찾지 못했습니다 (class=%s, name=%s)."),
@@ -756,22 +868,15 @@ void UC_TutorialComponent::UpdateStepPointer(const FTutorialStepData& Step)
 		return;
 	}
 
-	if (!pointerWidget)
+	if (!EnsurePointerWidget())
 	{
-		APlayerController* PC = Cast<APlayerController>(GetOwner());
-		if (!PC)
-		{
-			return;
-		}
+		return;
+	}
 
-		pointerWidget = CreateWidget<UC_TutorialPointerWidget>(PC, UC_TutorialPointerWidget::StaticClass());
-		if (!pointerWidget)
-		{
-			return;
-		}
-
-		// 앵커·크기를 지정하지 않아 뷰포트 슬롯 기본값(0,0,1,1)으로 전체 화면을 덮는다 (Debugging Checklist #56)
-		pointerWidget->AddToViewport(pointerZOrder);
+	// 재탐색에서 같은 대상을 다시 찾았으면 그대로 둔다 — PointAt이 표시 상태를 초기화해 깜빡이기 때문
+	if (bFromRetry && pointerWidget->GetTargetWidget() == Target)
+	{
+		return;
 	}
 
 	// 폰트를 안내 위젯에서 물려받아야 한글이 깨지지 않는다
@@ -818,6 +923,12 @@ UWidget* UC_TutorialComponent::FindPointerTarget(UClass* TargetClass, FName Widg
 			{
 				continue;
 			}
+		}
+
+		// 닫힌 창(RemoveFromParent)도 인스턴스가 남아 있으면 여기 잡힌다 — 뷰포트에 붙어 보이는 것만 대상으로 삼는다
+		if (!UC_TutorialPointerWidget::IsWidgetOnScreen(Candidate))
+		{
+			continue;
 		}
 
 		// 화면에 실제로 그려진 인스턴스만 유효한 좌표를 갖는다
@@ -910,6 +1021,9 @@ void UC_TutorialComponent::SpawnStepActors(const FTutorialStepData& Step)
 	}
 
 	stepSpawnedActors.Add(Spawned);
+
+	UE_LOG(LogTemp, Log, TEXT("[UC_TutorialComponent] 단계 %d 액터 스폰: %s"),
+		currentStepIndex, *Spawned->GetName());
 }
 
 void UC_TutorialComponent::DestroyStepActors()
@@ -918,6 +1032,7 @@ void UC_TutorialComponent::DestroyStepActors()
 	{
 		if (AActor* Actor = WeakActor.Get())
 		{
+			UE_LOG(LogTemp, Log, TEXT("[UC_TutorialComponent] 단계 액터 제거: %s"), *Actor->GetName());
 			Actor->Destroy();
 		}
 	}
@@ -1072,4 +1187,389 @@ void UC_TutorialComponent::FillManaToMax()
 	// GE 없이 base value를 직접 설정 — 이 변경도 어트리뷰트 변경 델리게이트를 발화시키므로
 	// UC_UltimateGaugeWidget의 게이지 표시가 즉시 갱신된다
 	ASC->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetmanaAttribute(), MaxMana);
+}
+
+void UC_TutorialComponent::RetryStepPointer()
+{
+	const FTutorialStepData* Step = GetCurrentStep();
+	if (!bIsRunning || !Step)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(pointerRetryTimer);
+		}
+		return;
+	}
+
+	// 이미 화면에 떠 있는 대상을 가리키고 있으면 다시 찾을 필요 없다.
+	// 단, 장비 칸은 아이템을 옮기거나 그리드가 다시 생성되면 대상 칸이 바뀌므로 매번 다시 찾는다.
+	const bool bDynamicTarget = (Step->pointerTargetWidgetName == equippableSlotPointerToken);
+	if (!bDynamicTarget && pointerWidget && pointerWidget->IsTargetOnScreen())
+	{
+		return;
+	}
+
+	UpdateStepPointer(*Step, true);
+}
+
+// ---------------------------------------------------------------------------
+// 게임 이벤트 관찰 (아이템 획득 / 퀵슬롯 등록 / 장비 장착)
+// ---------------------------------------------------------------------------
+
+void UC_TutorialComponent::BindGameObservers()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 인벤토리(퀵슬롯)는 PlayerController 소유 — 이 컴포넌트와 같은 액터에 붙어 있다
+	if (!observedInventory.IsValid())
+	{
+		if (AC_PlayerController* PC = Cast<AC_PlayerController>(GetOwner()))
+		{
+			if (UC_InventoryComponent* Inventory = PC->GetInventory())
+			{
+				Inventory->OnQuickSlotChanged.AddUniqueDynamic(this, &UC_TutorialComponent::HandleQuickSlotChanged);
+				observedInventory = Inventory;
+			}
+		}
+	}
+
+	// 장비 컴포넌트는 캐릭터별 — 로스터 전원에 구독해야 캐릭터 교체 후에도 장착을 감지한다
+	for (TActorIterator<AC_BasePlayerCharactor> It(World); It; ++It)
+	{
+		UC_EquipmentComponent* Equip = It->FindComponentByClass<UC_EquipmentComponent>();
+		if (!Equip || observedEquipments.Contains(TWeakObjectPtr<UC_EquipmentComponent>(Equip)))
+		{
+			continue;
+		}
+
+		Equip->OnEquipmentChanged.AddUniqueDynamic(this, &UC_TutorialComponent::HandleEquipmentChanged);
+		observedEquipments.Add(Equip);
+	}
+
+	lastEquippedCount = CountEquippedSlots();
+
+	// 아이템은 획득에 성공하면 Destroy된다 — 숨겨둔 아이템까지 미리 구독해 둔다
+	for (TActorIterator<AC_BaseItem> It(World); It; ++It)
+	{
+		AC_BaseItem* Item = *It;
+		if (!IsValid(Item) || observedItems.Contains(TWeakObjectPtr<AActor>(Item)))
+		{
+			continue;
+		}
+
+		Item->OnDestroyed.AddUniqueDynamic(this, &UC_TutorialComponent::HandleItemActorDestroyed);
+		observedItems.Add(Item);
+	}
+}
+
+void UC_TutorialComponent::UnbindGameObservers()
+{
+	// 구독을 남겨두면 튜토리얼이 끝난 뒤에도 핸들러가 호출된다 (Debugging Checklist #19와 동일 계열)
+	if (UC_InventoryComponent* Inventory = observedInventory.Get())
+	{
+		Inventory->OnQuickSlotChanged.RemoveDynamic(this, &UC_TutorialComponent::HandleQuickSlotChanged);
+	}
+	observedInventory.Reset();
+	lastQuickSlotItems.Reset();
+
+	for (const TWeakObjectPtr<UC_EquipmentComponent>& WeakEquip : observedEquipments)
+	{
+		if (UC_EquipmentComponent* Equip = WeakEquip.Get())
+		{
+			Equip->OnEquipmentChanged.RemoveDynamic(this, &UC_TutorialComponent::HandleEquipmentChanged);
+		}
+	}
+	observedEquipments.Reset();
+	lastEquippedCount = 0;
+
+	for (const TWeakObjectPtr<AActor>& WeakItem : observedItems)
+	{
+		if (AActor* Item = WeakItem.Get())
+		{
+			Item->OnDestroyed.RemoveDynamic(this, &UC_TutorialComponent::HandleItemActorDestroyed);
+		}
+	}
+	observedItems.Reset();
+}
+
+void UC_TutorialComponent::HandleItemActorDestroyed(AActor* DestroyedActor)
+{
+	observedItems.RemoveAll([DestroyedActor](const TWeakObjectPtr<AActor>& WeakItem)
+		{
+			return !WeakItem.IsValid() || WeakItem.Get() == DestroyedActor;
+		});
+
+	// 숨겨진 아이템은 주울 수 없다 — 그 상태로 사라졌다면 획득이 아니다
+	if (!DestroyedActor || DestroyedActor->IsHidden())
+	{
+		return;
+	}
+
+	NotifyExternalEvent(TutorialEventTags::ItemPickedUp());
+}
+
+void UC_TutorialComponent::HandleQuickSlotChanged(int32 SlotIndex)
+{
+	UC_InventoryComponent* Inventory = observedInventory.Get();
+	if (!Inventory || SlotIndex < 0)
+	{
+		return;
+	}
+
+	// 튜토리얼은 빈 퀵슬롯에서 시작하므로 기준값을 미리 채우지 않고 필요할 때 늘린다
+	if (!lastQuickSlotItems.IsValidIndex(SlotIndex))
+	{
+		lastQuickSlotItems.SetNum(SlotIndex + 1);
+	}
+
+	const FName NewItem = Inventory->GetQuickSlotItem(SlotIndex);
+	const FName PrevItem = lastQuickSlotItems[SlotIndex];
+	lastQuickSlotItems[SlotIndex] = NewItem;
+
+	if (!NewItem.IsNone() && NewItem != PrevItem)
+	{
+		NotifyExternalEvent(TutorialEventTags::QuickSlotRegistered());
+	}
+}
+
+void UC_TutorialComponent::HandleEquipmentChanged()
+{
+	const int32 EquippedCount = CountEquippedSlots();
+	const bool bNewlyEquipped = EquippedCount > lastEquippedCount;
+	lastEquippedCount = EquippedCount;
+
+	if (bNewlyEquipped)
+	{
+		NotifyExternalEvent(TutorialEventTags::ItemEquipped());
+	}
+}
+
+int32 UC_TutorialComponent::CountEquippedSlots() const
+{
+	int32 Count = 0;
+
+	for (const TWeakObjectPtr<UC_EquipmentComponent>& WeakEquip : observedEquipments)
+	{
+		const UC_EquipmentComponent* Equip = WeakEquip.Get();
+		if (!Equip)
+		{
+			continue;
+		}
+
+		for (uint8 SlotValue = static_cast<uint8>(EEquipmentSlot::Head);
+			SlotValue <= static_cast<uint8>(EEquipmentSlot::Accessory); ++SlotValue)
+		{
+			if (Equip->IsSlotEquipped(static_cast<EEquipmentSlot>(SlotValue)))
+			{
+				++Count;
+			}
+		}
+	}
+
+	return Count;
+}
+
+UWidget* UC_TutorialComponent::FindEquippableInventorySlot() const
+{
+	// 장착 가능 여부는 캐릭터별 장비 컴포넌트가 판정한다 (Common은 누구나, Melee/Ranged는 타입 일치 시만)
+	const APlayerController* PC = Cast<APlayerController>(GetOwner());
+	const APawn* PlayerPawn = PC ? PC->GetPawn() : nullptr;
+	const UC_EquipmentComponent* Equip = PlayerPawn ? PlayerPawn->FindComponentByClass<UC_EquipmentComponent>() : nullptr;
+	if (!Equip)
+	{
+		return nullptr;
+	}
+
+	// 슬롯 위젯은 WBP_Inventory의 SlotGrid에 동적으로 생성되므로 TopLevelOnly = false
+	TArray<UUserWidget*> Found;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), Found, UC_InventorySlotWidget::StaticClass(), false);
+
+	UWidget* EquipmentFallback = nullptr;
+
+	for (UUserWidget* Widget : Found)
+	{
+		const UC_InventorySlotWidget* SlotWidget = Cast<UC_InventorySlotWidget>(Widget);
+		if (!SlotWidget || SlotWidget->GetItemID().IsNone())
+		{
+			continue;
+		}
+
+		// 인벤토리를 닫아도 슬롯 인스턴스는 남아 있다 — 화면에 떠 있는 칸만 대상
+		if (!UC_TutorialPointerWidget::IsWidgetOnScreen(Widget))
+		{
+			continue;
+		}
+
+		const FName ItemID = SlotWidget->GetItemID();
+		if (Equip->CanEquipItem(ItemID))
+		{
+			return Widget;
+		}
+
+		if (!EquipmentFallback && Equip->GetItemSlotType(ItemID) != EEquipmentSlot::None)
+		{
+			EquipmentFallback = Widget;
+		}
+	}
+
+	return EquipmentFallback;
+}
+
+// ---------------------------------------------------------------------------
+// 히트 직전 공격 일시정지 (막기 단계 등)
+// ---------------------------------------------------------------------------
+
+void UC_TutorialComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	const FTutorialStepData* Step = GetCurrentStep();
+	if (!bIsRunning || !Step)
+	{
+		SetComponentTickEnabled(false);
+		return;
+	}
+
+	UpdateHitPause(*Step);
+}
+
+void UC_TutorialComponent::UpdateHitPause(const FTutorialStepData& Step)
+{
+	// ASC는 반드시 PlayerState 경유로 취득 (CLAUDE.md GAS 규칙)
+	APlayerController* PC = Cast<APlayerController>(GetOwner());
+	AC_PlayerState* PS = PC ? PC->GetPlayerState<AC_PlayerState>() : nullptr;
+	UAbilitySystemComponent* ASC = PS ? PS->GetAbilitySystemComponent() : nullptr;
+	const bool bResumeReady = ASC && ASC->HasMatchingGameplayTag(Step.pauseResumeTag);
+
+	// 멈춰 있는 동안에는 재개 조건만 본다
+	if (hitPausedMontage.IsValid() || hitPausedAnimInstance.IsValid())
+	{
+		// 몬스터가 사라졌으면 풀 대상이 없다 — 말풍선만 치운다
+		if (bResumeReady || !hitPausedAnimInstance.IsValid())
+		{
+			ResumeAttackMontage();
+		}
+		return;
+	}
+
+	for (const TWeakObjectPtr<AActor>& WeakActor : stepSpawnedActors)
+	{
+		const ACharacter* Monster = Cast<ACharacter>(WeakActor.Get());
+		UAnimInstance* AnimInstance = (Monster && Monster->GetMesh()) ? Monster->GetMesh()->GetAnimInstance() : nullptr;
+		UAnimMontage* Montage = AnimInstance ? AnimInstance->GetCurrentActiveMontage() : nullptr;
+		const FAnimMontageInstance* MontageInstance = Montage ? AnimInstance->GetActiveInstanceForMontage(Montage) : nullptr;
+		if (!MontageInstance || !MontageInstance->IsPlaying())
+		{
+			continue;
+		}
+
+		const int32 InstanceId = MontageInstance->GetInstanceID();
+		if (InstanceId == lastReleasedMontageInstanceId)
+		{
+			continue;
+		}
+
+		float HitTime = 0.f;
+		if (!FindHitNotifyTime(Montage, HitTime))
+		{
+			continue;
+		}
+
+		const float Position = MontageInstance->GetPosition();
+		if (Position < HitTime - Step.pauseLeadSeconds || Position >= HitTime)
+		{
+			continue;
+		}
+
+		// 이미 실드를 켜둔 채로 공격을 받는 중이면 멈출 필요가 없다
+		if (bResumeReady)
+		{
+			lastReleasedMontageInstanceId = InstanceId;
+			continue;
+		}
+
+		AnimInstance->Montage_Pause(Montage);
+		hitPausedAnimInstance = AnimInstance;
+		hitPausedMontage = Montage;
+		hitPausedInstanceId = InstanceId;
+
+		// 오른쪽 위 단계 문구는 그대로 두고, 플레이어 몸 옆에 별도 말풍선으로 띄운다
+		if (UC_TutorialPointerWidget* Overlay = EnsurePointerWidget())
+		{
+			// 폰트를 안내 위젯에서 물려받아야 한글이 깨지지 않는다
+			const FSlateFontInfo Font = promptWidget ? promptWidget->GetInstructionFont() : FSlateFontInfo();
+			const FSlateColor Color = promptWidget ? promptWidget->GetInstructionColor() : FSlateColor(FLinearColor::White);
+
+			Overlay->ShowWorldCallout(PC ? PC->GetPawn() : nullptr, Step.pauseBeforeHitPrompt, Font, Color);
+		}
+		return;
+	}
+}
+
+void UC_TutorialComponent::ResumeAttackMontage()
+{
+	const bool bWasPaused = hitPausedAnimInstance.IsValid() || hitPausedMontage.IsValid();
+	if (!bWasPaused)
+	{
+		return;
+	}
+
+	UAnimInstance* AnimInstance = hitPausedAnimInstance.Get();
+	UAnimMontage* Montage = hitPausedMontage.Get();
+	if (AnimInstance && Montage)
+	{
+		AnimInstance->Montage_Resume(Montage);
+	}
+
+	lastReleasedMontageInstanceId = hitPausedInstanceId;
+	hitPausedAnimInstance.Reset();
+	hitPausedMontage.Reset();
+	hitPausedInstanceId = INDEX_NONE;
+
+	if (pointerWidget)
+	{
+		pointerWidget->HideWorldCallout();
+	}
+}
+
+bool UC_TutorialComponent::FindHitNotifyTime(const UAnimMontage* Montage, float& OutTime)
+{
+	if (!Montage)
+	{
+		return false;
+	}
+
+	const FGameplayTag HitTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Monster.Melee.Hit"), false);
+	bool bFound = false;
+
+	for (const FAnimNotifyEvent& NotifyEvent : Montage->Notifies)
+	{
+		bool bIsHitNotify = NotifyEvent.Notify && NotifyEvent.Notify->IsA<UANC_MeleeNormalAttack>();
+
+		if (!bIsHitNotify)
+		{
+			if (const UANC_MonsterGameplayEvent* EventNotify = Cast<UANC_MonsterGameplayEvent>(NotifyEvent.Notify))
+			{
+				bIsHitNotify = HitTag.IsValid() && EventNotify->eventTag == HitTag;
+			}
+		}
+
+		if (!bIsHitNotify)
+		{
+			continue;
+		}
+
+		const float TriggerTime = NotifyEvent.GetTriggerTime();
+		if (!bFound || TriggerTime < OutTime)
+		{
+			OutTime = TriggerTime;
+			bFound = true;
+		}
+	}
+
+	return bFound;
 }
