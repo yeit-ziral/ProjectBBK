@@ -69,11 +69,11 @@ void AC_RangeCharacter::TryAutoReload()
 	if (!ASC)
 		return;
 
-	// ÀÌ¹Ì ÀçÀåÀü ÁßÀÌ¸é ÀçÀåÀü ½ÃµµÇÏÁö ¾ÊÀ½
+	// ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ãµï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if(ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Reloading"))))
 		return;
 
-	// ÅÂ±×·Î GA_Reload È°¼ºÈ­ ½Ãµµ
+	// ï¿½Â±×·ï¿½ GA_Reload È°ï¿½ï¿½È­ ï¿½Ãµï¿½
 	FGameplayTagContainer ReloadTag;
 	ReloadTag.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Reload")));
 	ASC->TryActivateAbilitiesByTag(ReloadTag);

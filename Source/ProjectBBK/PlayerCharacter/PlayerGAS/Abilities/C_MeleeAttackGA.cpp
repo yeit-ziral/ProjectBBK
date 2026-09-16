@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "C_MeleeAttackGA.h"
 
@@ -12,13 +12,15 @@ void UC_MeleeAttackGA::ResetCombo()
     {
         Avatar->GetWorldTimerManager().ClearTimer(comboInputBufferTimerHandle);
     }
+
+    swingHitActors.Reset();
 }
 
 void UC_MeleeAttackGA::BufferComboInput()
 {
     bIsInputBuffered = true;
 
-    // ½ºÀ® ¾ÆÁÖ ÃÊ¹İ¿¡ ´©¸¥ ÀÔ·ÂÀÌ À©µµ¿ì±îÁö »ì¾ÆÀÖÀ¸¸é ¾î»öÇÏ´Ù. À¯È¿ ½Ã°£À» °É¾î ¿À·¡µÈ ÀÔ·ÂÀº ½º½º·Î »ç¶óÁö°Ô ÇÑ´Ù.
+    // ìŠ¤ìœ™ ì•„ì£¼ ì´ˆë°˜ì— ëˆ„ë¥¸ ì…ë ¥ì´ ìœˆë„ìš°ê¹Œì§€ ì‚´ì•„ìˆìœ¼ë©´ ì–´ìƒ‰í•˜ë‹¤. ìœ íš¨ ì‹œê°„ì„ ê±¸ì–´ ì˜¤ë˜ëœ ì…ë ¥ì€ ìŠ¤ìŠ¤ë¡œ ì‚¬ë¼ì§€ê²Œ í•œë‹¤.
     if (AActor* Avatar = GetAvatarActorFromActorInfo())
     {
         Avatar->GetWorldTimerManager().SetTimer(
@@ -58,6 +60,22 @@ bool UC_MeleeAttackGA::ConsumeAdvancingFlag()
 	const bool bWasAdvancing = bAdvancingCombo;
 	bAdvancingCombo = false;
 	return bWasAdvancing;
+}
+
+bool UC_MeleeAttackGA::TryRegisterHit(AActor* HitActor)
+{
+    if (!HitActor)
+        return false;
+
+    // AddëŠ” ì´ë¯¸ ìˆë˜ ì›ì†Œë©´ bIsAlreadyInSetì„ trueë¡œ ì±„ì›Œì¤€ë‹¤. Contains + Addë¥¼ ë”°ë¡œ ë¶€ë¥´ëŠ” ê²ƒë³´ë‹¤ í•´ì‹œ ì¡°íšŒê°€ í•œ ë²ˆ ì ë‹¤.
+	bool bIsAlreadyInSet = false;
+    swingHitActors.Add(HitActor, &bIsAlreadyInSet);
+	return !bIsAlreadyInSet;
+}
+
+void UC_MeleeAttackGA::ClearSwingHits()
+{
+	swingHitActors.Reset();
 }
 
 void UC_MeleeAttackGA::OnComboInputBufferTimerExpired()
