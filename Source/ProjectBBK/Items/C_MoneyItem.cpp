@@ -7,13 +7,31 @@ void AC_MoneyItem::BeginPlay()
 {
 	cachedItemName = FText::Format(FText::FromString(TEXT("{0} gold")), moneyAmount);
 	Super::BeginPlay();
-	ApplyWorldMesh(nullptr);
+	ApplyMeshForAmount();
 }
 
 void AC_MoneyItem::InitMoney(int32 InAmount)
 {
 	moneyAmount = InAmount;
 	cachedItemName = FText::Format(FText::FromString(TEXT("{0} gold")), moneyAmount);
+	ApplyMeshForAmount();
+}
+
+void AC_MoneyItem::ApplyMeshForAmount()
+{
+	UStaticMesh* SelectedMesh = nullptr;
+	int32 BestMinAmount = MIN_int32;
+
+	for (const FMoneyMeshTier& Tier : moneyMeshTiers)
+	{
+		if (moneyAmount >= Tier.minAmount && Tier.minAmount >= BestMinAmount)
+		{
+			BestMinAmount = Tier.minAmount;
+			SelectedMesh = Tier.mesh;
+		}
+	}
+
+	ApplyWorldMesh(SelectedMesh);
 }
 
 void AC_MoneyItem::OnInteract(AC_BasePlayerCharactor* Player)
