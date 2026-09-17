@@ -79,15 +79,23 @@ void AC_BaseItem::ApplyWorldMesh(UStaticMesh* Mesh)
 	}
 }
 
-void AC_BaseItem::OnItemBeginOverlap(
-	UPrimitiveComponent* OverlappedComponent,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex,
-	bool bFromSweep,
-	const FHitResult& SweepResult)
+void AC_BaseItem::RefreshOverlapState()
 {
-	AC_BasePlayerCharactor* Player = Cast<AC_BasePlayerCharactor>(OtherActor);
+	TArray<AActor*> OverlappingActors;
+	collisionSphere->GetOverlappingActors(OverlappingActors, AC_BasePlayerCharactor::StaticClass());
+
+	for (AActor* Actor : OverlappingActors)
+	{
+		if (AC_BasePlayerCharactor* Player = Cast<AC_BasePlayerCharactor>(Actor))
+		{
+			NotifyPlayerInRange(Player);
+			break;
+		}
+	}
+}
+
+void AC_BaseItem::NotifyPlayerInRange(AC_BasePlayerCharactor* Player)
+{
 	if (!Player) return;
 
 	if (AC_PlayerController* PC = Cast<AC_PlayerController>(Player->GetController()))
@@ -101,6 +109,17 @@ void AC_BaseItem::OnItemBeginOverlap(
 	}
 
 	interactionWidgetComp->SetVisibility(true);
+}
+
+void AC_BaseItem::OnItemBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	NotifyPlayerInRange(Cast<AC_BasePlayerCharactor>(OtherActor));
 }
 
 void AC_BaseItem::OnItemEndOverlap(

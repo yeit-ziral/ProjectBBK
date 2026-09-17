@@ -22,6 +22,12 @@ public:
 
 	virtual void OnInteract(AC_BasePlayerCharactor* Player);
 
+	// 런타임에 플레이어와 이미 겹친 상태로 스폰된 경우(예: TreasureChest 드랍) BeginOverlap이
+	// 델리게이트 바인딩 이전에 지나가 버려 상호작용 UI/입력 등록이 안 될 수 있다.
+	// 스폰 직후(데이터 초기화 이후) 호출해 현재 오버랩 상태를 다시 반영한다.
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	void RefreshOverlapState();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -48,6 +54,8 @@ protected:
 	FText cachedItemName;
 
 private:
+	void NotifyPlayerInRange(AC_BasePlayerCharactor* Player);
+
 	UFUNCTION()
 	void OnItemBeginOverlap(
 		UPrimitiveComponent* OverlappedComponent,
