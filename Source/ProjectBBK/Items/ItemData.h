@@ -48,6 +48,10 @@ struct PROJECTBBK_API FBaseItemData : public FTableRowBase
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "World")
 	UStaticMesh* worldMesh;
 
+	// 아이템의 가치. TreasureChest 등 value 예산 기반 시스템에서 사용.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Item Info")
+	int32 value = 0;
+
 	FBaseItemData()
 		: itemID(NAME_None)
 		, itemName(FText::GetEmpty())
