@@ -35,10 +35,22 @@ bool UC_MeleeAttackGA::TryAdvanceCombo()
     if (!bIsInputBuffered)
         return false;
 
-    if (!comboMontages.IsValidIndex(comboIndex + 1))
-        return false;
+    if(comboMontages.Num() == 0)
+		return false;
 
-    ++comboIndex;
+    // 스태미나 검사는 comboIndex를 올리기 "전"에 한다. 올린 뒤에 실패하면 인덱스만 어긋난 채 남아 다음 스윙이 엉뚱한 단부터 시작한다.
+    if(!CheckCost(CurrentSpecHandle, CurrentActorInfo))
+		return false;
+
+    if (comboMontages.IsValidIndex(comboIndex + 1))
+    {
+		++comboIndex;
+    }
+    else
+    {
+		comboIndex = comboMontages.IsValidIndex(comboLoopStartIndex) ? comboLoopStartIndex : 0;
+    }
+	
 	bIsInputBuffered = false;
 	bAdvancingCombo = true;
 
@@ -46,6 +58,9 @@ bool UC_MeleeAttackGA::TryAdvanceCombo()
     {
         Avatar->GetWorldTimerManager().ClearTimer(comboInputBufferTimerHandle);
 	}
+
+    // 1타분은 활성화 시 CommitAbility가 이미 냈다. 2타부터는 여기서 낸다.
+    ApplyCost(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo);
 
     return true;
 }

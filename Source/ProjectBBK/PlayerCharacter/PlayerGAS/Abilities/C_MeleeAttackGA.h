@@ -64,6 +64,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	TArray<float> comboDamageMultipliers;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Combo")
+	int32 comboLoopStartIndex = 1;
+
 	bool bAdvancingCombo = false;
 
 	/** 버퍼된 입력의 유효 시간을 재는 타이머 핸들 */
