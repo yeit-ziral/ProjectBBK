@@ -67,6 +67,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	int32 comboLoopStartIndex = 1;
 
+	// 2타 이후에 낼 비용. 비워두면 1타와 같은 CostGameplayEffectClass를 쓴다.
+	UPROPERTY(EditDefaultsOnly, Category = "Combo")
+	TSubclassOf<UGameplayEffect> comboCostEffect;
+
+	// 콤보 진행 비용을 낼 수 있는가 
+	bool CanPayComboCost();
+
+	// 콤보 진행 비용을 지불한다
+	void PayComboCost();
+
 	bool bAdvancingCombo = false;
 
 	/** 버퍼된 입력의 유효 시간을 재는 타이머 핸들 */
