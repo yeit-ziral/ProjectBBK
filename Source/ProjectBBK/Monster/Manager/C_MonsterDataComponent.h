@@ -34,6 +34,8 @@ public:
 	float GetRepositionBand()         const { return repositionBand; }
 	float GetRepositionFlipInterval() const { return repositionFlipInterval; }
 	float GetExpReward()              const { return expReward; }
+	int32 GetMoneyRewardMinPerLevel() const { return moneyRewardMinPerLevel; }
+	int32 GetMoneyRewardMaxPerLevel() const { return moneyRewardMaxPerLevel; }
 
 	// 스페셜 공격 사거리 — DT에서 0 이하면 Initialize에서 AttackRange로 해석해 둔 값
 	float GetSpecial1Range()          const { return special1Range; }
@@ -61,6 +63,8 @@ private:
 	float repositionBand         = 60.f;
 	float repositionFlipInterval = 2.5f;
 	float expReward              = 0.f;
+	int32 moneyRewardMinPerLevel = 0;
+	int32 moneyRewardMaxPerLevel = 0;
 	FText displayName;
 	float special1Range          = 0.f;
 	float special2Range          = 0.f;

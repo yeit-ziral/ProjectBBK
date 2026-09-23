@@ -89,6 +89,20 @@ void UC_StatusWidget::OnAttackChanged(const FOnAttributeChangeData& Data)
 	UpdateStatText(AttackText, Data.NewValue, UC_ChracterAttributeSetBase::GetdamageAttribute());
 }
 
+void UC_StatusWidget::GetBonusStatTexts(TArray<UWidget*>& OutTexts) const
+{
+	// UpdateStatText가 증가분이 0이 아닐 때만 "(+N)"을 붙인다 — 그 표기가 있는 텍스트가 곧 강조 대상
+	// const 멤버 함수에서도 포인터가 가리키는 대상은 const가 아니므로 const_cast가 필요 없다
+	UTextBlock* StatTexts[] = { MaxHPText, MaxStaminaText, MoveSpeedText, DefenseText, AttackText };
+	for (UTextBlock* StatText : StatTexts)
+	{
+		if (StatText && StatText->GetText().ToString().Contains(TEXT("(+")))
+		{
+			OutTexts.Add(StatText);
+		}
+	}
+}
+
 void UC_StatusWidget::UpdateStatText(UTextBlock* TextBlock, float NewValue, const FGameplayAttribute& Attribute) const
 {
 	if (!TextBlock)

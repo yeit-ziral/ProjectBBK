@@ -45,10 +45,20 @@ protected:
 	// 전 슬롯을 현재 장비 상태로 갱신
 	void RefreshAllSlots();
 
+	// 창이 처음 뜨는 위치를 화면 왼쪽으로 고정한다.
+	// 디자이너에서 어떤 앵커로 잡혀 있든 여기서 왼쪽 세로중앙 앵커로 덮어쓰므로
+	// 캐릭터별 장비창 WBP(근접/원거리)를 각각 손볼 필요가 없다.
+	void ApplyInitialWindowPosition();
+
 	// 이동시킬 창 컨테이너 — WBP에서 RootCanvas 아래 "WindowRoot" CanvasPanel(배경+슬롯 포함)로 배치.
 	// 없으면 창 이동 비활성(슬롯 동작은 정상).
 	UPROPERTY(meta = (BindWidgetOptional))
 	UCanvasPanel* WindowRoot = nullptr;
+
+	// 창이 뜨는 위치 — 화면 왼쪽 변 기준 오프셋(px). X는 왼쪽 여백, Y는 세로 중앙에서의 이동량.
+	// 창을 마우스로 옮기는 건 그대로 동작하고, 다시 열면 이 위치로 돌아온다.
+	UPROPERTY(EditDefaultsOnly, Category = "Equipment|Window")
+	FVector2D initialWindowOffset = FVector2D(80.f, 0.f);
 
 private:
 	TWeakObjectPtr<UC_EquipmentComponent> equipComp;

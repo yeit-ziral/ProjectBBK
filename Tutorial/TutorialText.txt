@@ -1,4 +1,4 @@
-# 튜토리얼 안내 문구
+﻿# 튜토리얼 안내 문구
 #
 # 형식: RowName=문구
 #   - RowName은 DT_TutorialSteps의 Row Name과 정확히 같아야 합니다.
@@ -8,13 +8,28 @@
 #   - "RowName.pointer=위젯이름" 은 화살표로 가리킬 UI 위젯입니다.
 #     WBP_HUD 디자이너에 있는 이름을 그대로 적습니다 (StaminaBar / HealthBar / ExpBar 등).
 #     @EquippableSlot 을 적으면 인벤토리에서 지금 캐릭터가 장착할 수 있는 장비가 든 칸 하나를 가리킵니다.
+#     @StatBonus 를 적으면 스탯창에서 "(+N)" 증가분이 붙어 있는 스탯 텍스트를 전부 네모로 강조합니다.
 #   - "RowName.hint=문구" 는 화살표 옆에 뜨는 보조 설명입니다.
 #     (pointer 또는 DataTable의 pointerTargetClass가 설정된 단계에서만 표시됩니다.)
+#   - pointer에 쉼표로 여러 이름을 적으면 각각 노란 네모로 강조합니다 (예: WBP_UseItem1,WBP_UseItem2).
+#     이때 hint는 | 로 나눠 같은 순서로 적습니다 (예: 1번을 누르면 사용됩니다|2번을 누르면 사용됩니다).
 #   - "RowName.reveal=items" 는 그 단계에 진입할 때 레벨의 아이템을 등장시킵니다.
 #     튜토리얼 시작 시점에는 숨겨져 있어 보이지도, 주울 수도 없습니다.
 #     items 대신 Actor Tag 이름을 적으면 그 태그를 가진 액터가 등장합니다.
 #   - "RowName.pauseHit=문구" 를 적으면 그 단계에서 스폰한 몬스터의 공격이 맞기 직전에 멈추고 이 문구가 뜹니다.
 #     "RowName.resumeTag=태그" 를 가진 순간(예: State.Shield — 실드를 켠 순간) 공격이 이어집니다. 둘 다 있어야 동작합니다.
+#   - "RowName.requireMove=true" 를 적으면 키를 누른 것만으로는 인정하지 않고,
+#     캐릭터가 실제로 움직이는 동안만 게이지가 찹니다 (공격 중에 WASD만 눌러도 안 참).
+#     true 대신 숫자를 적으면 그 속도(cm/s) 이상일 때만 인정합니다. false면 검사하지 않습니다.
+#   - "RowName.requireAttack=true" 를 적으면 키를 누른 횟수가 아니라
+#     실제로 공격 몽타주가 재생된 횟수로 셉니다 (쿨다운 중 좌클릭 연타는 안 세어짐).
+#     true 대신 몽타주 이름 조각을 적으면 그 이름이 든 몽타주만 인정합니다
+#     (예: MeleeAttack → AM_MeleeAttack_A/B/C · Fire → Primary_Fire_Med_Montage).
+#     회피 등 다른 몽타주가 섞이는 단계에서는 반드시 이름 조각을 적으세요.
+#   - "RowName.count=숫자" 는 그 단계에 필요한 횟수를 DataTable 대신 여기서 정합니다.
+#   - "RowName.event=태그" 를 적으면 키 입력 대신 그 게임 이벤트가 일어나야 단계가 완료됩니다.
+#     (예: Event.Tutorial.QuickSlotUsed — 퀵슬롯에 등록한 아이템을 실제로 사용해 재고가 줄어든 순간)
+#     태그는 DefaultGameplayTags.ini에 있어야 하며, ini를 고친 뒤에는 에디터를 재시작해야 합니다.
 #   - "_Completed=문구" 는 모든 단계를 마쳤을 때 마지막으로 뜨는 문구입니다.
 #
 # 저장할 때 인코딩을 반드시 UTF-8로 하세요. ANSI로 저장하면 한글이 깨집니다.
@@ -23,10 +38,14 @@
 # 이 파일은 레벨 시작 시 한 번만 읽습니다. 문구를 고친 뒤에는 PIE를 다시 시작하세요.
 
 01_MoveForward=W를 눌러 앞으로 이동하세요
+01_MoveForward.requireMove=true
 02_MoveBack=S를 눌러 뒤로 이동하세요
+02_MoveBack.requireMove=true
 03_MoveSide=A 또는 D로 좌우로 이동하세요
+03_MoveSide.requireMove=true
 04_Look=마우스를 움직여 시점을 돌려보세요
 05_Sprint=Shift를 눌러 달려보세요
+05_Sprint.requireMove=true
 05_Sprint.pointer=StaminaBar
 05_Sprint.hint=달릴 시 스태미나를 소모합니다
 06_Dodge=Space를 눌러 돌진하세요
@@ -35,6 +54,8 @@
 07_Attack=좌클릭으로 공격하세요
 07_Attack.pointer=StaminaBar
 07_Attack.hint=공격을 할 시 스태미나를 소모합니다
+# 좌클릭만 눌러도 횟수가 오르던 문제 — 실제로 공격 몽타주가 나갔을 때만 셉니다
+07_Attack.requireAttack=MeleeAttack
 08_Shield=C를 눌러 적의 공격을 2번 막으세요
 08_Shield.pauseHit=지금 C를 눌러 몬스터의 공격을 막으세요
 08_Shield.resumeTag=State.Shield
@@ -45,19 +66,34 @@
 12_RangedAttack=좌클릭으로 공격하세요
 12_RangedAttack.pointer=WBP_AmmoCylinder
 12_RangedAttack.hint=원거리 캐릭터가 일반공격을 하면 탄알을 소모합니다
-13_SkillWheel=Z를 눌러 스킬 휠을 여세요
-14_CommonSkill=F를 눌러 스킬을 사용하세요
-15_Interact=G를 눌러 포션과 장비를 획득하세요
-15_Interact.reveal=items
-16_Inventory=I를 눌러 인벤토리를 여세요
-17_RegisterQuickSlot=인벤토리의 포션을 퀵슬롯으로 드래그하세요
-17_RegisterQuickSlot.pointer=HorizontalBox_115
-17_RegisterQuickSlot.hint=포션을 이곳에 끌어다 놓으면 숫자키로 바로 사용할 수 있습니다
-18_QuickSlot=1을 눌러 퀵슬롯 아이템을 사용하세요
-19_Equipment=O를 눌러 장비창을 여세요
-20_EquipItem=장비를 장착하세요
-20_EquipItem.pointer=@EquippableSlot
-20_EquipItem.hint=장비를 더블 클릭 혹은 드래그로 장비를 장착할 수 있습니다
+# 원거리도 동일 — Primary_Fire_Med_Montage 가 실제로 재생된 횟수로 셉니다.
+# GA_RangeAttack의 치명타 Branch False 핀 미연결로 첫 발 이후가 막히는 문제가 남아 있다면
+# 아래 줄의 # 을 지워 필요 횟수를 1로 낮추세요 (핀을 연결하면 되돌릴 것).
+12_RangedAttack.requireAttack=Fire
+# 12_RangedAttack.count=1
+13_Reload=R을 눌러 재장전하세요
+13_Reload.pointer=WBP_AmmoCylinder
+13_Reload.hint=탄알이 떨어지면 R로 재장전해야 다시 공격할 수 있습니다
+14_SkillWheel=Z를 눌러 스킬 휠을 여세요
+15_CommonSkill=F를 눌러 스킬을 사용하세요
+16_Interact=G를 눌러 포션과 장비를 획득하세요
+16_Interact.reveal=items
+17_Inventory=I를 눌러 인벤토리를 여세요
+18_RegisterQuickSlot=인벤토리의 포션을 퀵슬롯으로 드래그하세요
+18_RegisterQuickSlot.pointer=HorizontalBox_115
+18_RegisterQuickSlot.hint=포션을 이곳에 끌어다 놓으면 숫자키로 바로 사용할 수 있습니다
+19_QuickSlot=퀵슬롯에 넣은 포션을 사용하세요
+19_QuickSlot.pointer=WBP_UseItem1,WBP_UseItem2
+19_QuickSlot.hint=1번을 누르면 사용됩니다|2번을 누르면 사용됩니다
+19_QuickSlot.event=Event.Tutorial.QuickSlotUsed
+20_Equipment=O를 눌러 장비창을 여세요
+21_EquipItem=장비를 장착하세요
+21_EquipItem.pointer=@EquippableSlot
+21_EquipItem.hint=장비를 더블 클릭 혹은 드래그로 장비를 장착할 수 있습니다
+22_OpenStatus=P키를 눌러서 스탯창을 여세요
+23_CloseStatus=P키를 다시 눌러서 스탯창을 닫으세요
+23_CloseStatus.pointer=@StatBonus
+23_CloseStatus.hint=괄호 안의 숫자는 장비 아이템으로 증가한 스탯 수치입니다
 
 # 전체 완료 문구
 _Completed=튜토리얼 완료! 포탈로 이동하세요

@@ -17,6 +17,9 @@
 #include "NiagaraSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Materials/MaterialInterface.h"
+#include "Components/AudioComponent.h"
+#include "Sound/SoundBase.h"
+#include "UObject/ConstructorHelpers.h"
 
 AC_BombMonster::AC_BombMonster()
 {
@@ -32,6 +35,12 @@ AC_BombMonster::AC_BombMonster()
 
 	// 캡슐 충돌로도 접촉 기폭이 가능하도록 Hit 이벤트 활성화
 	GetCapsuleComponent()->SetNotifyRigidBodyCollision(true);
+
+	// 기폭 점멸 사운드 기본값 — BP에서 다른 사운드를 넣으면 그 값이 우선
+	static ConstructorHelpers::FObjectFinder<USoundBase> fuseSoundFinder(
+		TEXT("/Game/Monster/Sound/bombmonster.bombmonster"));
+	if (fuseSoundFinder.Succeeded())
+		fuseSound = fuseSoundFinder.Object;
 }
 
 void AC_BombMonster::BeginPlay()
@@ -246,8 +255,11 @@ void AC_BombMonster::StartFuse()
 
 	// 정지시키지 않는다 — 기폭 후에도 계속 추격하므로 플레이어는 도망쳐야 함
 
+	// 기폭 중에도 추격하므로 위치 고정 재생이 아니라 몬스터에 부착
 	if (fuseSound)
-		UGameplayStatics::PlaySoundAtLocation(this, fuseSound, GetActorLocation());
+		fuseAudio = UGameplayStatics::SpawnSoundAttached(
+			fuseSound, GetRootComponent(), NAME_None, FVector::ZeroVector,
+			EAttachLocation::KeepRelativeOffset, true, fuseSoundVolume);
 
 	if (fuseTime <= 0.f)
 	{
@@ -293,6 +305,7 @@ void AC_BombMonster::Explode()
 
 	GetWorld()->GetTimerManager().ClearTimer(fuseTimerHandle);
 	GetWorld()->GetTimerManager().ClearTimer(fuseBlinkTimerHandle);
+	StopFuseSound();
 
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -367,10 +380,21 @@ void AC_BombMonster::ApplyExplosionDamage()
 	}
 }
 
+void AC_BombMonster::StopFuseSound()
+{
+	// 사운드(5.7초)가 fuseTime(5초)보다 길어서 폭발 순간 끊어줘야 함
+	if (fuseAudio)
+	{
+		fuseAudio->Stop();
+		fuseAudio = nullptr;
+	}
+}
+
 void AC_BombMonster::ExecuteDeathSequence()
 {
 	GetWorld()->GetTimerManager().ClearTimer(fuseTimerHandle);
 	GetWorld()->GetTimerManager().ClearTimer(fuseBlinkTimerHandle);
+	StopFuseSound();
 
 	// 피격 사망 시에도 폭발시키는 옵션
 	// (Explode 내부의 HandleDeath는 State.Dead 태그 가드로 재진입하지 않음)

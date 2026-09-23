@@ -29,6 +29,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void InitializeStatWindow(UAbilitySystemComponent* ASC);
 
+	// "총합 (+증가분)" 형식으로 증가분이 실제로 표시되고 있는 스탯 텍스트만 반환.
+	// 튜토리얼 화살표가 괄호 수치가 붙은 항목만 강조하기 위해 사용한다.
+	// 표시 형식을 아는 것은 이 위젯이므로 판별도 여기서 한다.
+	void GetBonusStatTexts(TArray<UWidget*>& OutTexts) const;
+
 protected:
 	virtual void NativeDestruct() override;
 

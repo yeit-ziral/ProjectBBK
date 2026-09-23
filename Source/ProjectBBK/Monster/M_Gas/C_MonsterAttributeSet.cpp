@@ -320,9 +320,12 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
         float RawDamage = GetReceivedDamage();
 
+        // 피격 스파크의 방향 계산에도 같은 공격자가 필요하므로 한 번만 뽑아 재사용한다
+        AActor* damageSource = ResolveDamageSourceActor(Data.EffectSpec.GetEffectContext());
+
         // 몬스터별 데미지 가공 (예: AC_ShieldMonster의 전면 방어각 감소) — 방어력 감산 이전
         if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
-            RawDamage = monster->ModifyIncomingDamage(RawDamage, ResolveDamageSourceActor(Data.EffectSpec.GetEffectContext()), false);
+            RawDamage = monster->ModifyIncomingDamage(RawDamage, damageSource, false);
 
         const float Mitigated = FMath::Max(0.0f, RawDamage - Getdefense()); // 방어 반영
 
@@ -339,6 +342,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 			{
 				monster->StartHitFlash();
 				monster->TakeHitReaction();
+				monster->PlayHitVFX(damageSource);
 			}
 		}
 
@@ -353,8 +357,10 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
         float TrueDamage = GetReceivedTrueDamage();
 
+        AActor* trueDamageSource = ResolveDamageSourceActor(Data.EffectSpec.GetEffectContext());
+
         if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
-            TrueDamage = monster->ModifyIncomingDamage(TrueDamage, ResolveDamageSourceActor(Data.EffectSpec.GetEffectContext()), true);
+            TrueDamage = monster->ModifyIncomingDamage(TrueDamage, trueDamageSource, true);
 
         const float NewHP = FMath::Clamp(GetcurHP() - TrueDamage, 0.f, GetmaxHP());
         SetcurHP(NewHP);
@@ -364,6 +370,10 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
         {
             ChargeAttackerMana(Data, TrueDamage);
             NotifyAttackerUltimateHit(Data);
+
+            // DoT는 틱이 잦으므로 hitVFXMinInterval이 겹침을 걸러낸다
+            if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
+                monster->PlayHitVFX(trueDamageSource);
         }
 
         CheckAndHandleDeath(NewHP);

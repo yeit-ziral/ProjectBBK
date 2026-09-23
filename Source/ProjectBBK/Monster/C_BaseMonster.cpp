@@ -16,6 +16,8 @@
 #include "NiagaraSystem.h"
 #include "Animation/AnimInstance.h"
 #include "../Skills/C_ExpOrb.h"
+#include "../Items/C_MoneyItem.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 
@@ -50,6 +52,33 @@ AC_BaseMonster::AC_BaseMonster()
 	HpWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
 	HpWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HpWidgetComponent->SetTwoSided(true);
+
+	// 피격 스파크 기본 에셋 — 몬스터 BP마다 수동 할당하지 않아도 되도록 여기서 잡는다
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> HitVFXFinder(
+		TEXT("/Game/RPGEnvironmentVFX/VFX/Niagara/NS_ForgeSparks.NS_ForgeSparks"));
+
+	if (HitVFXFinder.Succeeded())
+	{
+		hitVFX = HitVFXFinder.Object;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[AC_BaseMonster] NS_ForgeSparks를 찾지 못했습니다. 경로 확인: /Game/RPGEnvironmentVFX/VFX/Niagara/NS_ForgeSparks"));
+	}
+
+	// 돈 드랍 기본 클래스 — 몬스터 BP마다 수동 할당하지 않아도 되도록 여기서 잡는다.
+	// 실패해도 드랍만 생략되고 사망 처리는 정상 진행된다.
+	static ConstructorHelpers::FClassFinder<AC_MoneyItem> MoneyItemFinder(
+		TEXT("/Game/Item/BP_MoneyItem.BP_MoneyItem_C"));
+
+	if (MoneyItemFinder.Succeeded())
+	{
+		MoneyItemClass = MoneyItemFinder.Class;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[AC_BaseMonster] BP_MoneyItem을 찾지 못했습니다. 경로 확인: /Game/Item/BP_MoneyItem"));
+	}
 }
 
 void AC_BaseMonster::PostInitializeComponents()
@@ -184,6 +213,46 @@ void AC_BaseMonster::StartHitFlash()
 	HitFlashTick();
 }
 
+void AC_BaseMonster::PlayHitVFX(AActor* DamageSource)
+{
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (!hitVFX || !Capsule || !GetWorld())
+	{
+		return;
+	}
+
+	// 다단히트·DoT 틱마다 같은 자리에서 스파크가 겹쳐 터지는 것을 막는다
+	const float Now = GetWorld()->GetTimeSeconds();
+	if (hitVFXMinInterval > 0.f && lastHitVFXTime >= 0.f && Now - lastHitVFXTime < hitVFXMinInterval)
+	{
+		return;
+	}
+	lastHitVFXTime = Now;
+
+	// 타격 방향 — GE에 HitResult가 실려오지 않는 구조(ANS_Collider·SphereOverlap)라
+	// 공격자 쪽 수평 방향으로 근사한다. 공격자를 모르면(DoT 등) 몬스터 정면을 쓴다.
+	FVector Direction = GetActorForwardVector().GetSafeNormal2D();
+	if (IsValid(DamageSource))
+	{
+		const FVector ToSource = (DamageSource->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+		if (!ToSource.IsNearlyZero())
+		{
+			Direction = ToSource;
+		}
+	}
+
+	// 액터 위치는 캡슐 중심이므로 발밑을 기준으로 높이를 잡는다 (Debugging Checklist #59)
+	const float HalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	const FVector FootLocation = GetActorLocation() - FVector(0.f, 0.f, HalfHeight);
+	const FVector ImpactPoint = FootLocation
+		+ FVector(0.f, 0.f, HalfHeight * 2.f * hitVFXHeightRatio)
+		+ Direction * Capsule->GetScaledCapsuleRadius();
+
+	// 이펙트가 공격자 쪽을 바라보게 — 스파크가 때린 방향으로 튄다
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(), hitVFX, ImpactPoint, Direction.Rotation(), FVector(hitVFXScale));
+}
+
 void AC_BaseMonster::HitFlashTick()
 {
 	if (!IsValid(this) || !GetMesh()) return;
@@ -243,6 +312,41 @@ float AC_BaseMonster::GetRepositionStrafeWeight() const { return dataComponent ?
 float AC_BaseMonster::GetRepositionBand()         const { return dataComponent ? dataComponent->GetRepositionBand()         : 60.f; }
 float AC_BaseMonster::GetRepositionFlipInterval() const { return dataComponent ? dataComponent->GetRepositionFlipInterval() : 2.5f; }
 
+void AC_BaseMonster::DropMoneyReward()
+{
+	if (!MoneyItemClass || !dataComponent || !GetWorld())
+	{
+		return;
+	}
+
+	// level은 스폰 시 C_MonsterSpawnManager가 넣어주는 값 — MaxHP 보정에 이미 쓰이고 있다
+	const int32 MonsterLevel = FMath::Max(1, level);
+	const int32 MinAmount = MonsterLevel * dataComponent->GetMoneyRewardMinPerLevel();
+	const int32 MaxAmount = MonsterLevel * dataComponent->GetMoneyRewardMaxPerLevel();
+
+	// DT에서 Min > Max로 잘못 들어와도 뒤집어서 처리 — RandRange는 Min > Max면 결과가 어긋난다
+	const int32 Amount = FMath::RandRange(FMath::Min(MinAmount, MaxAmount), FMath::Max(MinAmount, MaxAmount));
+	if (Amount <= 0)
+	{
+		// 튜토리얼 더미처럼 보상 수치를 0으로 둔 몬스터는 드랍하지 않는다
+		return;
+	}
+
+	// 액터 위치는 캡슐 중심이므로 그대로 쓰면 코인이 허리 높이에 뜬다 (Debugging Checklist #59와 동일 원인)
+	const float CapsuleHalfHeight = GetCapsuleComponent() ? GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 0.f;
+	const FVector SpawnLocation = GetActorLocation() - FVector(0.f, 0.f, CapsuleHalfHeight) + MoneyDropOffset;
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AC_MoneyItem* Money = GetWorld()->SpawnActor<AC_MoneyItem>(MoneyItemClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+	if (Money)
+	{
+		// SpawnActor가 BeginPlay까지 끝낸 뒤이므로 여기서 다시 넣어야 상호작용 문구("N gold")까지 갱신된다
+		Money->InitMoney(Amount);
+	}
+}
+
 void AC_BaseMonster::ExecuteDeathSequence()
 {
 	// 0. ExpOrb 드랍
@@ -257,6 +361,9 @@ void AC_BaseMonster::ExecuteDeathSequence()
 			if (Orb) Orb->InitOrb(reward);
 		}
 	}
+
+	// 0-1. 돈 드랍 — 액수는 몬스터 level 비례 난수 (level * Min ~ level * Max, 수치는 FMonsterData)
+	DropMoneyReward();
 
 	// GameMode에 몬스터 사망 알림
 	if (AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>())
