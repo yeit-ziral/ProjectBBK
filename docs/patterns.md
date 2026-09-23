@@ -872,3 +872,53 @@ VFX — 각 UC_ConsumableAction 서브클래스가 EditDefaultsOnly로 개별 �
 ```
 - 판단 기준: 사운드처럼 재생 위치가 항상 "사용 시점 플레이어 위치"로 고정이면 DT 필드 하나로 충분하지만, VFX처럼 스폰 위치의 의미가 액션마다 다르고(도착 vs 사용) 그 위치를 아는 것도 액션 내부 로직뿐이면(Blink의 LineTrace 결과) DT/`UseItem()`에서 처리 불가 — 기존 `blinkDistance`/`radius`/`knockbackForce`처럼 "액션이 자기 튜닝 수치를 갖는" 컨벤션 재사용
 - Niagara 에셋 레벨 보정(코드 수정 없이): 바닥 정렬 = `Shape Location` 모듈 `Offset.Z`(Debugging Checklist #59), 1회만 재생 = 각 Emitter의 `Emitter State → Life Cycle Mode`(Debugging Checklist #60)
+
+### Value 예산 기반 랜덤 드랍 상자 패턴 (`AC_TreasureChest` 참고)
+`AC_BaseItem`을 상속해 기존 상호작용 파이프라인을 재사용하면서, 정해진 value 예산을 소비/장비/돈으로 랜덤 분배해 월드에 흩뿌리는 구조. 인벤토리 컴포넌트는 관여하지 않고 상자 자신이 SpawnActor까지 직접 수행.
+```
+AC_TreasureChest : public AC_BaseItem
+  OnInteract override (itemID/DataTable 미사용 — AC_MoneyItem과 동일 선례)
+  → RollAndSpawnLoot() → Destroy()
+
+RollAndSpawnLoot() 배정 순서 (역순으로 하면 장비 보장이 깨짐 — 반드시 이 순서)
+  1. 장비 필수 상자면 장비 풀 중 value가 가장 낮은 것(동률 시 랜덤)을 먼저 선택해 chestValue에서 선차감
+     (완전 랜덤 픽 대신 "가장 싼 것"으로 고정 — 예산 초과 리스크 최소화)
+  2. 돈 몫 = chestValue 전체 기준(장비 선차감과 무관) 1~50% 랜덤
+  3. 장비value + 돈value가 예산을 초과하면 돈 몫을 줄여서 맞춤
+     (예산 초과가 허용되는 유일한 예외: 장비 선차감 자체가 예산보다 큰 경우)
+  4. 남은 value로 아이템 풀에서 반복 랜덤 추첨(중복 허용), 소진될 때까지
+  5. 다 못 채운 자투리 value는 돈에 합산
+  6. 최종 돈 value → 골드 환산: goldAmount = moneyValue * 10 ± 5(랜덤 오차)
+
+→ SpawnActor(BP_ConsumableItem/BP_EquipItem/BP_MoneyItem) → InitItem/InitMoney → RefreshOverlapState()
+```
+- `FBaseItemData`에 `value` 필드 추가 — Consumable/Equipment 공통 상속이라 한 번만 추가하면 둘 다 적용됨
+- `chestValue`/각 아이템 `value`는 전부 int32 — 퍼센트 계산 등 중간 float 연산도 즉시 반올림/클램프해 정수로만 취급
+
+### 런타임 스폰 픽업 오버랩 재확인 패턴 (`AC_BaseItem::RefreshOverlapState` 참고)
+레벨에 미리 배치된 픽업과 달리, `SpawnActor`로 런타임에 스폰되는 픽업(TreasureChest 드랍 등)은 스폰 시점에 이미 플레이어와 겹쳐 있을 수 있다. `BeginPlay`에서 바인딩하는 `OnComponentBeginOverlap` 델리게이트는 이 "이미 겹친" 초기 상태를 놓칠 수 있으므로(Debugging Checklist #62), 스폰 주체가 데이터 초기화 후 명시적으로 재확인해야 한다.
+```
+AC_BaseItem::RefreshOverlapState() (신규, BlueprintCallable)
+  → collisionSphere->GetOverlappingActors(..., AC_BasePlayerCharactor::StaticClass())
+  → 겹친 플레이어가 있으면 NotifyPlayerInRange() 호출
+     (OnItemBeginOverlap과 동일 로직을 공유 — SetCurrentInteractable + 위젯 텍스트/표시)
+
+스폰 주체(AC_TreasureChest 등)
+  SpawnActor<T>(...)
+  → Spawned->InitItem(id) 또는 Spawned->InitMoney(amount)   ← 반드시 먼저
+  → Spawned->RefreshOverlapState()                          ← 그 다음
+```
+- 순서가 중요함: `InitXXX`보다 먼저 `RefreshOverlapState`를 부르면 위젯에 초기화 전 기본값(예: "0 gold")이 찍힘(Debugging Checklist #62)
+- `OnItemBeginOverlap`과 `RefreshOverlapState`는 공통 로직(`NotifyPlayerInRange`)을 공유하므로 중복 호출돼도 안전(`AddUnique` 기반)
+
+### 다중 지점 지면 스폰 폴백 체인 패턴 (`AC_TreasureChest::FindGroundSpawnPoint` 참고)
+"3인칭 카메라 지면 위치 탐색 패턴"의 변형 — 한 지점이 아니라 반경 안 여러 흩뿌림 지점 각각의 바닥을 구해야 하고, 일부 지점이 실패해도 스폰 자체는 반드시 이루어져야 하는 경우.
+```
+FindGroundSpawnPoint(Center, Radius)
+  1. Center 주변 랜덤 후보 지점에서 LineTrace(넉넉한 구간, 예: +500/-1000)
+     → 성공 시 ImpactPoint 반환
+  2. 실패 시(단차/낭떠러지 등) Center 바로 아래로 2차 LineTrace
+     → 스폰 주체 자신은 반드시 바닥 위에 있으므로 사실상 항상 성공 → ImpactPoint 반환
+  3. 그마저 실패할 때만 최후 폴백으로 Center(미보정) 반환
+```
+- 단일 지점 스폰(TrapZone 등)은 실패 시 스폰을 취소하면 되지만(Design Decisions "TrapZone 스폰 위치"), 다중 지점 흩뿌리기는 "일부 실패해도 전체는 반드시 스폰"이 목표라 취소 대신 재탐색 폴백 체인을 쓴다(Debugging Checklist #63)

@@ -40,6 +40,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combo")
 	bool ConsumeAdvancingFlag();
 
+	// 이번 스윙에서 처음 맞는 대상이면 기록하고 true, 이미 맞았으면 false. Event.hit 수신 시 데미지 체인 앞에서 호출한다.
+	UFUNCTION(BlueprintCallable, Category = "Combo")
+	bool TryRegisterHit(AActor* HitActor);
+
+	// 새 스윙이 시작될 때 호출. 맞은 대상 목록을 비운다.
+	UFUNCTION(BlueprintCallable, Category = "Combo")
+	void ClearSwingHits();
+
 protected:
 	/** 현재 콤보 단계(0부터 시작) */
 	UPROPERTY(BlueprintReadOnly, Category = "Combo")
@@ -56,6 +64,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	TArray<float> comboDamageMultipliers;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Combo")
+	int32 comboLoopStartIndex = 1;
+
+	// 2타 이후에 낼 비용. 비워두면 1타와 같은 CostGameplayEffectClass를 쓴다.
+	UPROPERTY(EditDefaultsOnly, Category = "Combo")
+	TSubclassOf<UGameplayEffect> comboCostEffect;
+
+	// 콤보 진행 비용을 낼 수 있는가 
+	bool CanPayComboCost();
+
+	// 콤보 진행 비용을 지불한다
+	void PayComboCost();
+
 	bool bAdvancingCombo = false;
 
 	/** 버퍼된 입력의 유효 시간을 재는 타이머 핸들 */
@@ -63,4 +84,7 @@ protected:
 
 	/** 유효 시간이 지나면 버퍼를 비운다 */
 	void OnComboInputBufferTimerExpired();
+
+	// 이번 스윙에 이미 맞은 대상. 약한 참조라 몬스터가 죽어 파괴돼도 댕글링 포인터가 되지 않는다.
+	TSet<TWeakObjectPtr<AActor>> swingHitActors;
 };

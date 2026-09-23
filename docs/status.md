@@ -97,6 +97,7 @@
 | UC_SpawnHealZoneAction / AC_HealZone (BP_HealZone) | ✅ 완료 | 힐장판 소비 아이템 — Instant GE(GE_HealZoneTick) + 존 자체 반복 타이머로 체류 중에만 회복 |
 | UC_KnockbackAction | ✅ 완료 | 넉백 소비 아이템 — GE 없이 순수 LaunchCharacter, State.KnockbackImmune 면역 체크. 사용 위치에 useVFX 원샷 스폰 추가 |
 | UC_BlinkAction / BP_BlinkItem | ✅ 완료 | 순간이동 소비 아이템 — GE 없이 LineTrace로 벽 충돌 체크 후 SetActorLocation, 쿨다운 있음(기존 아이템 쿨다운 시스템 재사용). 도착 위치에 arrivalVFX 원샷 스폰 추가 |
+| AC_TreasureChest / BP_TreasureChest ×2 | ✅ 완료 (PIE 검증 완료) | Value 예산 기반 랜덤 드랍 상자. `AC_BaseItem` 상속(기존 상호작용 파이프라인 재사용), 장비 필수 상자는 최저-value 장비 1개 선차감 보장, 돈은 항상 1개(±5 오차), 인벤토리 미관여(월드에 픽업 스폰만). 오픈 시 사운드 재생. 런타임 스폰 오버랩 인식/표시값 버그는 `AC_BaseItem::RefreshOverlapState()`로 해결(다른 픽업에도 공용 적용), 지면 스폰 실패 시 공중 스폰 버그는 `FindGroundSpawnPoint` 폴백 체인으로 해결 |
 
 ### Level System
 | Class / Asset | 상태 | 비고 |
