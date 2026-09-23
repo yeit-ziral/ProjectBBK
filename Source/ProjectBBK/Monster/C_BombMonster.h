@@ -9,6 +9,7 @@
 class UGameplayEffect;
 class UNiagaraSystem;
 class USoundBase;
+class UAudioComponent;
 
 /**
  * 자폭 몬스터 — 공격 GA를 가지지 않는 비행 몬스터.
@@ -132,9 +133,10 @@ protected:
 	float contactDistance = 120.f;
 
 	// 접촉(기폭) ~ 폭발까지 지연(초). 이 동안 몬스터는 정지하고 점멸하므로
-	// 플레이어가 폭발 반경 밖으로 벗어날 시간이 된다. 0이면 접촉 즉시 폭발
+	// 플레이어가 폭발 반경 밖으로 벗어날 시간이 된다. 0이면 접촉 즉시 폭발.
+	// 기폭 사운드(bombmonster, 약 5.7초)가 거의 다 들리도록 5초로 설정
 	UPROPERTY(EditAnywhere, Category = "Bomb|Explosion")
-	float fuseTime = 3.0f;
+	float fuseTime = 5.0f;
 
 	// 폭발 피해 반경
 	UPROPERTY(EditAnywhere, Category = "Bomb|Explosion")
@@ -164,9 +166,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Bomb|FX")
 	USoundBase* explosionSound = nullptr;
 
-	// 기폭(퓨즈) 시작 시 재생
+	// 기폭(퓨즈) 점멸 동안 재생 — 몬스터에 부착돼 따라다니고, 폭발/사망 시 즉시 정지.
+	// 미설정 시 생성자 기본값(/Game/Monster/Sound/bombmonster) 사용
 	UPROPERTY(EditDefaultsOnly, Category = "Bomb|FX")
 	USoundBase* fuseSound = nullptr;
+
+	// 기폭 사운드 볼륨 배율 (1 = 원본)
+	UPROPERTY(EditDefaultsOnly, Category = "Bomb|FX", meta = (ClampMin = "0.0"))
+	float fuseSoundVolume = 0.5f;
 
 	// 기폭 중 점멸에 쓸 머티리얼 — bodyEmitterMaterials와 같은 순서(이미터 인덱스)로 넣을 것.
 	// 퓨즈 동안 bodyEmitterMaterials ↔ 이 배열을 번갈아 적용해 빨간 점멸을 만든다
@@ -237,4 +244,10 @@ private:
 
 	FTimerHandle fuseTimerHandle;
 	FTimerHandle fuseBlinkTimerHandle;
+
+	// 재생 중인 퓨즈 사운드 — 폭발/사망 시 Stop
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> fuseAudio;
+
+	void StopFuseSound();
 };

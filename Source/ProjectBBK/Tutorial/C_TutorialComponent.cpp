@@ -10,6 +10,7 @@
 #include "../Inventory/C_InventoryComponent.h"
 #include "../Equip/C_EquipmentComponent.h"
 #include "../Inventory/C_InventorySlotWidget.h"
+#include "../UI/C_StatusWidget.h"
 #include "../Monster/Anim/ANC_MeleeNormalAttack.h"
 #include "../Monster/Anim/ANC_MonsterGameplayEvent.h"
 #include "Animation/AnimInstance.h"
@@ -37,6 +38,8 @@
 
 const FName UC_TutorialComponent::completedMessageKey(TEXT("_Completed"));
 const FName UC_TutorialComponent::equippableSlotPointerToken(TEXT("@EquippableSlot"));
+const FName UC_TutorialComponent::statBonusPointerToken(TEXT("@StatBonus"));
+const FString UC_TutorialComponent::statBonusHighlightMarker(TEXT("(+"));
 
 namespace TutorialEventTags
 {
@@ -44,6 +47,7 @@ namespace TutorialEventTags
 	// 무효 태그는 NotifyExternalEvent에서 무시된다.
 	static FGameplayTag ItemPickedUp()        { return FGameplayTag::RequestGameplayTag(TEXT("Event.Tutorial.ItemPickedUp"), false); }
 	static FGameplayTag QuickSlotRegistered() { return FGameplayTag::RequestGameplayTag(TEXT("Event.Tutorial.QuickSlotRegistered"), false); }
+	static FGameplayTag QuickSlotUsed()       { return FGameplayTag::RequestGameplayTag(TEXT("Event.Tutorial.QuickSlotUsed"), false); }
 	static FGameplayTag ItemEquipped()        { return FGameplayTag::RequestGameplayTag(TEXT("Event.Tutorial.ItemEquipped"), false); }
 }
 
@@ -193,6 +197,118 @@ void UC_TutorialComponent::StartTutorial(UDataTable* StepTable, TSubclassOf<UC_T
 				Step.pauseResumeTag = Trimmed.IsEmpty() ? FGameplayTag() : FGameplayTag::RequestGameplayTag(FName(*Trimmed), false);
 			}
 
+			// 실제 이동 여부 판정은 "RowName.requireMove=" 키로 켠다.
+			//   true  → 기본 속도(defaultMinMoveSpeed) 이상으로 움직이는 동안만 인정
+			//   숫자  → 그 속도(cm/s)를 기준으로 인정
+			//   false → 검사하지 않음 (DataTable 값도 무시)
+			const FName RequireMoveKey(*(RowPair.Key.ToString() + TEXT(".requireMove")));
+			if (const FString* RequireMoveOverride = TextOverrides.Find(RequireMoveKey))
+			{
+				const FString Trimmed = RequireMoveOverride->TrimStartAndEnd();
+				if (Trimmed.IsNumeric())
+				{
+					Step.minMoveSpeed = FMath::Max(0.f, FCString::Atof(*Trimmed));
+				}
+				else if (Trimmed.ToBool())
+				{
+					Step.minMoveSpeed = defaultMinMoveSpeed;
+				}
+				else
+				{
+					Step.minMoveSpeed = 0.f;
+				}
+			}
+
+			// 실제 공격이 나갔는지 판정은 "RowName.requireAttack=" 키로 켠다.
+			//   true      → 어떤 몽타주든 새로 재생되면 1회로 인정
+			//   이름조각  → 몽타주 애셋 이름에 그 문자열이 든 경우만 인정 (예: MeleeAttack / Fire)
+			//   false     → 검사하지 않음 (DataTable 값도 무시)
+			// 쿨다운 중 좌클릭 연타처럼 입력만 들어가고 공격이 나가지 않은 경우를 걸러내기 위한 조건이다.
+			const FName RequireAttackKey(*(RowPair.Key.ToString() + TEXT(".requireAttack")));
+			if (const FString* RequireAttackOverride = TextOverrides.Find(RequireAttackKey))
+			{
+				const FString Trimmed = RequireAttackOverride->TrimStartAndEnd();
+				if (Trimmed.IsEmpty() || Trimmed.Equals(TEXT("false"), ESearchCase::IgnoreCase))
+				{
+					Step.bRequireAttackMontage = false;
+					Step.attackMontageNameFilter.Empty();
+				}
+				else if (Trimmed.Equals(TEXT("true"), ESearchCase::IgnoreCase))
+				{
+					Step.bRequireAttackMontage = true;
+					Step.attackMontageNameFilter.Empty();
+				}
+				else
+				{
+					Step.bRequireAttackMontage = true;
+					Step.attackMontageNameFilter = Trimmed;
+				}
+			}
+
+			// 필요 횟수는 "RowName.count=" 키로 덮어쓴다 — 실제 공격 판정으로 바뀌면 적정 횟수가 달라지므로
+			// DataTable을 열지 않고 조정할 수 있게 한다.
+			const FName CountKey(*(RowPair.Key.ToString() + TEXT(".count")));
+			if (const FString* CountOverride = TextOverrides.Find(CountKey))
+			{
+				const FString Trimmed = CountOverride->TrimStartAndEnd();
+				if (Trimmed.IsNumeric())
+				{
+					Step.requiredCount = FMath::Max(1, FCString::Atoi(*Trimmed));
+				}
+			}
+
+			// 완료 조건 이벤트 태그는 "RowName.event=" 키로 지정한다 — 설정되면 requiredAction 입력 대신 그 이벤트로만 완료된다.
+			// (예: 퀵슬롯 키를 누르기만 한 게 아니라 실제로 아이템을 사용해야 넘어가는 단계)
+			const FName EventKey(*(RowPair.Key.ToString() + TEXT(".event")));
+			if (const FString* EventOverride = TextOverrides.Find(EventKey))
+			{
+				const FString Trimmed = EventOverride->TrimStartAndEnd();
+				if (Trimmed.IsEmpty())
+				{
+					Step.externalEventTag = FGameplayTag();
+				}
+				else
+				{
+					// ini에 없는 태그(추가 후 에디터 미재시작 포함)면 무효 — 이때는 DataTable의 원래 조건을 유지하고 경고만 남긴다
+					const FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName(*Trimmed), false);
+					if (EventTag.IsValid())
+					{
+						Step.externalEventTag = EventTag;
+					}
+					else
+					{
+						UE_LOG(LogTemp, Warning,
+							TEXT("[UC_TutorialComponent] 행 '%s'의 event 태그 '%s'가 등록되지 않아 DataTable 조건으로 진행합니다. DefaultGameplayTags.ini 확인 후 에디터를 재시작하세요."),
+							*RowPair.Key.ToString(), *Trimmed);
+					}
+				}
+			}
+
+			// 횟수 조건 단계는 키를 누른 순간(Started)에 판정하는데, 그 시점엔 아직 가속 전이라 속도가 0이다.
+			// 이동 판정은 누적 시간 조건에서만 의미가 있으므로 조합이 어긋나면 경고한다.
+			if (Step.minMoveSpeed > 0.f && Step.requiredHoldSeconds <= 0.f)
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("[UC_TutorialComponent] 행 '%s'는 횟수 조건인데 requireMove가 켜져 있어 진행이 막힐 수 있습니다. requiredHoldSeconds를 쓰거나 requireMove=false로 두세요."),
+					*RowPair.Key.ToString());
+			}
+
+			// 실제 공격 판정은 몽타주가 "새로 시작된 횟수"를 세므로 누적 시간 조건과는 함께 쓸 수 없다.
+			if (Step.bRequireAttackMontage && Step.requiredHoldSeconds > 0.f)
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("[UC_TutorialComponent] 행 '%s'는 누적 시간 조건인데 requireAttack이 켜져 있습니다. 시간 조건이 우선하며 공격 판정은 무시됩니다."),
+					*RowPair.Key.ToString());
+			}
+
+			// 외부 이벤트 조건이 있으면 그쪽이 유일한 완료 경로다 (NotifyExternalEvent) — 공격 판정은 동작하지 않는다.
+			if (Step.bRequireAttackMontage && Step.externalEventTag.IsValid())
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("[UC_TutorialComponent] 행 '%s'는 event 태그 조건이라 requireAttack이 무시됩니다. 둘 중 하나만 쓰세요."),
+					*RowPair.Key.ToString());
+			}
+
 			if (!Step.pauseBeforeHitPrompt.IsEmpty() && !Step.pauseResumeTag.IsValid())
 			{
 				UE_LOG(LogTemp, Warning,
@@ -270,18 +386,7 @@ void UC_TutorialComponent::NotifyExternalEvent(FGameplayTag EventTag)
 
 	// 입력 단계와 동일하게 횟수를 센다 — "적의 공격을 2번 막기"처럼
 	// 외부 이벤트도 여러 번 필요한 단계가 있다 (requiredCount 기본값 1이면 종전과 같음)
-	currentCount++;
-
-	if (promptWidget && Step->requiredCount > 1)
-	{
-		promptWidget->SetStepCount(currentCount, Step->requiredCount);
-		promptWidget->SetStepProgress(static_cast<float>(currentCount) / static_cast<float>(Step->requiredCount));
-	}
-
-	if (currentCount >= Step->requiredCount)
-	{
-		CompleteCurrentStep();
-	}
+	RegisterStepProgress();
 }
 
 void UC_TutorialComponent::SkipCurrentStep()
@@ -329,6 +434,7 @@ void UC_TutorialComponent::AbortTutorial()
 	currentStepIndex = INDEX_NONE;
 	currentCount = 0;
 	accumulatedHold = 0.f;
+	lastPlayerMontageInstanceId = INDEX_NONE;
 }
 
 void UC_TutorialComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -380,7 +486,25 @@ void UC_TutorialComponent::HandleActionStarted(const FInputActionInstance& Insta
 		return;
 	}
 
+	if (Step->bRequireAttackMontage)
+	{
+		// 실제 공격이 나갔을 때만 세는 단계 — 키 입력은 무시하고 UpdateAttackProgress가 판정한다.
+		// 쿨다운 중 연타는 입력만 들어오고 몽타주가 재생되지 않으므로 횟수가 오르지 않는다.
+		return;
+	}
+
 	if (!MatchesCurrentStep(Instance))
+	{
+		return;
+	}
+
+	RegisterStepProgress();
+}
+
+void UC_TutorialComponent::RegisterStepProgress()
+{
+	const FTutorialStepData* Step = GetCurrentStep();
+	if (!Step || bStepSatisfied)
 	{
 		return;
 	}
@@ -481,7 +605,37 @@ bool UC_TutorialComponent::MatchesCurrentStep(const FInputActionInstance& Instan
 		}
 	}
 
+	// 실제 이동 판정 — 키를 누르고 있어도 캐릭터가 멈춰 있으면 인정하지 않는다.
+	// 공격 몽타주 중처럼 이동이 막힌 상태에서 WASD만 눌러 게이지가 차는 것을 막기 위함.
+	if (Step->minMoveSpeed > 0.f && !IsPlayerMovingFasterThan(Step->minMoveSpeed))
+	{
+		return false;
+	}
+
 	return true;
+}
+
+bool UC_TutorialComponent::IsPlayerMovingFasterThan(float MinSpeed) const
+{
+	const APlayerController* OwnerPC = Cast<APlayerController>(GetOwner());
+	const APawn* PlayerPawn = OwnerPC ? OwnerPC->GetPawn() : nullptr;
+	if (!PlayerPawn)
+	{
+		return false;
+	}
+
+	// 루트모션 몽타주(공격·회피 등)가 캐릭터를 밀고 있는 동안은 플레이어 입력으로 움직인 게 아니므로 제외한다.
+	// 공격 몽타주가 전진하는 경우까지 "이동했다"로 인정되는 것을 막는다.
+	if (const ACharacter* PlayerCharacter = Cast<ACharacter>(PlayerPawn))
+	{
+		if (PlayerCharacter->IsPlayingRootMotion())
+		{
+			return false;
+		}
+	}
+
+	// 수평 속도만 본다 — 낙하·점프 중 Z 속도로 이동한 것처럼 인정되면 안 된다.
+	return PlayerPawn->GetVelocity().Size2D() >= MinSpeed;
 }
 
 // ---------------------------------------------------------------------------
@@ -510,7 +664,13 @@ void UC_TutorialComponent::ShowCurrentStep()
 	// 이전 단계에서 멈춰 둔 공격이 남아 있으면 풀고, 이 단계가 일시정지 단계일 때만 매 프레임 감시한다
 	ResumeAttackMontage();
 	lastReleasedMontageInstanceId = INDEX_NONE;
-	SetComponentTickEnabled(!Step->pauseBeforeHitPrompt.IsEmpty() && Step->pauseResumeTag.IsValid());
+
+	// 실제 공격 판정 단계도 매 프레임 몽타주를 봐야 하므로 같은 Tick을 공유한다
+	const bool bNeedsHitPauseTick = !Step->pauseBeforeHitPrompt.IsEmpty() && Step->pauseResumeTag.IsValid();
+	SetComponentTickEnabled(bNeedsHitPauseTick || Step->bRequireAttackMontage);
+
+	// 이전 단계에서 재생 중이던 몽타주가 이 단계의 첫 공격으로 세어지지 않도록 기준점을 잡는다
+	ResetAttackMontageTracking();
 
 	if (promptWidget)
 	{
@@ -897,15 +1057,65 @@ void UC_TutorialComponent::UpdateStepPointer(const FTutorialStepData& Step, bool
 		}
 	}
 
-	UWidget* Target = nullptr;
+	// pointerTargetWidgetName에 쉼표로 여러 이름을 적으면 대상마다 따로 강조한다 (예: "WBP_UseItem1,WBP_UseItem2").
+	// 이때 문구도 pointerHint를 '|'로 나눠 같은 순서로 대응시킨다. 이름이 하나면 문구를 나누지 않고 그대로 쓴다.
+	TArray<UWidget*> Targets;
+	TArray<FText> Hints;
+
+	// 대상별 강조 구간 — 비어 있으면 위젯 전체를 감싼다 (스탯 증가분만 "(+20)" 구간으로 좁히는 용도)
+	TArray<FString> HighlightMarkers;
 	if (bHasTarget)
 	{
-		Target = (TargetName == equippableSlotPointerToken)
-			? FindEquippableInventorySlot()
-			: FindPointerTarget(TargetClass, TargetName);
+		if (TargetName == equippableSlotPointerToken)
+		{
+			if (UWidget* Target = FindEquippableInventorySlot())
+			{
+				Targets.Add(Target);
+				Hints.Add(Step.pointerHint);
+			}
+		}
+		else if (TargetName == statBonusPointerToken)
+		{
+			// 증가분이 붙은 스탯 중 맨 위(최대 체력) 한 칸만 강조한다 — 같은 설명이므로 여러 칸을 표시할 이유가 없다
+			if (UWidget* Target = FindBonusStatText())
+			{
+				Targets.Add(Target);
+				Hints.Add(Step.pointerHint);
+
+				// "120 (+20)"에서 "(+20)" 부분만 감싼다 (UC_StatusWidget::UpdateStatText의 표기 형식)
+				HighlightMarkers.Add(statBonusHighlightMarker);
+			}
+		}
+		else
+		{
+			const TArray<FName> Names = GetPointerTargetNames(Step);
+			if (Names.Num() <= 1)
+			{
+				if (UWidget* Target = FindPointerTarget(TargetClass, Names.Num() == 1 ? Names[0] : NAME_None))
+				{
+					Targets.Add(Target);
+					Hints.Add(Step.pointerHint);
+				}
+			}
+			else
+			{
+				TArray<FString> HintParts;
+				Step.pointerHint.ToString().ParseIntoArray(HintParts, TEXT("|"), false);
+
+				for (int32 i = 0; i < Names.Num(); ++i)
+				{
+					// 일부만 찾았으면 찾은 대상만 가리키고, 나머지는 주기적 재탐색(RetryStepPointer)이 채운다
+					if (UWidget* Target = FindPointerTarget(TargetClass, Names[i]))
+					{
+						Targets.Add(Target);
+						Hints.Add(HintParts.IsValidIndex(i) ? FText::FromString(HintParts[i].TrimStartAndEnd()) : FText::GetEmpty());
+					}
+				}
+			}
+		}
 	}
 
-	if (!Target)
+	if (Targets.Num() == 0)
 	{
 		if (bHasTarget && !bFromRetry)
 		{
@@ -926,8 +1136,8 @@ void UC_TutorialComponent::UpdateStepPointer(const FTutorialStepData& Step, bool
 		return;
 	}
 
-	// 재탐색에서 같은 대상을 다시 찾았으면 그대로 둔다 — PointAt이 표시 상태를 초기화해 깜빡이기 때문
-	if (bFromRetry && pointerWidget->GetTargetWidget() == Target)
+	// 재탐색에서 같은 대상을 다시 찾았으면 그대로 둔다 — PointAtMultiple이 표시 상태를 초기화해 깜빡이기 때문
+	if (bFromRetry && pointerWidget->IsPointingAt(Targets))
 	{
 		return;
 	}
@@ -936,7 +1146,29 @@ void UC_TutorialComponent::UpdateStepPointer(const FTutorialStepData& Step, bool
 	const FSlateFontInfo Font = promptWidget ? promptWidget->GetInstructionFont() : FSlateFontInfo();
 	const FSlateColor Color = promptWidget ? promptWidget->GetInstructionColor() : FSlateColor(FLinearColor::White);
 
-	pointerWidget->PointAt(Target, Step.pointerHint, Font, Color);
+	pointerWidget->PointAtMultiple(Targets, Hints, Font, Color, HighlightMarkers);
+}
+
+TArray<FName> UC_TutorialComponent::GetPointerTargetNames(const FTutorialStepData& Step)
+{
+	TArray<FName> Names;
+	if (Step.pointerTargetWidgetName.IsNone())
+	{
+		return Names;
+	}
+
+	TArray<FString> Parts;
+	Step.pointerTargetWidgetName.ToString().ParseIntoArray(Parts, TEXT(","), true);
+	for (FString& Part : Parts)
+	{
+		Part.TrimStartAndEndInline();
+		if (!Part.IsEmpty())
+		{
+			Names.Add(FName(*Part));
+		}
+	}
+
+	return Names;
 }
 
 UWidget* UC_TutorialComponent::FindPointerTarget(UClass* TargetClass, FName WidgetName) const
@@ -1256,8 +1488,12 @@ void UC_TutorialComponent::RetryStepPointer()
 
 	// 이미 화면에 떠 있는 대상을 가리키고 있으면 다시 찾을 필요 없다.
 	// 단, 장비 칸은 아이템을 옮기거나 그리드가 다시 생성되면 대상 칸이 바뀌므로 매번 다시 찾는다.
-	const bool bDynamicTarget = (Step->pointerTargetWidgetName == equippableSlotPointerToken);
-	if (!bDynamicTarget && pointerWidget && pointerWidget->IsTargetOnScreen())
+	// 여러 대상 중 일부만 찾은 상태면 나머지를 찾기 위해 계속 재탐색한다.
+	const bool bDynamicTarget = (Step->pointerTargetWidgetName == equippableSlotPointerToken)
+		|| (Step->pointerTargetWidgetName == statBonusPointerToken);
+	const int32 ExpectedTargetCount = FMath::Max(GetPointerTargetNames(*Step).Num(), 1);
+	if (!bDynamicTarget && pointerWidget && pointerWidget->IsTargetOnScreen()
+		&& pointerWidget->GetTargetCount() >= ExpectedTargetCount)
 	{
 		return;
 	}
@@ -1328,6 +1564,7 @@ void UC_TutorialComponent::UnbindGameObservers()
 	}
 	observedInventory.Reset();
 	lastQuickSlotItems.Reset();
+	lastQuickSlotCounts.Reset();
 
 	for (const TWeakObjectPtr<UC_EquipmentComponent>& WeakEquip : observedEquipments)
 	{
@@ -1374,18 +1611,39 @@ void UC_TutorialComponent::HandleQuickSlotChanged(int32 SlotIndex)
 	}
 
 	// 튜토리얼은 빈 퀵슬롯에서 시작하므로 기준값을 미리 채우지 않고 필요할 때 늘린다
-	if (!lastQuickSlotItems.IsValidIndex(SlotIndex))
+	if (!lastQuickSlotItems.IsValidIndex(SlotIndex) || !lastQuickSlotCounts.IsValidIndex(SlotIndex))
 	{
 		lastQuickSlotItems.SetNum(SlotIndex + 1);
+		lastQuickSlotCounts.SetNum(SlotIndex + 1);
 	}
 
 	const FName NewItem = Inventory->GetQuickSlotItem(SlotIndex);
 	const FName PrevItem = lastQuickSlotItems[SlotIndex];
-	lastQuickSlotItems[SlotIndex] = NewItem;
 
-	if (!NewItem.IsNone() && NewItem != PrevItem)
+	// 인벤토리는 재고를 먼저 바꾼 뒤 브로드캐스트하므로(RemoveItem → NotifyQuickSlotsForItem) 여기서 읽는 값이 변경 후 재고다
+	const int32 NewCount = NewItem.IsNone() ? 0 : Inventory->GetItemCount(NewItem);
+	const int32 PrevCount = lastQuickSlotCounts[SlotIndex];
+
+	lastQuickSlotItems[SlotIndex] = NewItem;
+	lastQuickSlotCounts[SlotIndex] = NewCount;
+
+	if (NewItem.IsNone())
+	{
+		return;
+	}
+
+	if (NewItem != PrevItem)
 	{
 		NotifyExternalEvent(TutorialEventTags::QuickSlotRegistered());
+		return;
+	}
+
+	// 같은 아이템이 등록된 채 재고만 줄었으면 사용으로 본다.
+	// UseItem은 효과를 적용한 뒤 RemoveItem으로 1개를 빼므로, 쿨다운·재고 부족으로 실패한 사용은 여기까지 오지 않는다.
+	// 키만 누르고 사용에 실패한 경우를 걸러내기 위해 입력이 아니라 재고 변화로 판정한다.
+	if (NewCount < PrevCount)
+	{
+		NotifyExternalEvent(TutorialEventTags::QuickSlotUsed());
 	}
 }
 
@@ -1472,6 +1730,33 @@ UWidget* UC_TutorialComponent::FindEquippableInventorySlot() const
 	return EquipmentFallback;
 }
 
+UWidget* UC_TutorialComponent::FindBonusStatText() const
+{
+	// 스탯창은 열 때마다 새 인스턴스가 생기고 닫아도 인스턴스가 남는다 — 화면에 떠 있는 것만 대상
+	TArray<UUserWidget*> Found;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), Found, UC_StatusWidget::StaticClass(), false);
+
+	for (UUserWidget* Widget : Found)
+	{
+		UC_StatusWidget* StatusWidget = Cast<UC_StatusWidget>(Widget);
+		if (!StatusWidget || !UC_TutorialPointerWidget::IsWidgetOnScreen(StatusWidget))
+		{
+			continue;
+		}
+
+		// GetBonusStatTexts는 창에 표시된 순서(최대 체력부터)로 담으므로 첫 항목이 맨 윗줄이다.
+		// 최대 체력에 증가분이 없는 장비면 그 다음으로 증가분이 붙은 줄을 가리킨다.
+		TArray<UWidget*> BonusTexts;
+		StatusWidget->GetBonusStatTexts(BonusTexts);
+		if (BonusTexts.Num() > 0)
+		{
+			return BonusTexts[0];
+		}
+	}
+
+	return nullptr;
+}
+
 // ---------------------------------------------------------------------------
 // 히트 직전 공격 일시정지 (막기 단계 등)
 // ---------------------------------------------------------------------------
@@ -1488,6 +1773,70 @@ void UC_TutorialComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	}
 
 	UpdateHitPause(*Step);
+	UpdateAttackProgress(*Step);
+}
+
+// ---------------------------------------------------------------------------
+// 실제 공격 판정 (입력 연타가 아니라 공격 몽타주가 나갔는지)
+// ---------------------------------------------------------------------------
+
+UAnimInstance* UC_TutorialComponent::GetPlayerAnimInstance() const
+{
+	const APlayerController* OwnerPC = Cast<APlayerController>(GetOwner());
+	const ACharacter* PlayerCharacter = OwnerPC ? Cast<ACharacter>(OwnerPC->GetPawn()) : nullptr;
+	const USkeletalMeshComponent* Mesh = PlayerCharacter ? PlayerCharacter->GetMesh() : nullptr;
+
+	return Mesh ? Mesh->GetAnimInstance() : nullptr;
+}
+
+void UC_TutorialComponent::ResetAttackMontageTracking()
+{
+	lastPlayerMontageInstanceId = INDEX_NONE;
+
+	UAnimInstance* AnimInstance = GetPlayerAnimInstance();
+	UAnimMontage* Montage = AnimInstance ? AnimInstance->GetCurrentActiveMontage() : nullptr;
+	if (const FAnimMontageInstance* MontageInstance = Montage ? AnimInstance->GetActiveInstanceForMontage(Montage) : nullptr)
+	{
+		lastPlayerMontageInstanceId = MontageInstance->GetInstanceID();
+	}
+}
+
+void UC_TutorialComponent::UpdateAttackProgress(const FTutorialStepData& Step)
+{
+	if (!Step.bRequireAttackMontage || bStepSatisfied || Step.requiredHoldSeconds > 0.f || Step.externalEventTag.IsValid())
+	{
+		return;
+	}
+
+	UAnimInstance* AnimInstance = GetPlayerAnimInstance();
+	UAnimMontage* Montage = AnimInstance ? AnimInstance->GetCurrentActiveMontage() : nullptr;
+	const FAnimMontageInstance* MontageInstance = Montage ? AnimInstance->GetActiveInstanceForMontage(Montage) : nullptr;
+	if (!MontageInstance || !MontageInstance->IsPlaying())
+	{
+		return;
+	}
+
+	// 인스턴스 ID는 재생할 때마다 새로 발급되므로, 같은 몽타주를 연속으로 쳐도 각각 구분된다.
+	// 근접 콤보(AM_MeleeAttack_A→B→C)는 한 번의 어빌리티 활성화 안에서 돌지만 단계마다 새 인스턴스가 생긴다.
+	const int32 InstanceId = MontageInstance->GetInstanceID();
+	if (InstanceId == lastPlayerMontageInstanceId)
+	{
+		return;
+	}
+
+	lastPlayerMontageInstanceId = InstanceId;
+
+	// 이름 필터가 있으면 공격 몽타주만 인정한다 — 회피·피격 등 다른 몽타주가 세어지지 않게.
+	if (!Step.attackMontageNameFilter.IsEmpty() &&
+		!Montage->GetName().Contains(Step.attackMontageNameFilter, ESearchCase::IgnoreCase))
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Verbose, TEXT("[UC_TutorialComponent] 공격 몽타주 '%s' 재생 확인 — 진행 %d/%d"),
+		*Montage->GetName(), currentCount + 1, Step.requiredCount);
+
+	RegisterStepProgress();
 }
 
 void UC_TutorialComponent::UpdateHitPause(const FTutorialStepData& Step)

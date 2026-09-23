@@ -11,6 +11,23 @@ void UC_EquipmentWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	CollectSlotWidgets();
+	ApplyInitialWindowPosition();
+}
+
+void UC_EquipmentWidget::ApplyInitialWindowPosition()
+{
+	if (!WindowRoot)
+		return;
+
+	UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(WindowRoot->Slot);
+	if (!CanvasSlot)
+		return;
+
+	// 앵커를 화면 왼쪽 세로중앙으로 — 해상도가 바뀌어도 왼쪽 여백이 유지된다.
+	// Alignment (0, 0.5)라 Position.X는 "창 왼쪽 변까지의 거리"가 된다.
+	CanvasSlot->SetAnchors(FAnchors(0.f, 0.5f));
+	CanvasSlot->SetAlignment(FVector2D(0.f, 0.5f));
+	CanvasSlot->SetPosition(initialWindowOffset);
 }
 
 void UC_EquipmentWidget::NativeDestruct()

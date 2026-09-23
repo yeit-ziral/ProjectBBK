@@ -17,6 +17,7 @@
 class UNiagaraSystem;
 class USoundBase;
 class AC_ExpOrb;
+class AC_MoneyItem;
 
 class UC_AttackManagerComponent;
 class UC_MonsterDataComponent;
@@ -144,6 +145,10 @@ public:
 
 	void TakeHitReaction();
 	void StartHitFlash();
+
+	// 피격 스파크 VFX — 데미지가 실제로 들어간 순간 UC_MonsterAttributeSet에서 호출한다.
+	// DamageSource는 EffectContext 기준이라 null일 수 있고, 그때는 몬스터 정면을 타격 방향으로 쓴다.
+	void PlayHitVFX(AActor* DamageSource);
 #pragma endregion
 
 #pragma region HitReaction
@@ -154,10 +159,29 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "HitReaction")
 	UMaterialInterface* hitFlashMaterial = nullptr;
 
+	// 피격 스파크. 생성자에서 NS_Free_Magic_Hit2를 기본값으로 잡으므로 BP 할당 없이 동작하고,
+	// 몬스터 BP에서 개별 교체할 수 있다. 비우면 스파크가 나오지 않는다.
+	UPROPERTY(EditDefaultsOnly, Category = "HitReaction")
+	UNiagaraSystem* hitVFX = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "HitReaction", meta = (ClampMin = "0.01"))
+	float hitVFXScale = 1.0f;
+
+	// 스파크가 터질 높이 — 0이면 발밑, 1이면 머리 끝. 기본 0.6은 가슴 언저리.
+	UPROPERTY(EditDefaultsOnly, Category = "HitReaction", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float hitVFXHeightRatio = 0.6f;
+
+	// 연속 타격·DoT 틱마다 스파크가 겹쳐 터지는 것을 막는 최소 간격(초). 0이면 제한 없음.
+	UPROPERTY(EditDefaultsOnly, Category = "HitReaction", meta = (ClampMin = "0.0"))
+	float hitVFXMinInterval = 0.1f;
+
 private:
 	void HitFlashTick();
 	FTimerHandle hitFlashTimerHandle;
 	int32 hitFlashStep = 0;
+
+	// 마지막으로 스파크를 띄운 시각 (hitVFXMinInterval 판정용)
+	float lastHitVFXTime = -1.f;
 #pragma endregion
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -170,6 +194,9 @@ public:
 protected:
 	// OnMonsterDeath 델리게이트에서 호출 — AI·이동·콜리전 정지, 몽타주 재생
 	virtual void ExecuteDeathSequence();
+
+	// 사망 시 돈 아이템 드랍 — 액수는 몬스터 level과 FMonsterData의 MoneyRewardMin/MaxPerLevel로 결정
+	void DropMoneyReward();
 
 	// deathDestroyDelay 후 호출
 	void DestroyAfterDeath();
@@ -194,6 +221,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Reward")
 	TSubclassOf<AC_ExpOrb> ExpOrbClass;
+
+	// 사망 시 드랍할 돈 아이템. 생성자에서 BP_MoneyItem을 기본값으로 잡으므로 BP 작업 없이 동작하고,
+	// 몬스터 BP에서 다른 클래스로 덮어쓸 수 있다. 비우면 돈을 드랍하지 않는다.
+	UPROPERTY(EditDefaultsOnly, Category = "Reward")
+	TSubclassOf<AC_MoneyItem> MoneyItemClass;
+
+	// 드랍 액수는 FMonsterData의 MoneyRewardMin/MaxPerLevel과 몬스터 level로 정해진다 (C++ 하드코딩 금지 규칙).
+	// 드랍 위치만 여기서 조정 — 캡슐 바닥 기준 오프셋(바닥에 놓이도록 Z는 보통 0).
+	UPROPERTY(EditDefaultsOnly, Category = "Reward")
+	FVector MoneyDropOffset = FVector(0.f, 0.f, 0.f);
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster")

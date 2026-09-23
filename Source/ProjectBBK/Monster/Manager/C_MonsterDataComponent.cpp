@@ -61,6 +61,8 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 	repositionBand         = Data->RepositionBand;
 	repositionFlipInterval = Data->RepositionFlipInterval;
 	expReward              = Data->ExpReward;
+	moneyRewardMinPerLevel = Data->MoneyRewardMinPerLevel;
+	moneyRewardMaxPerLevel = Data->MoneyRewardMaxPerLevel;
 	displayName            = Data->DisplayName;
 
 	// 스페셜 사거리 미지정(0 이하)이면 노말 사거리와 동일하게 취급

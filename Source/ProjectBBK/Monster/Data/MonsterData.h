@@ -38,6 +38,12 @@ struct FMonsterData : public FTableRowBase
 
     UPROPERTY(EditAnywhere, Category = "Reward") float ExpReward = 0.0f;
 
+    // 사망 시 드랍하는 돈. 실제 액수는 몬스터 level에 비례한 난수 —
+    // level * MoneyRewardMinPerLevel ~ level * MoneyRewardMaxPerLevel 사이에서 결정된다.
+    // 0 이하로 두면 그 몬스터는 돈을 드랍하지 않는다 (튜토리얼 더미 등).
+    UPROPERTY(EditAnywhere, Category = "Reward") int32 MoneyRewardMinPerLevel = 100;
+    UPROPERTY(EditAnywhere, Category = "Reward") int32 MoneyRewardMaxPerLevel = 200;
+
     // HP 위젯에 표시할 이름. 비워두면 Row Name을 그대로 표시한다.
     // Row Name은 중복될 수 없으므로 같은 이름을 여러 행이 써야 할 때(튜토리얼 더미 등) 사용.
     UPROPERTY(EditAnywhere, Category = "UI") FText DisplayName;

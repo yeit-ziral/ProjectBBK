@@ -59,6 +59,27 @@ struct FTutorialStepData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial", meta = (ClampMin = "0.0"))
 	float requiredHoldSeconds = 0.f;
 
+	// 키를 누른 것만으로는 인정하지 않고, 캐릭터가 실제로 이 속도(cm/s) 이상으로 움직이는 동안만 인정한다.
+	// 0이면 검사하지 않는다 (시점 회전처럼 이동이 없는 단계).
+	// 공격 몽타주 중에는 입력이 Triggered로 들어와도 캐릭터가 제자리이므로 게이지가 차지 않게 된다.
+	// TutorialText.txt에서 "RowName.requireMove=true" 또는 "RowName.requireMove=속도" 로 지정할 수 있다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial", meta = (ClampMin = "0.0"))
+	float minMoveSpeed = 0.f;
+
+	// 키를 누른 것만으로는 인정하지 않고, 실제로 공격 몽타주가 재생된 횟수로 판정한다.
+	// 쿨다운·자원 부족으로 어빌리티가 발동하지 않은 연타 입력(좌클릭 연타)을 걸러낸다.
+	// 켜지면 requiredAction 입력은 세지 않는다 — 몽타주 재생만으로 진행된다.
+	// 근접 평타(UC_MeleeAttackGA)는 한 번의 활성화 안에서 콤보를 돌리므로 어빌리티 발동 횟수로는 셀 수 없다.
+	// TutorialText.txt에서 "RowName.requireAttack=true" 또는 "RowName.requireAttack=이름조각"으로 지정한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	bool bRequireAttackMontage = false;
+
+	// bRequireAttackMontage 단계에서 인정할 몽타주 애셋 이름 조각 (대소문자 무시).
+	// 비어 있으면 어떤 몽타주든 인정하므로, 회피 등 다른 몽타주가 섞이는 단계에서는 지정할 것.
+	// 예: 근접 평타 "MeleeAttack" (AM_MeleeAttack_A/B/C) · 원거리 평타 "Fire" (Primary_Fire_Med_Montage)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	FString attackMontageNameFilter;
+
 	// 입력으로 표현되지 않는 단계용 확장 포인트 (드래그&드롭 장착 등).
 	// 설정 시 requiredAction 대신 NotifyExternalEvent(EventTag)로 완료된다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")

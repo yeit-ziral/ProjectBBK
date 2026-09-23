@@ -126,6 +126,25 @@ private:
 	// 현재 단계의 액션·방향 필터에 부합하는 입력인지
 	bool MatchesCurrentStep(const FInputActionInstance& Instance) const;
 
+	// 횟수 조건 단계의 진행을 1 올리고, 표시 갱신·완료 판정까지 처리한다.
+	// 입력·외부 이벤트·공격 몽타주 세 경로가 같은 규칙을 쓰도록 여기에 모아 둔다.
+	void RegisterStepProgress();
+
+	// bRequireAttackMontage 단계 — 플레이어 메시에서 새 몽타주가 시작됐는지 매 프레임 확인한다.
+	// 쿨다운 중 연타처럼 입력만 들어가고 실제 공격이 나가지 않은 경우를 걸러내기 위한 판정이며,
+	// 근접 평타는 콤보가 한 번의 어빌리티 활성화 안에서 돌기 때문에
+	// 어빌리티 발동 횟수(AbilityActivatedCallbacks)가 아니라 몽타주 인스턴스를 센다.
+	void UpdateAttackProgress(const FTutorialStepData& Step);
+
+	// 단계 진입 시점에 이미 재생 중인 몽타주를 기준점으로 잡아, 이전 단계의 동작이 한 번 세어지는 것을 막는다
+	void ResetAttackMontageTracking();
+
+	// 플레이어 폰의 AnimInstance (없으면 nullptr) — 몽타주 관찰용
+	UAnimInstance* GetPlayerAnimInstance() const;
+
+	// 플레이어 폰이 실제로 이 속도(cm/s) 이상으로 수평 이동 중인지 (minMoveSpeed 판정용)
+	bool IsPlayerMovingFasterThan(float MinSpeed) const;
+
 	const FTutorialStepData* GetCurrentStep() const;
 
 	void ShowCurrentStep();
@@ -167,7 +186,8 @@ private:
 	UFUNCTION()
 	void HandleItemActorDestroyed(AActor* DestroyedActor);
 
-	// 등록·해제·사용·재고 변화에 모두 오므로 "슬롯의 아이템이 바뀌어 채워진 경우"만 등록으로 본다
+	// 등록·해제·사용·재고 변화에 모두 오므로 "슬롯의 아이템이 바뀌어 채워진 경우"는 등록으로,
+	// "같은 아이템이 등록된 채 재고가 줄어든 경우"는 사용으로 본다
 	UFUNCTION()
 	void HandleQuickSlotChanged(int32 SlotIndex);
 
@@ -197,10 +217,16 @@ private:
 	// 비어 있으면 TargetClass 인스턴스 자체를 찾는다. 둘 다 주면 해당 클래스 안으로 범위를 좁힌다.
 	UWidget* FindPointerTarget(UClass* TargetClass, FName WidgetName) const;
 
+	// pointerTargetWidgetName을 쉼표로 나눈 대상 이름 목록 (예: "WBP_UseItem1,WBP_UseItem2" → 2개). 비어 있으면 빈 배열.
+	static TArray<FName> GetPointerTargetNames(const FTutorialStepData& Step);
+
 	// 화면에 떠 있는 인벤토리 슬롯 중 장비가 든 칸 하나를 찾는다.
 	// 현재 캐릭터가 장착할 수 있는 장비 칸을 우선하고, 없으면 장비이기만 한 칸을 돌려준다.
 	// 인벤토리 그리드 전체(SlotGrid)는 스크롤 영역보다 커서 강조 박스가 창을 넘어가기 때문에 칸 단위로 가리킨다.
 	UWidget* FindEquippableInventorySlot() const;
+
+	// 화면에 떠 있는 스탯창에서 증가분이 표시 중인 맨 윗줄 스탯 텍스트 (@StatBonus 토큰용)
+	UWidget* FindBonusStatText() const;
 
 	// 이 단계 전용 액터(튜토리얼 더미 몬스터 등)를 플레이어 앞에 스폰한다
 	void SpawnStepActors(const FTutorialStepData& Step);
@@ -241,6 +267,13 @@ private:
 	// pointerTargetWidgetName에 이 값을 적으면 고정 위젯 대신 FindEquippableInventorySlot로 대상을 찾는다.
 	// 실제 위젯 이름과 겹치지 않도록 @로 시작한다.
 	static const FName equippableSlotPointerToken;
+
+	// pointer 이름에 이 토큰을 적으면 스탯창에서 "(+N)" 증가분이 표시 중인 스탯 텍스트를 전부 강조한다.
+	// 어떤 스탯에 보너스가 붙었는지는 장비에 따라 달라지므로 이름으로 고정할 수 없다.
+	static const FName statBonusPointerToken;
+
+	// @StatBonus 대상에서 강조를 시작할 문자열 — UC_StatusWidget이 붙이는 "총합 (+증가분)" 표기의 여는 괄호
+	static const FString statBonusHighlightMarker;
 
 	UEnhancedInputComponent* GetEnhancedInputComponent() const;
 
@@ -286,6 +319,10 @@ private:
 	FTimerHandle pointerRetryTimer;
 	static constexpr float pointerRetryInterval = 0.5f;
 
+	// TutorialText.txt에서 "RowName.requireMove=true"로만 켰을 때 쓰는 기본 이동 속도 기준 (cm/s).
+	// 걷기 속도(수백 cm/s)보다 한참 낮게 잡아, 가속·감속 구간에서 게이지가 끊기지 않게 한다.
+	static constexpr float defaultMinMoveSpeed = 30.f;
+
 	FTimerHandle startLookLockTimer;
 
 	// SetIgnoreLookInput은 카운터라 잠근 만큼만 풀어야 한다 — 인벤토리 등 다른 UI의 잠금을 건드리지 않게
@@ -298,6 +335,9 @@ private:
 
 	// 퀵슬롯별 직전 등록 아이템 — 재고 변화 브로드캐스트를 등록으로 오인하지 않기 위한 비교 기준
 	TArray<FName> lastQuickSlotItems;
+
+	// 퀵슬롯별 직전 재고 — lastQuickSlotItems와 인덱스 1:1. 재고가 줄어든 브로드캐스트를 사용으로 판정하기 위한 비교 기준
+	TArray<int32> lastQuickSlotCounts;
 
 	// 직전 장착 슬롯 수 — 해제 브로드캐스트를 장착으로 오인하지 않기 위한 비교 기준
 	int32 lastEquippedCount = 0;
@@ -316,6 +356,10 @@ private:
 	float accumulatedHold = 0.f;
 
 	bool bIsRunning = false;
+
+	// bRequireAttackMontage 단계에서 마지막으로 센 플레이어 몽타주 인스턴스 ID.
+	// 인스턴스 ID는 재생할 때마다 새로 발급되므로 같은 몽타주를 연속 재생해도 구분된다.
+	int32 lastPlayerMontageInstanceId = INDEX_NONE;
 
 	// 완료 후 delayAfterComplete 대기 중 추가 입력으로 중복 완료되는 것을 막는다
 	bool bStepSatisfied = false;
