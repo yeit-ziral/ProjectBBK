@@ -11,6 +11,8 @@ class UCapsuleComponent;
 class USkeletalMeshComponent;
 class UWidgetComponent;
 class UDataTable;
+class UNiagaraSystem;
+class USoundBase;
 
 /**
  * 아이템을 파는 상인 NPC.
@@ -50,6 +52,10 @@ public:
 	// [가격 훅] 추후 아이템 가치 * sellPriceRatio로 교체.
 	UFUNCTION(BlueprintPure, Category = "Merchant")
 	int32 GetSellPrice(FName itemID) const;
+
+	// 숨겨져 있던 상인을 등장시킴 (bAppearOnLevelClear일 때 포탈 활성화 시점에 자동 호출)
+	UFUNCTION(BlueprintCallable, Category = "Merchant|Appear")
+	void Appear();
 
 	// 인사/소개 대사 (대화창에서 순서대로 표시)
 	UFUNCTION(BlueprintPure, Category = "Merchant")
@@ -91,6 +97,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Merchant", meta = (ClampMin = "0"))
 	int32 fallbackSellPrice = 5;
 
+	// true면 레벨 시작 시 숨겨져 있다가, 몬스터 전멸로 포탈이 열리는 순간(AC_BBKGameMode::OnPortalsActivated) 등장.
+	// 레벨마다 파는 물건은 인스턴스의 stockTable로 구분 (예: 1번 맵 = 소모품만).
+	UPROPERTY(EditAnywhere, Category = "Merchant|Appear")
+	bool bAppearOnLevelClear = false;
+
+	// 등장 순간 발밑에 1회 재생할 이펙트/사운드 (선택)
+	UPROPERTY(EditAnywhere, Category = "Merchant|Appear")
+	UNiagaraSystem* appearVFX = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Merchant|Appear")
+	USoundBase* appearSound = nullptr;
+
 	// 외곽선 Custom Depth 스텐실 값 (포스트프로세스 아웃라인 머티리얼과 매칭)
 	UPROPERTY(EditAnywhere, Category = "Merchant|Highlight", meta = (ClampMin = "0", ClampMax = "255"))
 	int32 highlightStencilValue = 1;
@@ -113,6 +131,12 @@ private:
 	// idle/idle2 중 하나를 재생하고, 끝나는 시점에 다시 자신을 호출하도록 타이머 설정 (번갈아 순환).
 	void PlayRandomIdle();
 
+	// 등장 전 상태 — 렌더·콜리전(시선 트레이스 대상)을 모두 끔
+	void HideUntilLevelClear();
+
+	void HandlePortalsActivated();
+
 	FTimerHandle idleTimerHandle;
 	bool bTalking = false;
+	bool bAppeared = true;
 };

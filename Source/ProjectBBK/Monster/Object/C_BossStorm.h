@@ -8,6 +8,7 @@
 
 class USphereComponent;
 class UParticleSystemComponent;
+class UAudioComponent;
 class UGameplayEffect;
 class UAbilitySystemComponent;
 
@@ -37,6 +38,11 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	UParticleSystemComponent* stormParticle;
+
+	// 소환~소멸 동안 반복 재생되는 불타는 소리 — 보스 레이저(NS_FireTongueLick)의 루프 사운드와 같은 에셋.
+	// 루프 큐라 액터가 Destroy되면 컴포넌트와 함께 자동으로 멈춘다.
+	UPROPERTY(VisibleAnywhere)
+	UAudioComponent* stormLoopAudio;
 
 	UFUNCTION()
 	void OnDamageSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,

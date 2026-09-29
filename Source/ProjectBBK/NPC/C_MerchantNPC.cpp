@@ -8,6 +8,9 @@
 #include "Animation/AnimInstance.h"
 #include "TimerManager.h"
 #include "../Items/C_InteractionWidget.h"
+#include "../LevelSystem/C_BBKGameMode.h"
+#include "NiagaraFunctionLibrary.h"
+#include "Kismet/GameplayStatics.h"
 
 // 애님 블루프린트(ABP_Merchant)의 슬롯 이름과 일치해야 함
 static const FName MerchantAnimSlot(TEXT("DefaultSlot"));
@@ -54,6 +57,48 @@ void AC_MerchantNPC::BeginPlay()
 
 	// 평소 idle/idle2 순환 시작
 	PlayRandomIdle();
+
+	if (bAppearOnLevelClear)
+	{
+		AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>();
+		// 몬스터 없는 레벨 등으로 GameMode가 먼저 포탈을 열었다면 바로 등장 상태 유지
+		if (GM && GM->ArePortalsActivated())
+			return;
+
+		HideUntilLevelClear();
+		if (GM)
+			GM->OnPortalsActivated.AddUObject(this, &AC_MerchantNPC::HandlePortalsActivated);
+	}
+}
+
+void AC_MerchantNPC::HideUntilLevelClear()
+{
+	bAppeared = false;
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false); // 캡슐이 시선 트레이스에 안 걸리게 → 포커스/대화 불가
+}
+
+void AC_MerchantNPC::HandlePortalsActivated()
+{
+	Appear();
+}
+
+void AC_MerchantNPC::Appear()
+{
+	if (bAppeared)
+		return;
+	bAppeared = true;
+
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	interactionWidgetComp->SetVisibility(false); // 포커스 전까지는 숨김 유지
+
+	// 발밑(캡슐 바닥)에서 등장 연출
+	const FVector FeetLocation = GetActorLocation() - FVector(0.f, 0.f, collisionCapsule->GetScaledCapsuleHalfHeight());
+	if (appearVFX)
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, appearVFX, FeetLocation, GetActorRotation());
+	if (appearSound)
+		UGameplayStatics::PlaySoundAtLocation(this, appearSound, FeetLocation);
 }
 
 void AC_MerchantNPC::PlayRandomIdle()

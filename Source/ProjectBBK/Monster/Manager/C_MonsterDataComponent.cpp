@@ -38,12 +38,13 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 
 	monsterId = Data->MonsterId;
 
-	const float finalMaxHP = Data->MaxHP + ownerMonster->level * 50.0f;
+	const float finalMaxHP   = Data->MaxHP   + ownerMonster->level * Data->HPPerLevel;
+	const float finalDefense = Data->Defense + ownerMonster->level * Data->DefensePerLevel;
 
 	attrSet->InitmaxHP          (finalMaxHP);
 	attrSet->InitmaxGroggy      (Data->MaxGroggy);
 	attrSet->Initattack         (Data->Attack);
-	attrSet->Initdefense        (Data->Defense);
+	attrSet->Initdefense        (finalDefense);
 	attrSet->InitattackRange    (Data->AttackRange);
 	attrSet->InitmoveSpeed      (Data->MoveSpeed);
 	attrSet->InitnormalCooldown (Data->NormalCooldown);

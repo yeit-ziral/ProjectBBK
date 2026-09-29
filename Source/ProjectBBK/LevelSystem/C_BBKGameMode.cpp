@@ -40,6 +40,11 @@ void AC_BBKGameMode::BeginPlay()
 void AC_BBKGameMode::NotifyMonsterDead()
 {
 	RemainingMonsterCount--;
+	if (RemainingMonsterCount > 0) return;
+
+	// 전멸 알림 — 수신 측(AC_EliteSummonCircle 등)이 RegisterPendingMonster()로 추가 몬스터를 예약할 수 있음
+	OnAllMonstersDefeated.Broadcast();
+
 	if (RemainingMonsterCount <= 0 && ShouldAutoActivatePortals())
 	{
 		ActivateAllPortals();
@@ -48,12 +53,20 @@ void AC_BBKGameMode::NotifyMonsterDead()
 
 void AC_BBKGameMode::ActivateAllPortals()
 {
+	const bool bFirstActivation = !bPortalsActivated;
+	bPortalsActivated = true;
+
 	for (TWeakObjectPtr<AC_Portal>& PortalPtr : RegisteredPortals)
 	{
 		if (PortalPtr.IsValid())
 		{
 			PortalPtr->ActivatePortal();
 		}
+	}
+
+	if (bFirstActivation)
+	{
+		OnPortalsActivated.Broadcast();
 	}
 }
 
