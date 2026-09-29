@@ -19,7 +19,7 @@ class PROJECTBBK_API UC_MonsterSpawnManager : public UObject
 public:
     void Initialize(UWorld* World);
 
-    // 몬스터 스폰 + 생존 추적 자동 등록 (InLevel: 레벨에 따라 MaxHP = BaseHP + Level * 50)
+    // 몬스터 스폰 + 생존 추적 자동 등록 (InLevel: MaxHP/Defense = 기본값 + Level * FMonsterData.HPPerLevel/DefensePerLevel)
     UFUNCTION(BlueprintCallable, Category = "Spawn")
     AActor* SpawnMonster(TSubclassOf<AActor> MonsterClass, const FVector& Location, const FRotator& Rotation, int32 InLevel = 1);
 

@@ -94,6 +94,8 @@ void AC_BaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 
+	idleHomeLocation = GetActorLocation();
+
 	// Blueprint에 None이 직렬화된 경우 컴포넌트 목록에서 복구
 	if (!attackManager)
 		attackManager = FindComponentByClass<UC_AttackManagerComponent>();

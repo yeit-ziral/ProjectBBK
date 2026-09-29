@@ -240,6 +240,9 @@ public:
 	int8  repositionStrafeSign   = 1;
 	float repositionNextFlipTime = -1.f;   // -1: 미초기화 sentinel
 
+	// 비전투 배회 기준점 — BeginPlay 위치. C_BTTaskIdleWander가 이 점 주변 반경 안에서만 움직인다
+	FVector idleHomeLocation = FVector::ZeroVector;
+
 private:
 	// IsAttackCooldownPaused()가 false인 프레임에만 DeltaTime만큼 증가 (Tick에서 갱신)
 	float attackClock = 0.0f;

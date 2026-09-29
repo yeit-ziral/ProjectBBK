@@ -10,6 +10,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
+#include "Components/AudioComponent.h"
+#include "Sound/SoundBase.h"
+#include "Sound/SoundAttenuation.h"
+#include "UObject/ConstructorHelpers.h"
 
 AC_BossStorm::AC_BossStorm()
 {
@@ -25,6 +29,21 @@ AC_BossStorm::AC_BossStorm()
 
 	stormParticle = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("StormEffect"));
 	stormParticle->SetupAttachment(root);
+
+	stormLoopAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("StormLoopAudio"));
+	stormLoopAudio->SetupAttachment(root);
+	stormLoopAudio->bAutoActivate = true;
+
+	// 에셋은 BPC_BossStorm의 컴포넌트 디테일에서 교체 가능 (Sound / Attenuation Settings)
+	static ConstructorHelpers::FObjectFinder<USoundBase> loopSound(
+		TEXT("/Game/EnergyBeam/_GenericSource/SFX/Sfx_Loop_AirFire_Cue.Sfx_Loop_AirFire_Cue"));
+	if (loopSound.Succeeded())
+		stormLoopAudio->SetSound(loopSound.Object);
+
+	static ConstructorHelpers::FObjectFinder<USoundAttenuation> loopAttenuation(
+		TEXT("/Game/EnergyBeam/_GenericSource/SFX/GenericSoundAttenuation.GenericSoundAttenuation"));
+	if (loopAttenuation.Succeeded())
+		stormLoopAudio->AttenuationSettings = loopAttenuation.Object;
 
 	damageSphere->OnComponentBeginOverlap.AddDynamic(this, &AC_BossStorm::OnDamageSphereBeginOverlap);
 }

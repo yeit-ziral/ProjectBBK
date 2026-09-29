@@ -8,6 +8,12 @@
 
 class AC_Portal;
 
+// 레벨 몬스터 전멸 순간 브로드캐스트 — 수신 측이 RegisterPendingMonster()로 추가 몬스터를 예약하면 포탈 활성화가 미뤄진다
+DECLARE_MULTICAST_DELEGATE(FOnLevelMonstersDefeated);
+
+// 포탈이 실제로 열린 순간(= 레벨 클리어 확정) 브로드캐스트 — 클리어 보상 상인 등장 등에 사용
+DECLARE_MULTICAST_DELEGATE(FOnLevelPortalsActivated);
+
 UCLASS()
 class PROJECTBBK_API AC_BBKGameMode : public AGameModeBase
 {
@@ -18,6 +24,17 @@ public:
 
 	// C_BaseMonster::ExecuteDeathSequence()에서 호출 — 남은 몬스터 수 감소 및 포탈 활성화 체크
 	void NotifyMonsterDead();
+
+	// 레벨 시작 이후 스폰될 몬스터를 미리 집계에 포함 — 그 몬스터가 죽어야(NotifyMonsterDead) 포탈이 열린다.
+	// OnAllMonstersDefeated 수신 중 호출하면 이번 전멸 시점의 포탈 활성화를 막을 수 있음
+	void RegisterPendingMonster() { RemainingMonsterCount++; }
+
+	FOnLevelMonstersDefeated OnAllMonstersDefeated;
+
+	FOnLevelPortalsActivated OnPortalsActivated;
+
+	// 이미 포탈이 열렸는지 — OnPortalsActivated보다 늦게 BeginPlay된 액터가 놓친 이벤트를 보정할 때 사용
+	bool ArePortalsActivated() const { return bPortalsActivated; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -34,4 +51,5 @@ private:
 
 	TArray<TWeakObjectPtr<AC_Portal>> RegisteredPortals;
 	int32 RemainingMonsterCount = 0;
+	bool bPortalsActivated = false;
 };
