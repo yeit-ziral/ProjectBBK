@@ -20,6 +20,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
+#include "Materials/MaterialInterface.h"
 
 AC_BaseMonster::AC_BaseMonster()
 {
@@ -53,6 +54,21 @@ AC_BaseMonster::AC_BaseMonster()
 	HpWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HpWidgetComponent->SetTwoSided(true);
 
+	// 월드 공간 위젯은 Unlit이어도 씬 노출(Exposure)을 그대로 받는다.
+	// Stage 맵들은 PostProcessVolume이 노출을 EV100 8~9.6으로 고정해 둬서 기본 위젯 머티리얼로는 바가 새까맣게 보인다.
+	// M_MonsterHPWidget3D = 엔진 Widget3DPassThrough(Masked·TwoSided) 복제본 + Emissive에 EyeAdaptationInverse → 노출과 무관하게 원래 색 유지.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> HpWidgetMaterialFinder(
+		TEXT("/Game/Monster/UI/Monster/M_MonsterHPWidget3D.M_MonsterHPWidget3D"));
+
+	if (HpWidgetMaterialFinder.Succeeded())
+	{
+		hpWidgetMaterial = HpWidgetMaterialFinder.Object;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[AC_BaseMonster] M_MonsterHPWidget3D를 찾지 못했습니다. 경로 확인: /Game/Monster/UI/Monster/M_MonsterHPWidget3D"));
+	}
+
 	// 피격 스파크 기본 에셋 — 몬스터 BP마다 수동 할당하지 않아도 되도록 여기서 잡는다
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> HitVFXFinder(
 		TEXT("/Game/RPGEnvironmentVFX/VFX/Niagara/NS_ForgeSparks.NS_ForgeSparks"));
@@ -84,6 +100,11 @@ AC_BaseMonster::AC_BaseMonster()
 void AC_BaseMonster::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
+
+	// 생성자에서 컴포넌트에 직접 SetMaterial하면 기존 몬스터 BP·배치 인스턴스에 저장된 빈 OverrideMaterials가 이겨서 적용되지 않는다.
+	// 런타임에 명시적으로 넣어야 모든 몬스터에 확실히 반영된다.
+	if (HpWidgetComponent && hpWidgetMaterial)
+		HpWidgetComponent->SetMaterial(0, hpWidgetMaterial);
 
 	// 위젯 클래스 설정 — BeginPlay 전에 위젯 객체가 생성되어야 함
 	if (hpDisplayComponent)

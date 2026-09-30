@@ -14,10 +14,11 @@ struct FMonsterData : public FTableRowBase
     UPROPERTY(EditAnywhere) float Attack                        = 20.0f;
     UPROPERTY(EditAnywhere) float Defense                       = 5.0f;
 
-    // 레벨당 증가량 — 최종값 = 기본값(MaxHP/Defense) + level * PerLevel.
-    // 기본값은 기존 동작(HP +50/레벨, 방어력 고정)과 동일하게 둔다.
+    // 레벨당 증가량 — 최종값 = 기본값(MaxHP/Defense/Attack) + level * PerLevel.
+    // 기본값은 기존 동작(HP +50/레벨, 방어력·공격력 고정)과 동일하게 둔다.
     UPROPERTY(EditAnywhere, Category = "Level") float HPPerLevel      = 50.0f;
     UPROPERTY(EditAnywhere, Category = "Level") float DefensePerLevel = 0.0f;
+    UPROPERTY(EditAnywhere, Category = "Level") float AttackPerLevel  = 0.0f;
     UPROPERTY(EditAnywhere) float AttackRange                   = 300.0f;
     UPROPERTY(EditAnywhere) float MoveSpeed                     = 600.0f;
     UPROPERTY(EditAnywhere) float NormalCooldown                = 1.5f;

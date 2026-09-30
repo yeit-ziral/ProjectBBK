@@ -40,10 +40,11 @@ void UC_MonsterDataComponent::Initialize(AC_BaseMonster* InOwner)
 
 	const float finalMaxHP   = Data->MaxHP   + ownerMonster->level * Data->HPPerLevel;
 	const float finalDefense = Data->Defense + ownerMonster->level * Data->DefensePerLevel;
+	const float finalAttack  = Data->Attack  + ownerMonster->level * Data->AttackPerLevel;
 
 	attrSet->InitmaxHP          (finalMaxHP);
 	attrSet->InitmaxGroggy      (Data->MaxGroggy);
-	attrSet->Initattack         (Data->Attack);
+	attrSet->Initattack         (finalAttack);
 	attrSet->Initdefense        (finalDefense);
 	attrSet->InitattackRange    (Data->AttackRange);
 	attrSet->InitmoveSpeed      (Data->MoveSpeed);
