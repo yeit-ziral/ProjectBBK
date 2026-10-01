@@ -70,6 +70,11 @@ protected:
 	// Scene 컴포넌트 — 생성자에서 루트에 부착, HPDisplayComponent가 관리
 	UPROPERTY(VisibleAnywhere, Category = "UI")
 	UWidgetComponent* HpWidgetComponent;
+
+	// HP 위젯 머티리얼 — 노출(Exposure) 보정이 들어간 M_MonsterHPWidget3D. 생성자에서 기본값을 잡고
+	// PostInitializeComponents에서 HpWidgetComponent에 적용한다(컴포넌트 기본값은 기존 BP/배치 인스턴스의 저장값에 덮이므로).
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TObjectPtr<UMaterialInterface> hpWidgetMaterial;
 #pragma endregion
 
 #pragma region AI
