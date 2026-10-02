@@ -124,6 +124,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	void ReapplyEquipBonuses();
 
+	// ===== 레벨 전환 영속 저장/복원 (UC_BBKGameInstance 전용) =====
+
+	// 슬롯별 itemID만 추출(GE 핸들 제외) — 저장용.
+	TMap<EEquipmentSlot, FName> GetEquippedItemIDs() const;
+
+	// itemID 맵으로 equipped를 치환 — GE는 적용하지 않음(Suspend 상태와 동일, bonusHandle 비워둠).
+	// 활성 캐릭터라면 호출 측에서 이어서 ReapplyEquipBonuses()를 호출해야 실제 보너스가 적용됨.
+	void RestoreEquippedItemIDs(const TMap<EEquipmentSlot, FName>& InEquipped);
+
 protected:
 	// BP에서 GE_EquipBonus 지정 (C++ 하드코딩 금지)
 	UPROPERTY(EditDefaultsOnly, Category = "Equipment")

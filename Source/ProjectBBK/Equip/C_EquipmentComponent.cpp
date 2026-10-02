@@ -231,6 +231,27 @@ FEquipBonusTotals UC_EquipmentComponent::GetTotalEquipBonuses() const
 	return totals;
 }
 
+TMap<EEquipmentSlot, FName> UC_EquipmentComponent::GetEquippedItemIDs() const
+{
+	TMap<EEquipmentSlot, FName> Result;
+	for (const TPair<EEquipmentSlot, FEquippedEntry>& Pair : equipped)
+		Result.Add(Pair.Key, Pair.Value.itemID);
+	return Result;
+}
+
+void UC_EquipmentComponent::RestoreEquippedItemIDs(const TMap<EEquipmentSlot, FName>& InEquipped)
+{
+	equipped.Empty();
+	for (const TPair<EEquipmentSlot, FName>& Pair : InEquipped)
+	{
+		FEquippedEntry entry;
+		entry.itemID = Pair.Value;
+		equipped.Add(Pair.Key, entry);   // bonusHandle은 비워둠 — SuspendEquipBonuses와 동일한 상태
+	}
+
+	OnEquipmentChanged.Broadcast();
+}
+
 bool UC_EquipmentComponent::UnequipItem(EEquipmentSlot slot)
 {
 	const FEquippedEntry* found = equipped.Find(slot);

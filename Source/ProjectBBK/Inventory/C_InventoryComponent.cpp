@@ -256,6 +256,40 @@ bool UC_InventoryComponent::RemoveMoney(int32 amount)
 	return true;
 }
 
+void UC_InventoryComponent::GetPersistentState(TArray<FName>& OutItemIDs, TArray<int32>& OutQuantities,
+	TArray<FName>& OutQuickSlots, int32& OutMoney) const
+{
+	OutItemIDs.Reset(slots.Num());
+	OutQuantities.Reset(slots.Num());
+	for (const FInventorySlot& slot : slots)
+	{
+		OutItemIDs.Add(slot.itemID);
+		OutQuantities.Add(slot.quantity);
+	}
+
+	OutQuickSlots = quickSlots;
+	OutMoney = money;
+}
+
+void UC_InventoryComponent::RestorePersistentState(const TArray<FName>& InItemIDs, const TArray<int32>& InQuantities,
+	const TArray<FName>& InQuickSlots, int32 InMoney)
+{
+	slots.Reset(InItemIDs.Num());
+	for (int32 i = 0; i < InItemIDs.Num(); ++i)
+		slots.Add(FInventorySlot(InItemIDs[i], InQuantities.IsValidIndex(i) ? InQuantities[i] : 0));
+	EnsureSlots();   // maxSlots와 저장 당시 크기가 다를 경우 보정
+
+	quickSlots = InQuickSlots;
+	quickSlots.SetNum(NumQuickSlots);
+
+	money = InMoney;
+
+	OnInventoryChanged.Broadcast();
+	for (int32 i = 0; i < NumQuickSlots; ++i)
+		OnQuickSlotChanged.Broadcast(i);
+	OnMoneyChanged.Broadcast(money);
+}
+
 bool UC_InventoryComponent::UseItem(FName itemID)
 {
 	FConsumableItemData data;
