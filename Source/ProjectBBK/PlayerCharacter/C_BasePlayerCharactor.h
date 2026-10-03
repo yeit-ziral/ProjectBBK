@@ -145,6 +145,7 @@ public:
 
 	void SaveCharacterState();
 	void RestoreCharacterState();
+	void ApplyLevelUpToSavedState(int32 LevelsGained); // 비활성 상태에서 레벨업이 일어났을 때, 보관된 값에 같은 증가량을 반영한다
 
 	// 레벨 전환용: savedState에 값을 직접 주입 (비활성 캐릭터가 나중에 Possess될 때 적용됨)
 	void InjectPreSavedState(float Health, float Stamina, float Shield, float Mana);

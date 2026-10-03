@@ -326,10 +326,10 @@ void UC_ChracterAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffec
 			currentExp -= GetmaxExperience();
 			Setlevel(Getlevel() + 1);
 			SetmaxExperience(FMath::RoundToFloat(GetmaxExperience() * 1.1f));
-			SetmaxHealth(GetmaxHealth() + 50.f);
-			Sethealth(FMath::Min(Gethealth() + 50.f, GetmaxHealth()));
-			SetmaxStamina(GetmaxStamina() + 20.f);
-			Setdamage(Getdamage() + 30.f);
+			SetmaxHealth(GetmaxHealth() + healthPerLevel);
+			Sethealth(FMath::Min(Gethealth() + healthPerLevel, GetmaxHealth()));
+			SetmaxStamina(GetmaxStamina() + staminaPerLevel);
+			Setdamage(Getdamage() + damagePerLevel);
 		}
 
 		Setexperience(FMath::Max(currentExp, 0.f));

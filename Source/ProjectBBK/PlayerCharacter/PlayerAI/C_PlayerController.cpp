@@ -668,6 +668,20 @@ void AC_PlayerController::SaveStateForLevelTransition()
 		GI->SaveGameState(characterRoster, currentCharacterIndex, SharedASC);
 }
 
+void AC_PlayerController::ApplyLevelUpToInactiveCharacters(int32 LevelsGained)
+{
+	const APawn* ActivePawn = GetPawn();
+
+	for (AC_BasePlayerCharactor* Char : characterRoster)
+	{
+		// 활성 캐릭터는 공유 어트리뷰트가 이미 올라갔으므로 제외한다.
+		if (!Char || Char == ActivePawn)
+			continue;
+
+		Char->ApplyLevelUpToSavedState(LevelsGained);
+	}
+}
+
 void AC_PlayerController::ShowEndingScreen()
 {
 	if (!ensure(EndingScreenClass))

@@ -60,6 +60,9 @@ public:
 	// TravelToNextLevel 직전에 GameInstance에 현재 상태를 저장 — UC_BBKGameInstance에서 호출
 	void SaveStateForLevelTransition();
 
+	// 레벨업 시 호출. 지금 조종 중이 아닌 캐릭터들의 보관값을 함께 올린다.
+	void ApplyLevelUpToInactiveCharacters(int32 LevelsGained);
+
 	// Tab키: 다음 캐릭터로 순환
 	UFUNCTION(BlueprintCallable, Category = "ProjectBBK|CharacterRoster")
 	void SwitchToNextCharacter();
