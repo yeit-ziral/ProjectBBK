@@ -51,7 +51,7 @@ public:
 	FGameplayAttributeData maxShield;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, maxShield)
 
-		//this is for damage calculation temporary use  So, not replicated
+	//this is for damage calculation temporary use  So, not replicated
 	UPROPERTY(BlueprintReadOnly, Category = "damage")
 	FGameplayAttributeData damage;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, damage)
@@ -101,6 +101,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Meta")
 	FGameplayAttributeData receivedTrueDamage;
 	ATTRIBUTE_ACCESSORS(UC_ChracterAttributeSetBase, receivedTrueDamage)
+
+	// 레벨업 1회당 증가량. 비활성 캐릭터의 보관값을 보정할 때도 같은 값을 쓴다.
+	static constexpr float healthPerLevel = 50.f;
+	static constexpr float staminaPerLevel = 20.f;
+	static constexpr float damagePerLevel = 30.f;
 
 	UFUNCTION()
 	virtual void OnRep_level(const FGameplayAttributeData& OldLevel);

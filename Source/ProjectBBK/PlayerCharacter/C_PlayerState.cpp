@@ -5,6 +5,7 @@
 #include "../GAS/Attributes/C_ChracterAttributeSetBase.h"
 #include "../GAS/Abilities/C_CharacterASC.h"
 #include "C_LevelUpPerkComponent.h"
+#include "PlayerAI/C_PlayerController.h"
 
 AC_PlayerState::AC_PlayerState()
 {
@@ -126,6 +127,15 @@ void AC_PlayerState::MaxStaminaChanged(const FOnAttributeChangeData& Data)
 
 void AC_PlayerState::CharacterLevelChanged(const FOnAttributeChangeData& Data)
 {
+	const int32 LevelsGained = (int32)Data.NewValue - (int32)Data.OldValue;
+
+	// 한 번에 여러 레벨이 오를 수 있으므로 차이만큼 전달한다
+	if (LevelsGained > 0)
+	{
+		if (AC_PlayerController* PC = Cast<AC_PlayerController>(GetPlayerController()))
+			PC->ApplyLevelUpToInactiveCharacters(LevelsGained);
+	}
+
 	// level 어트리뷰트가 바뀌면 호출됨. 실제 상승 판정/후보 추출은 컴포넌트가 담당.
 	if (perkComponent)
 	{
