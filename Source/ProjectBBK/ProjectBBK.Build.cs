@@ -7,8 +7,11 @@ public class ProjectBBK : ModuleRules
 	public ProjectBBK(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "GameplayAbilities", "GameplayTags", "GameplayTasks", "Niagara", "LevelSequence", "MovieScene", "Landscape" });
+
+		// 모듈 폴더를 include 경로에 추가해서 에디터에서 헤더 파일을 찾을 수 있도록 설정
+		PublicIncludePaths.Add(ModuleDirectory);
+
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "GameplayAbilities", "GameplayTags", "GameplayTasks", "Niagara", "LevelSequence", "MovieScene", "Landscape" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "UMG", "Slate", "SlateCore", "GameplayAbilities", "MoviePlayer" });
 

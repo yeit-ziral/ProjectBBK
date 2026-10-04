@@ -918,9 +918,9 @@ void AC_BasePlayerCharactor::RestoreCharacterState()
 	}
 	else
 	{
-		SetHealth(savedState.health);
+		SetHealth(FMath::Min(savedState.health, GetMaxHealth()));
 		SetShield(savedState.shield);
-		SetStamina(savedState.stamina);
+		SetStamina(FMath::Min(savedState.stamina, GetMaxStamina()));
 		SetMana(savedState.mana);
 	}
 	// 스킬 인덱스는 AddCharacterAbilities 이후에 적용해야 하므로 여기서 처리하지 않음
@@ -981,6 +981,24 @@ void AC_BasePlayerCharactor::RestoreActiveEffects(UAbilitySystemComponent *ASC)
 	}
 
 	savedActiveEffects.Empty();
+}
+
+void AC_BasePlayerCharactor::ApplyLevelUpToSavedState(int32 LevelsGained)
+{
+	if (LevelsGained <= 0)
+		return;
+
+	// 아직 한 번도 저장된 적이 없으면(-1) 건드리지 않는다.
+	// 그래야 RestoreCharacterState의 "최대치로 가득 채우기" 분기가 그대로 동작한다.
+	if (savedState.health > 0.f)
+	{
+		savedState.health += UC_ChracterAttributeSetBase::healthPerLevel * LevelsGained;
+	}
+
+	if(savedState.stamina > 0.f)
+	{
+		savedState.stamina += UC_ChracterAttributeSetBase::staminaPerLevel * LevelsGained;
+	}
 }
 
 void AC_BasePlayerCharactor::PostInitializeComponents()

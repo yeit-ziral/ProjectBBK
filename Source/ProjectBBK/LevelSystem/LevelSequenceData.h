@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "../PlayerCharacter/C_PerkData.h"
+#include "../Items/ItemData.h"
 #include "LevelSequenceData.generated.h"
 
 USTRUCT(BlueprintType)
@@ -45,6 +46,15 @@ struct FPersistentCharacterState
 	int32 activeSkillIndex = 0;
 };
 
+// 레벨 간 유지할 캐릭터 1인의 장비 상태 — 슬롯별 itemID만 보관(GE 핸들은 캐릭터 재생성 시 무의미하므로 제외)
+USTRUCT()
+struct FPersistentEquipmentState
+{
+	GENERATED_BODY()
+
+	TMap<EEquipmentSlot, FName> equippedItems;
+};
+
 // 레벨 이동 시 GameInstance가 보관하는 전체 게임 상태
 USTRUCT()
 struct FPersistentGameState
@@ -62,6 +72,15 @@ struct FPersistentGameState
 	bool  bHasSavedState      = false;
 	TMap<FGameplayTag, FElementState> perkElements;
 	FCritState perkCrit;
+
+	// 인벤토리(PlayerController 소유, 로스터 공유 1벌) — slots 배열을 itemID/quantity 병렬 배열로 그대로 보관(빈칸 포함, 자유배치 위치 보존)
+	TArray<FName> inventoryItemIDs;
+	TArray<int32> inventoryQuantities;
+	TArray<FName> quickSlotItemIDs;
+	int32 money = 0;
+
+	// 장비(캐릭터별, characterStates와 동일한 로스터 인덱스로 대응)
+	TArray<FPersistentEquipmentState> equipmentStates;
 };
 
 UCLASS(BlueprintType)

@@ -17,7 +17,11 @@ AC_TrapZone::AC_TrapZone()
 	PrimaryActorTick.bCanEverTick = false;
 
 	TriggerCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("TriggerCapsule"));
-	TriggerCapsule->SetCollisionProfileName(TEXT("OverlapOnlyPawn"));
+	// "OverlapOnlyPawn" 프로파일은 프로젝트에 정의돼 있지 않아 무시되고 기본 Block 응답이 남음
+	// → 플레이어가 올라타거나 Foot IK(Visibility) 트레이스가 맞음. 응답을 직접 지정한다. (C_ExpOrb 패턴)
+	TriggerCapsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	TriggerCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	TriggerCapsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	RootComponent = TriggerCapsule;
 
 	DecalComp = CreateDefaultSubobject<UDecalComponent>(TEXT("DecalComp"));

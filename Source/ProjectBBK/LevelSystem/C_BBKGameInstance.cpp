@@ -18,6 +18,8 @@
 #include "../PlayerCharacter/PlayerAI/C_PlayerController.h"
 #include "../Skills/C_SkillManagerComponent.h"
 #include "../PlayerCharacter/C_LevelUpPerkComponent.h"
+#include "../Inventory/C_InventoryComponent.h"
+#include "../Equip/C_EquipmentComponent.h"
 
 void UC_BBKGameInstance::Init()
 {
@@ -292,10 +294,11 @@ void UC_BBKGameInstance::HideLoadingOverlay()
 // ─────────────────────────────────────────────
 
 void UC_BBKGameInstance::SaveGameState(const TArray<AC_BasePlayerCharactor*>& Roster,
-	int32 ActiveIndex, UAbilitySystemComponent* SharedASC)
+	int32 ActiveIndex, UAbilitySystemComponent* SharedASC, UC_InventoryComponent* Inventory)
 {
 	PersistedState = FPersistentGameState();
 	PersistedState.characterStates.SetNum(Roster.Num());
+	PersistedState.equipmentStates.SetNum(Roster.Num());
 	PersistedState.activeCharacterIndex = ActiveIndex;
 
 	for (int32 i = 0; i < Roster.Num(); i++)
@@ -303,6 +306,9 @@ void UC_BBKGameInstance::SaveGameState(const TArray<AC_BasePlayerCharactor*>& Ro
 		AC_BasePlayerCharactor* Char = Roster[i];
 		FPersistentCharacterState& State = PersistedState.characterStates[i];
 		if (!Char) continue;
+
+		if (UC_EquipmentComponent* Equip = Char->FindComponentByClass<UC_EquipmentComponent>())
+			PersistedState.equipmentStates[i].equippedItems = Equip->GetEquippedItemIDs();
 
 		State.bIsDead = Char->bIsDead;
 
@@ -347,11 +353,17 @@ void UC_BBKGameInstance::SaveGameState(const TArray<AC_BasePlayerCharactor*>& Ro
 		}
 	}
 
+	if (Inventory)
+	{
+		Inventory->GetPersistentState(PersistedState.inventoryItemIDs, PersistedState.inventoryQuantities,
+			PersistedState.quickSlotItemIDs, PersistedState.money);
+	}
+
 	PersistedState.bHasSavedState = true;
 }
 
 void UC_BBKGameInstance::RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roster,
-	int32 ActiveIndex, UAbilitySystemComponent* SharedASC)
+	int32 ActiveIndex, UAbilitySystemComponent* SharedASC, UC_InventoryComponent* Inventory)
 {
 	if (!PersistedState.bHasSavedState) return;
 
@@ -414,6 +426,27 @@ void UC_BBKGameInstance::RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roste
 		else
 		{
 			Char->InjectPreSavedState(State.health, State.stamina, State.shield, State.mana);
+		}
+	}
+
+	if (Inventory)
+	{
+		Inventory->RestorePersistentState(PersistedState.inventoryItemIDs, PersistedState.inventoryQuantities,
+			PersistedState.quickSlotItemIDs, PersistedState.money);
+	}
+
+	// 장비는 모든 캐릭터에 itemID만 복원(GE 미적용) — ASC는 공유 상태라 활성 캐릭터만 보너스 GE를 재적용해야
+	// 비활성 캐릭터 장비가 활성 캐릭터에 중복 적용되지 않는다 (Suspend/Reapply 불변식 유지).
+	for (int32 i = 0; i < Roster.Num() && i < PersistedState.equipmentStates.Num(); i++)
+	{
+		AC_BasePlayerCharactor* Char = Roster[i];
+		if (!Char) continue;
+
+		if (UC_EquipmentComponent* Equip = Char->FindComponentByClass<UC_EquipmentComponent>())
+		{
+			Equip->RestoreEquippedItemIDs(PersistedState.equipmentStates[i].equippedItems);
+			if (i == ActiveIndex)
+				Equip->ReapplyEquipBonuses();
 		}
 	}
 

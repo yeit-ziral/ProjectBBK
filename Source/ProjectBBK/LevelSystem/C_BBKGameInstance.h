@@ -12,6 +12,7 @@
 class AC_BasePlayerCharactor;
 class AC_PlayerController;
 class UAbilitySystemComponent;
+class UC_InventoryComponent;
 class USoundMix;
 class USoundClass;
 
@@ -53,10 +54,10 @@ public:
 	const UDA_LevelSequence* GetLevelSequence() const { return LevelSequence.Get(); }
 
 	void SaveGameState(const TArray<AC_BasePlayerCharactor*>& Roster,
-		int32 ActiveIndex, UAbilitySystemComponent* SharedASC);
+		int32 ActiveIndex, UAbilitySystemComponent* SharedASC, UC_InventoryComponent* Inventory);
 
 	void RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roster,
-		int32 ActiveIndex, UAbilitySystemComponent* SharedASC);
+		int32 ActiveIndex, UAbilitySystemComponent* SharedASC, UC_InventoryComponent* Inventory);
 
 	bool HasSavedState()                const { return PersistedState.bHasSavedState;       }
 	int32 GetSavedActiveCharacterIndex() const { return PersistedState.activeCharacterIndex; }

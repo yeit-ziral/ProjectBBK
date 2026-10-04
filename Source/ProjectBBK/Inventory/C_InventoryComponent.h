@@ -151,6 +151,16 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory|Money")
 	FOnMoneyChanged OnMoneyChanged;
 
+	// ===== 레벨 전환 영속 저장/복원 (UC_BBKGameInstance 전용) =====
+
+	// slots 배열을 itemID/quantity 병렬 배열로 그대로 추출(빈칸 포함) — 자유배치 위치 보존.
+	void GetPersistentState(TArray<FName>& OutItemIDs, TArray<int32>& OutQuantities,
+		TArray<FName>& OutQuickSlots, int32& OutMoney) const;
+
+	// 저장된 상태로 slots/quickSlots/money를 전체 치환. 저장 상태가 없을 때는 호출하지 않음(기존 시작 아이템 유지).
+	void RestorePersistentState(const TArray<FName>& InItemIDs, const TArray<int32>& InQuantities,
+		const TArray<FName>& InQuickSlots, int32 InMoney);
+
 protected:
 	// itemID 조회용 DataTable — 소유자/BP에서 지정 (DT_ConsumableItem / DT_EquipmentItem)
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
