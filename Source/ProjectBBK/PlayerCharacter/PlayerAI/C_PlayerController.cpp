@@ -148,7 +148,7 @@ void AC_PlayerController::BeginPlay()
 
 			if (PerkComp)
 				PerkComp->SetIgnoreLevelChanges(true); // 캐릭터 교체 시 레벨업 퍽 UI가 뜨지 않도록 잠깐 끔
-			GI_Ref->RestoreGameState(characterRoster, startIndex, SharedASC);
+			GI_Ref->RestoreGameState(characterRoster, startIndex, SharedASC, inventory);
 			if(PerkComp)
 				PerkComp->SetIgnoreLevelChanges(false);
 		}
@@ -665,7 +665,7 @@ void AC_PlayerController::SaveStateForLevelTransition()
 		SharedASC = PS->GetAbilitySystemComponent();
 
 	if (UC_BBKGameInstance *GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
-		GI->SaveGameState(characterRoster, currentCharacterIndex, SharedASC);
+		GI->SaveGameState(characterRoster, currentCharacterIndex, SharedASC, inventory);
 }
 
 void AC_PlayerController::ApplyLevelUpToInactiveCharacters(int32 LevelsGained)
