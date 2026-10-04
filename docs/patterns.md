@@ -161,6 +161,7 @@ DestroyTrap()
   → ClearTimer + FlushPersistentDebugLines + Destroy
 ```
 - `DamageEffectClass`는 BP에서 지정 (C++ 하드코딩 금지) → BP_TrapZone에서 GE_BasicDamage 지정
+- `TriggerCapsule`은 생성자에서 콜리전 응답을 직접 지정 (QueryOnly / 전 채널 Ignore / Pawn만 Overlap). 정의되지 않은 프로파일 이름 사용 금지 — 플레이어 이동·Foot IK 트레이스를 방해함 (Debugging Checklist #64)
 - DecalComponent 바닥 투영: BP에서 컴포넌트 Transform Y = -90 (Pitch -90도)
 - `CapsuleOverlapActors`의 `ActorsToIgnore`: AC_BaseMonster 클래스 필터로 플레이어 자동 제외 → 빈 배열로 충분
 
