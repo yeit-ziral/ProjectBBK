@@ -103,6 +103,21 @@ void UC_BBKGameInstance::TravelToNextLevel()
 	UDA_LevelSequence* Sequence = LevelSequence.LoadSynchronous();
 	if (!Sequence) return;
 
+	// 에디터에서 중간 맵을 바로 PIE로 시작하면 CurrentLevelIndex가 기본값(0)이라 엉뚱한 맵으로 넘어간다.
+	// 현재 열린 맵이 시퀀스에 있으면 그 위치로 인덱스를 맞춘다 (튜토리얼처럼 시퀀스 밖 맵은 그대로 둠).
+	if (const UWorld* World = GetWorld())
+	{
+		const FString CurrentMapName = UWorld::RemovePIEPrefix(World->GetOutermost()->GetName());
+		for (int32 i = 0; i < Sequence->Levels.Num(); i++)
+		{
+			if (Sequence->Levels[i].Level.GetLongPackageName() == CurrentMapName)
+			{
+				CurrentLevelIndex = i;
+				break;
+			}
+		}
+	}
+
 	if (!Sequence->HasNextLevel(CurrentLevelIndex))
 	{
 		OnGameClear.Broadcast();

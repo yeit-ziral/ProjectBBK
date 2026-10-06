@@ -360,6 +360,22 @@ void AC_BombMonster::ApplyExplosionDamage()
 		if (!targetASC || damagedASCs.Contains(targetASC)) continue;
 		damagedASCs.Add(targetASC);
 
+		// 폭발은 receivedTrueDamage(방어력 무시) 경로라 플레이어 AttributeSet의 실드 무효화(receivedDamage 전용)를 타지 않는다.
+		// 실드 중이면 일반 피격과 동일하게 실드를 1회 소모하고 폭발을 막아낸 것으로 처리
+		const FGameplayTag shieldTag = FGameplayTag::RequestGameplayTag(FName("State.Shield"));
+		if (targetASC->HasMatchingGameplayTag(shieldTag))
+		{
+			targetASC->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(shieldTag));
+
+			const FGameplayTag blockedTag = FGameplayTag::RequestGameplayTag(FName("Event.Player.ShieldBlocked"));
+			FGameplayEventData blockedPayload;
+			blockedPayload.EventTag = blockedTag;
+			blockedPayload.Instigator = this;
+			blockedPayload.Target = hitActor;
+			targetASC->HandleGameplayEvent(blockedTag, &blockedPayload);
+			continue;
+		}
+
 		// 대상 최대 체력 비율 고정 데미지 (몬스터 Attack 스탯 미사용)
 		const float maxHealth = targetASC->GetNumericAttribute(
 			UC_ChracterAttributeSetBase::GetmaxHealthAttribute());
