@@ -549,9 +549,6 @@ void AC_ShieldMonster::PlayBlockHitFeedback(AActor* Attacker)
 			effect->IsActive() ? 1 : 0,
 			effect->IsVisible() ? 1 : 0,
 			effect->bHiddenInGame ? 1 : 0);
-
-		// 이펙트가 안 보여도 이 구체는 남는다 — 스폰 좌표가 방패 위인지 눈으로 확인용
-		DrawDebugSphere(world, spawnLoc, 20.f, 12, FColor::Cyan, false, 3.f, 0, 1.5f);
 	}
 }
 

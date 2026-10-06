@@ -46,6 +46,10 @@ AC_BaseMonster::AC_BaseMonster()
 	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	GetCharacterMovement()->RotationRate                  = FRotator(0.f, 720.f, 0.f);
 
+	// 화면 밖 몬스터는 렌더링은 엔진이 알아서 컬링하지만 애니메이션 그래프는 기본값(AlwaysTickPose)이면 계속 돈다.
+	// 몽타주만 틱하도록 낮춘다 — 공격·사망 몽타주의 AnimNotify(판정·투사체 스폰)는 화면 밖에서도 그대로 발화
+	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered;
+
 	HpWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HpWidget"));
 	HpWidgetComponent->SetupAttachment(GetRootComponent());
 	HpWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
@@ -55,7 +59,7 @@ AC_BaseMonster::AC_BaseMonster()
 	HpWidgetComponent->SetTwoSided(true);
 
 	// 월드 공간 위젯은 Unlit이어도 씬 노출(Exposure)을 그대로 받는다.
-	// Stage 맵들은 PostProcessVolume이 노출을 EV100 8~9.6으로 고정해 둬서 기본 위젯 머티리얼로는 바가 새까맣게 보인다.
+	// 노출을 높게 고정한 맵(Stage 맵들이 원래 EV100 8~9.6 — 이후 0~1.6으로 낮춤)에서는 기본 위젯 머티리얼로는 바가 새까맣게 보인다.
 	// M_MonsterHPWidget3D = 엔진 Widget3DPassThrough(Masked·TwoSided) 복제본 + Emissive에 EyeAdaptationInverse → 노출과 무관하게 원래 색 유지.
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> HpWidgetMaterialFinder(
 		TEXT("/Game/Monster/UI/Monster/M_MonsterHPWidget3D.M_MonsterHPWidget3D"));

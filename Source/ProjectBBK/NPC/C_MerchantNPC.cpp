@@ -48,6 +48,20 @@ void AC_MerchantNPC::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 발(캡슐 바닥)을 지면에 맞춤 — 액터 스케일을 키우면 캡슐 반높이도 같이 커져 배치 높이 그대로면 발이 묻힌다
+	{
+		const FVector Start = GetActorLocation();
+		const FVector End = Start - FVector(0.f, 0.f, 1000.f);
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(MerchantGroundSnap), false, this);
+		FHitResult Hit;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params) && Hit.bBlockingHit)
+		{
+			FVector Snapped = Start;
+			Snapped.Z = Hit.ImpactPoint.Z + collisionCapsule->GetScaledCapsuleHalfHeight();
+			SetActorLocation(Snapped);
+		}
+	}
+
 	if (interactionWidgetClass)
 		interactionWidgetComp->SetWidgetClass(interactionWidgetClass);
 

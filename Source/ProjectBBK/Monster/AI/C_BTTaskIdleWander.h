@@ -56,8 +56,30 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Wander", meta = (ClampMin = "5.0"))
 	float acceptanceRadius = 30.f;
 
+	// 걷기 전에 제자리에서 목표 방향으로 도는 속도 (도/초) — 걷는 중 회전에도 같은 값 사용.
+	// 전투용 RotationRate(720)를 그대로 쓰면 출발 순간 몸이 홱 돌아가고, 도는 동안 옆/뒷걸음 애니메이션이 섞임
+	UPROPERTY(EditAnywhere, Category = "Wander|Smoothing", meta = (ClampMin = "30.0"))
+	float wanderTurnRate = 200.f;
+
+	// 현재 정면 기준 이 각도(도) 안쪽의 지점을 우선 선택 — 매번 뒤돌아 왔다갔다 하는 것 방지
+	UPROPERTY(EditAnywhere, Category = "Wander|Smoothing", meta = (ClampMin = "10.0", ClampMax = "180.0"))
+	float preferredTurnAngle = 110.f;
+
+	// 배회 중 가속도 (cm/s²) — 기본값(2048)은 한 프레임 만에 최고 속도라 출발이 뚝 끊겨 보임
+	UPROPERTY(EditAnywhere, Category = "Wander|Smoothing", meta = (ClampMin = "50.0"))
+	float wanderAcceleration = 250.f;
+
+	// 도착 지점 앞 이 거리(cm)부터 감속 — 급정지 방지
+	UPROPERTY(EditAnywhere, Category = "Wander|Smoothing", meta = (ClampMin = "0.0"))
+	float wanderBrakingDistance = 80.f;
+
+	// 화면에 안 보이는 동안에는 새 이동을 시작하지 않고 대기만 함 (경로 탐색·이동 연산 절약)
+	UPROPERTY(EditAnywhere, Category = "Wander|Optimization")
+	bool bWanderOnlyWhenRendered = true;
+
 private:
 	bool HasTarget(UBehaviorTreeComponent& OwnerComp) const;
 	bool PickWanderPoint(const class AC_BaseMonster* Monster, FVector& OutPoint) const;
+	bool StartTurn(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory);
 	bool StartMove(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory);
 };
