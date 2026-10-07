@@ -1011,7 +1011,7 @@ void AC_BasePlayerCharactor::PostInitializeComponents()
 	Super::PostInitializeComponents();
 	if(springArm)
 	{
-		springArm->bDoCollisionTest = false;
-		springArm->ProbeChannel = ECC_GameTraceChannel1; // Set Cameral Collision Channel to void collision with monsters
+		springArm->bDoCollisionTest = true;
+		springArm->ProbeChannel = ECC_GameTraceChannel1; // CameraFloor (기본 Ignore, Floor 프로필만 Block)
 	}
 }

@@ -371,6 +371,8 @@ void AC_BaseMonster::DropMoneyReward()
 	{
 		// SpawnActor가 BeginPlay까지 끝낸 뒤이므로 여기서 다시 넣어야 상호작용 문구("N gold")까지 갱신된다
 		Money->InitMoney(Amount);
+		// 플레이어가 이미 겹친 채 스폰되면 BeginOverlap을 놓쳐 위젯이 "0 gold"로 굳는다 (Debugging Checklist #62)
+		Money->RefreshOverlapState();
 	}
 }
 
