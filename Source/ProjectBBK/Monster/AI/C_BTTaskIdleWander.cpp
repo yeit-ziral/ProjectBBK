@@ -122,7 +122,7 @@ bool UC_BTTaskIdleWander::StartTurn(UBehaviorTreeComponent& OwnerComp, uint8* No
 	return true;
 }
 
-bool UC_BTTaskIdleWander::StartMove(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+bool UC_BTTaskIdleWander::StartMove(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float MoveTimeout)
 {
 	FIdleWanderMemory* mem = CastInstanceNodeMemory<FIdleWanderMemory>(NodeMemory);
 	AAIController* aiController = OwnerComp.GetAIOwner();
@@ -140,7 +140,7 @@ bool UC_BTTaskIdleWander::StartMove(UBehaviorTreeComponent& OwnerComp, uint8* No
 	if (res != EPathFollowingRequestResult::RequestSuccessful) return false;
 
 	mem->phase        = EWanderPhase::Move;
-	mem->phaseEndTime = monster->GetWorld()->GetTimeSeconds() + maxMoveTime;
+	mem->phaseEndTime = monster->GetWorld()->GetTimeSeconds() + MoveTimeout;
 	return true;
 }
 
@@ -157,10 +157,14 @@ EBTNodeResult::Type UC_BTTaskIdleWander::ExecuteTask(UBehaviorTreeComponent& Own
 
 	if (HasTarget(OwnerComp)) return EBTNodeResult::Failed;
 
+	// 추적하다 타겟을 놓쳐 배회 반경 밖에 있으면 이번 사이클은 배회가 아니라 스폰 위치 복귀
+	const bool bReturnHome =
+		FVector::Dist2D(monster->GetActorLocation(), monster->idleHomeLocation) > wanderRadius + returnHomeMargin;
+
 	if (UCharacterMovementComponent* move = monster->GetCharacterMovement())
 	{
-		// GA가 이동을 막고 있을 때(MaxWalkSpeed=0)는 덮어쓰지 않음
-		if (move->MaxWalkSpeed > 0.f && monster->GetMonsterAttributeSet())
+		// GA가 이동을 막고 있을 때(MaxWalkSpeed=0)는 덮어쓰지 않음. 복귀는 전투 이동 속도 그대로
+		if (!bReturnHome && move->MaxWalkSpeed > 0.f && monster->GetMonsterAttributeSet())
 		{
 			move->MaxWalkSpeed     = monster->GetMonsterAttributeSet()->GetmoveSpeed() * wanderSpeedRatio;
 			mem->bSpeedOverridden  = true;
@@ -180,7 +184,8 @@ EBTNodeResult::Type UC_BTTaskIdleWander::ExecuteTask(UBehaviorTreeComponent& Own
 
 		// 출발·정지·회전을 부드럽게 — 전투용 값(가속 2048, 회전 720도/초, 속도 직접 대입)은 배회엔 너무 급함.
 		// 경로 추종을 가속 기반으로 바꾸면 도착 시 속도를 0으로 강제하지 않고 브레이킹 거리 안에서 서서히 줄어듦
-		if (FNavMovementProperties* navProps = move->GetNavMovementProperties())
+		FNavMovementProperties* navProps = bReturnHome ? nullptr : move->GetNavMovementProperties();
+		if (navProps)
 		{
 			mem->bSmoothingOverridden          = true;
 			mem->savedMaxAcceleration          = move->MaxAcceleration;
@@ -195,6 +200,14 @@ EBTNodeResult::Type UC_BTTaskIdleWander::ExecuteTask(UBehaviorTreeComponent& Own
 			navProps->bUseFixedBrakingDistanceForPaths = true;
 			navProps->FixedPathBrakingDistance         = wanderBrakingDistance;
 		}
+	}
+
+	// 복귀는 대기·제자리 회전 없이 바로 출발. 이동 요청이 실패하면 아래 일반 대기로 넘어가 다음 사이클에 재시도
+	if (bReturnHome && !IsWanderBlocked(monster))
+	{
+		mem->destination = monster->idleHomeLocation;
+		if (StartMove(OwnerComp, NodeMemory, returnMaxMoveTime))
+			return EBTNodeResult::InProgress;
 	}
 
 	// 대기부터 시작 — 여러 마리가 동시에 출발하지 않도록 랜덤 시간
@@ -259,7 +272,7 @@ void UC_BTTaskIdleWander::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 		if (toDest.IsNearlyZero() || remain <= TURN_DONE_ANGLE || now >= mem->phaseEndTime)
 		{
 			// 이동 요청 실패면 이번 사이클 종료
-			if (!StartMove(OwnerComp, NodeMemory))
+			if (!StartMove(OwnerComp, NodeMemory, maxMoveTime))
 				FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 		}
 		else

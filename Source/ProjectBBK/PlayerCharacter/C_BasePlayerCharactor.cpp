@@ -307,6 +307,11 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 		abilitySystemComponent->SetNumericAttributeBase(
 			UC_ChracterAttributeSetBase::GetdamageAttribute(),
 			baseDamage + bonusLevel * 30.f);
+
+		// TEMP(맵 테스트용): 공격력·체력 10000 고정 — 테스트 끝나면 이 블록 삭제, 커밋 금지
+		abilitySystemComponent->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetdamageAttribute(), 10000.f);
+		abilitySystemComponent->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetmaxHealthAttribute(), 10000.f);
+		abilitySystemComponent->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GethealthAttribute(), 10000.f);
 	}
 
 	if (!bCharacterInitiailized)

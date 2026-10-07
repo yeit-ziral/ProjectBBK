@@ -343,6 +343,7 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 				monster->StartHitFlash();
 				monster->TakeHitReaction();
 				monster->PlayHitVFX(damageSource);
+				monster->NotifyDamagedForChaseLeash();
 			}
 		}
 
@@ -373,7 +374,10 @@ void UC_MonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
             // DoT는 틱이 잦으므로 hitVFXMinInterval이 겹침을 걸러낸다
             if (AC_BaseMonster* monster = Cast<AC_BaseMonster>(GetOwningActor()))
+            {
                 monster->PlayHitVFX(trueDamageSource);
+                monster->NotifyDamagedForChaseLeash();
+            }
         }
 
         CheckAndHandleDeath(NewHP);
