@@ -248,6 +248,40 @@ public:
 	// 비전투 배회 기준점 — BeginPlay 위치. C_BTTaskIdleWander가 이 점 주변 반경 안에서만 움직인다
 	FVector idleHomeLocation = FVector::ZeroVector;
 
+	// 추적 한계 범위(공터) — AC_MonsterArenaLock이 BeginPlay에서 지정. 플레이어가 이 원 밖으로 나가면
+	// C_MonsterBTService가 타겟을 놓고, C_BTTaskIdleWander가 idleHomeLocation으로 복귀시킨다.
+	// 지정되지 않은 몬스터(공터 소속 아님)는 기존처럼 제한 없이 추적한다
+	void SetChaseLeash(const FVector& Center, float Radius)
+	{
+		bHasChaseLeash   = true;
+		chaseLeashCenter = Center;
+		chaseLeashRadius = Radius;
+	}
+
+	// 피격 시 호출 (UC_MonsterAttributeSet) — 이후 chaseLeashIgnoreDuration 동안 추적 한계와 인식 거리를 무시하고 쫓는다.
+	// 공터 밖에서 원거리 공격으로 일방적으로 때리는 것 방지. 맞을 때마다 시간이 갱신된다
+	void NotifyDamagedForChaseLeash()
+	{
+		if (const UWorld* World = GetWorld())
+			chaseLeashIgnoreUntil = World->GetTimeSeconds() + chaseLeashIgnoreDuration;
+	}
+
+	bool IsChaseLeashIgnored() const
+	{
+		const UWorld* World = GetWorld();
+		return World && World->GetTimeSeconds() < chaseLeashIgnoreUntil;
+	}
+
+	// 피격 후 추적 한계를 무시하는 시간 (초). 0이면 피격해도 한계를 지킨다
+	UPROPERTY(EditDefaultsOnly, Category = "Monster|Leash", meta = (ClampMin = "0.0"))
+	float chaseLeashIgnoreDuration = 5.f;
+
+	float chaseLeashIgnoreUntil = -1.f;
+
+	bool    bHasChaseLeash   = false;
+	FVector chaseLeashCenter = FVector::ZeroVector;
+	float   chaseLeashRadius = 0.f;
+
 private:
 	// IsAttackCooldownPaused()가 false인 프레임에만 DeltaTime만큼 증가 (Tick에서 갱신)
 	float attackClock = 0.0f;

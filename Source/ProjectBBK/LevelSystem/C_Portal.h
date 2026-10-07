@@ -32,6 +32,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Portal")
 	void DeactivatePortal();
 
+	// 미니맵 등 표시용 — 열렸는지 여부
+	bool IsActivated() const { return bIsActivated; }
+
 protected:
 	virtual void BeginPlay() override;
 

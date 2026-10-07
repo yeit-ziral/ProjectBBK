@@ -37,6 +37,9 @@ protected:
 	// 몬스터 전멸로 포탈이 열리면 안 된다 — 튜토리얼 완료가 유일한 조건
 	virtual bool ShouldAutoActivatePortals() const override { return false; }
 
+	// 우상단은 튜토리얼 단계 문구 자리 — 미니맵을 띄우지 않는다
+	virtual bool ShouldShowMinimap() const override { return false; }
+
 	// BP_TutorialGameMode에서 DT_TutorialSteps 할당
 	UPROPERTY(EditDefaultsOnly, Category = "Tutorial")
 	UDataTable* tutorialStepTable;

@@ -30,6 +30,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Arena")
 	int32 GetRemainingMonsterCount() const { return remainingMonsterCount; }
 
+	// 공터 범위를 알아야 하는 쪽(미니맵 등)에서 사용 — 배치된 몬스터·상자 목록
+	const TArray<TObjectPtr<AC_BaseMonster>>& GetGuardMonsters() const { return guardMonsters; }
+	const TArray<TObjectPtr<AC_BaseItem>>& GetLockedChests() const { return lockedChests; }
+
 	// 공터 몬스터 전멸 시 1회 브로드캐스트 (연출 연결용)
 	UPROPERTY(BlueprintAssignable, Category = "Arena")
 	FOnArenaCleared OnArenaCleared;
@@ -45,12 +49,21 @@ protected:
 	UPROPERTY(EditInstanceOnly, Category = "Arena")
 	TArray<TObjectPtr<AC_BaseItem>> lockedChests;
 
+	// 플레이어가 공터 밖으로 나가면 몬스터가 추적을 포기하고 제자리로 돌아간다
+	UPROPERTY(EditAnywhere, Category = "Arena|Leash")
+	bool bLeashMonsters = true;
+
+	// 공터 범위 = 몬스터·상자를 감싸는 원 + 이 여유(cm). 미니맵의 clearingMargin과 같은 방식
+	UPROPERTY(EditAnywhere, Category = "Arena|Leash", meta = (ClampMin = "0.0", EditCondition = "bLeashMonsters"))
+	float leashMargin = 600.f;
+
 	UPROPERTY(VisibleAnywhere, Category = "Arena")
 	TObjectPtr<UBillboardComponent> editorIcon;
 
 private:
 	void HandleMonsterDeath(UC_MonsterASC* DeadASC);
 	void Unlock();
+	void ApplyChaseLeash();
 
 	// 사망 판정은 ASC 기준 — 같은 몬스터의 중복 브로드캐스트 방지
 	TSet<TWeakObjectPtr<UC_MonsterASC>> aliveASCs;

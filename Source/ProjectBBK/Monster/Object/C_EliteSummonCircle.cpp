@@ -6,6 +6,10 @@
 #include "Components/DecalComponent.h"
 #include "Components/BillboardComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/WidgetComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "AIController.h"
+#include "BrainComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -13,7 +17,9 @@
 
 AC_EliteSummonCircle::AC_EliteSummonCircle()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	// 솟아오르기·마법진 페이드가 진행 중일 때만 Tick을 켠다
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent = root;
@@ -29,10 +35,10 @@ AC_EliteSummonCircle::AC_EliteSummonCircle()
 	editorIcon->bIsEditorOnly = true;
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CircleMaterialFinder(
-		TEXT("/Game/Monster/Decal/Material/Decal/MagicCircleFiredecal.MagicCircleFiredecal"));
+		TEXT("/Game/Monster/Decal/Material/Decal/M_EliteSummonCircle.M_EliteSummonCircle"));
 	if (CircleMaterialFinder.Succeeded())
 	{
-		circleMaterial = CircleMaterialFinder.Object;
+		summonCircleMaterial = CircleMaterialFinder.Object;
 	}
 
 	static ConstructorHelpers::FClassFinder<AC_BaseMonster> EliteClassFinder(
@@ -51,12 +57,14 @@ void AC_EliteSummonCircle::BeginPlay()
 	circleDecal->SetWorldLocation(FindGroundLocation());
 	circleDecal->DecalSize = FVector(decalDepth, circleRadius, circleRadius);
 
-	if (circleMaterial)
+	if (summonCircleMaterial)
 	{
-		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(circleMaterial, this);
-		MID->SetVectorParameterValue(colorParameterName, circleColor);
-		circleDecal->SetDecalMaterial(MID);
+		circleMID = UMaterialInstanceDynamic::Create(summonCircleMaterial, this);
+		circleMID->SetVectorParameterValue(colorParameterName, summonCircleColor);
+		circleMID->SetScalarParameterValue(intensityParameterName, circleIntensity);
+		circleDecal->SetDecalMaterial(circleMID);
 	}
+	SetCircleOpacity(0.f);
 
 	if (AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>())
 	{
@@ -75,18 +83,24 @@ void AC_EliteSummonCircle::HandleAllMonstersDefeated()
 		GM->RegisterPendingMonster();
 	}
 
+	// 마법진이 서서히 나타남
 	circleDecal->SetVisibility(true);
-	GetWorldTimerManager().SetTimer(summonTimer, this, &AC_EliteSummonCircle::SpawnSummon, FMath::Max(summonDelay, 0.01f), false);
+	circleFadeDirection = 1;
+	SetActorTickEnabled(true);
+
+	GetWorldTimerManager().SetTimer(summonTimer, this, &AC_EliteSummonCircle::BeginRise, FMath::Max(summonDelay, 0.01f), false);
 }
 
-void AC_EliteSummonCircle::SpawnSummon()
+void AC_EliteSummonCircle::BeginRise()
 {
 	FVector SpawnLocation = FindGroundLocation();
 
 	// 캡슐 바닥이 지면에 닿도록 반높이만큼 올림
+	float HalfHeight = 0.f;
 	if (const ACharacter* CDO = summonClass->GetDefaultObject<ACharacter>())
 	{
-		SpawnLocation.Z += CDO->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		HalfHeight = CDO->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		SpawnLocation.Z += HalfHeight;
 	}
 
 	// 플레이어를 바라보며 등장
@@ -96,36 +110,175 @@ void AC_EliteSummonCircle::SpawnSummon()
 		SpawnRotation = FRotator(0.f, (Player->GetActorLocation() - SpawnLocation).Rotation().Yaw, 0.f);
 	}
 
+	// 도착 위치에서 스폰한다 — BeginPlay가 이 위치를 배회 기준점(idleHomeLocation) 등으로 기록하므로.
 	// level은 BeginPlay의 DataComponent 초기화에서 스탯 계산에 쓰이므로 FinishSpawning 전에 주입
 	const FTransform SpawnTransform(SpawnRotation, SpawnLocation);
 	AC_BaseMonster* Summoned = GetWorld()->SpawnActorDeferred<AC_BaseMonster>(
-		summonClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+		summonClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
-	if (Summoned)
-	{
-		Summoned->level = summonLevel;
-		Summoned->FinishSpawning(SpawnTransform);
-		OnEliteSummoned.Broadcast(Summoned);
-	}
-	else if (AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>())
+	if (!Summoned)
 	{
 		// 스폰 실패 시 예약해 둔 카운트를 되돌려 포탈이 영영 안 열리는 상황 방지
-		GM->NotifyMonsterDead();
+		if (AC_BBKGameMode* GM = GetWorld()->GetAuthGameMode<AC_BBKGameMode>())
+		{
+			GM->NotifyMonsterDead();
+		}
+		StartCircleFadeOut();
+		return;
 	}
 
-	if (circleLingerTime > 0.f)
+	Summoned->level = summonLevel;
+	Summoned->FinishSpawning(SpawnTransform);
+
+	// ── 솟아오르는 동안은 "아직 없는 몬스터"로 취급: 맞지도, 때리지도, 움직이지도 않는다 ──
+	Summoned->SetActorEnableCollision(false);
+	Summoned->SetActorTickEnabled(false);   // 공격 쿨타임 시계·디버그 자동공격 정지 (메시 애니메이션은 계속 재생)
+
+	if (UCharacterMovementComponent* Movement = Summoned->GetCharacterMovement())
 	{
-		GetWorldTimerManager().SetTimer(hideTimer, this, &AC_EliteSummonCircle::HideCircle, circleLingerTime, false);
+		Movement->StopMovementImmediately();
+		Movement->SetMovementMode(MOVE_None);   // 바닥 아래에서 중력·밀어내기가 작동하지 않게
 	}
-	else
+
+	if (AAIController* AI = Cast<AAIController>(Summoned->GetController()))
 	{
-		HideCircle();
+		if (UBrainComponent* Brain = AI->GetBrainComponent())
+		{
+			Brain->StopLogic(TEXT("Summoning"));
+		}
+	}
+
+	// HP 바가 바닥을 뚫고 먼저 보이지 않게
+	TArray<UWidgetComponent*> Widgets;
+	Summoned->GetComponents<UWidgetComponent>(Widgets);
+	for (UWidgetComponent* Widget : Widgets)
+	{
+		Widget->SetHiddenInGame(true);
+	}
+
+	// 몸 전체가 바닥 아래로 들어가도록 묻는다
+	riseTargetLocation = SpawnLocation;
+	riseDepth = HalfHeight * 2.f + riseExtraDepth;
+	riseElapsed = 0.f;
+	risingMonster = Summoned;
+	bRising = true;
+
+	Summoned->SetActorLocation(riseTargetLocation - FVector(0.f, 0.f, riseDepth), false, nullptr, ETeleportType::TeleportPhysics);
+	SetActorTickEnabled(true);
+}
+
+void AC_EliteSummonCircle::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 마법진 페이드
+	if (circleFadeDirection != 0)
+	{
+		const float Step = circleFadeTime > KINDA_SMALL_NUMBER ? DeltaSeconds / circleFadeTime : 1.f;
+		const float NewOpacity = FMath::Clamp(circleOpacity + Step * circleFadeDirection, 0.f, 1.f);
+		SetCircleOpacity(NewOpacity);
+
+		if (NewOpacity >= 1.f || NewOpacity <= 0.f)
+		{
+			if (circleFadeDirection < 0) circleDecal->SetVisibility(false);
+			circleFadeDirection = 0;
+		}
+	}
+
+	// 몬스터 솟아오르기
+	if (bRising)
+	{
+		AC_BaseMonster* Monster = risingMonster.Get();
+		if (!Monster)
+		{
+			// 올라오는 도중 사라짐(레벨 정리 등)
+			bRising = false;
+			StartCircleFadeOut();
+		}
+		else
+		{
+			riseElapsed += DeltaSeconds;
+			const float Alpha = FMath::Clamp(riseElapsed / FMath::Max(riseDuration, 0.1f), 0.f, 1.f);
+
+			// 처음엔 천천히, 끝에서 부드럽게 멈춤
+			const float Eased = FMath::InterpEaseInOut(0.f, 1.f, Alpha, 2.f);
+			Monster->SetActorLocation(riseTargetLocation - FVector(0.f, 0.f, riseDepth * (1.f - Eased)),
+				false, nullptr, ETeleportType::TeleportPhysics);
+
+			if (Alpha >= 1.f)
+			{
+				FinishRise();
+			}
+		}
+	}
+
+	if (!bRising && circleFadeDirection == 0)
+	{
+		SetActorTickEnabled(false);
 	}
 }
 
-void AC_EliteSummonCircle::HideCircle()
+void AC_EliteSummonCircle::FinishRise()
 {
-	circleDecal->SetVisibility(false);
+	bRising = false;
+
+	if (AC_BaseMonster* Monster = risingMonster.Get())
+	{
+		Monster->SetActorLocation(riseTargetLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+		// ── 여기서부터 진짜 몬스터: 콜리전 → 이동 → Tick → AI 순서로 켠다 ──
+		Monster->SetActorEnableCollision(true);
+
+		if (UCharacterMovementComponent* Movement = Monster->GetCharacterMovement())
+		{
+			Movement->SetMovementMode(MOVE_Walking);
+		}
+
+		Monster->SetActorTickEnabled(true);
+
+		TArray<UWidgetComponent*> Widgets;
+		Monster->GetComponents<UWidgetComponent>(Widgets);
+		for (UWidgetComponent* Widget : Widgets)
+		{
+			Widget->SetHiddenInGame(false);
+		}
+
+		if (AAIController* AI = Cast<AAIController>(Monster->GetController()))
+		{
+			if (UBrainComponent* Brain = AI->GetBrainComponent())
+			{
+				Brain->RestartLogic();
+			}
+		}
+
+		OnEliteSummoned.Broadcast(Monster);
+	}
+
+	risingMonster.Reset();
+
+	if (circleLingerTime > 0.f)
+	{
+		GetWorldTimerManager().SetTimer(hideTimer, this, &AC_EliteSummonCircle::StartCircleFadeOut, circleLingerTime, false);
+	}
+	else
+	{
+		StartCircleFadeOut();
+	}
+}
+
+void AC_EliteSummonCircle::StartCircleFadeOut()
+{
+	circleFadeDirection = -1;
+	SetActorTickEnabled(true);
+}
+
+void AC_EliteSummonCircle::SetCircleOpacity(float Opacity)
+{
+	circleOpacity = Opacity;
+	if (circleMID)
+	{
+		circleMID->SetScalarParameterValue(opacityParameterName, Opacity);
+	}
 }
 
 FVector AC_EliteSummonCircle::FindGroundLocation() const

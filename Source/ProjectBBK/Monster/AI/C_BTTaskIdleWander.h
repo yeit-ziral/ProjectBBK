@@ -56,6 +56,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Wander", meta = (ClampMin = "5.0"))
 	float acceptanceRadius = 30.f;
 
+	// 배회 반경에서 이 거리(cm) 이상 벗어나 있으면(추적하다 타겟을 놓친 직후 등) 배회 대신 스폰 위치로 곧장 복귀.
+	// 복귀는 대기 없이 전투 이동 속도(DT moveSpeed) 그대로 — 배회 속도로는 너무 오래 걸림
+	UPROPERTY(EditAnywhere, Category = "Wander|Return", meta = (ClampMin = "0.0"))
+	float returnHomeMargin = 150.f;
+
+	// 복귀 이동을 끊는 시간 (초) — 넘기면 그 자리에서 일반 배회 사이클로 넘어가고, 여전히 멀면 다시 복귀 시도
+	UPROPERTY(EditAnywhere, Category = "Wander|Return", meta = (ClampMin = "1.0"))
+	float returnMaxMoveTime = 20.f;
+
 	// 걷기 전에 제자리에서 목표 방향으로 도는 속도 (도/초) — 걷는 중 회전에도 같은 값 사용.
 	// 전투용 RotationRate(720)를 그대로 쓰면 출발 순간 몸이 홱 돌아가고, 도는 동안 옆/뒷걸음 애니메이션이 섞임
 	UPROPERTY(EditAnywhere, Category = "Wander|Smoothing", meta = (ClampMin = "30.0"))
@@ -81,5 +90,5 @@ private:
 	bool HasTarget(UBehaviorTreeComponent& OwnerComp) const;
 	bool PickWanderPoint(const class AC_BaseMonster* Monster, FVector& OutPoint) const;
 	bool StartTurn(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory);
-	bool StartMove(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory);
+	bool StartMove(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float MoveTimeout);
 };

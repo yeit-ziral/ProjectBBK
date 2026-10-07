@@ -22,6 +22,10 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Detection")
     float DetectionRange = 1500.0f;
 
+    // 공터(AC_BaseMonster::chaseLeashRadius) 밖으로 나간 플레이어를 이 거리(cm)만큼은 더 쫓은 뒤 포기
+    UPROPERTY(EditAnywhere, Category = "Detection", meta = (ClampMin = "0.0"))
+    float LeashReleaseMargin = 200.0f;
+
     UPROPERTY(EditAnywhere, Category = "Blackboard")
     FBlackboardKeySelector TargetActorKey;
 
