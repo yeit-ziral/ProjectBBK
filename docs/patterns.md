@@ -904,13 +904,14 @@ AC_BaseItem::RefreshOverlapState() (신규, BlueprintCallable)
   → 겹친 플레이어가 있으면 NotifyPlayerInRange() 호출
      (OnItemBeginOverlap과 동일 로직을 공유 — SetCurrentInteractable + 위젯 텍스트/표시)
 
-스폰 주체(AC_TreasureChest 등)
+스폰 주체(AC_TreasureChest, AC_BaseMonster::DropMoneyReward 등)
   SpawnActor<T>(...)
   → Spawned->InitItem(id) 또는 Spawned->InitMoney(amount)   ← 반드시 먼저
   → Spawned->RefreshOverlapState()                          ← 그 다음
 ```
 - 순서가 중요함: `InitXXX`보다 먼저 `RefreshOverlapState`를 부르면 위젯에 초기화 전 기본값(예: "0 gold")이 찍힘(Debugging Checklist #62)
 - `OnItemBeginOverlap`과 `RefreshOverlapState`는 공통 로직(`NotifyPlayerInRange`)을 공유하므로 중복 호출돼도 안전(`AddUnique` 기반)
+- 새 스폰 주체를 만들 때는 `SpawnActor` → `InitXXX` → `RefreshOverlapState`를 한 세트로 쓸 것. 스폰 주체만 바꿔 같은 버그가 반복됨(TreasureChest → 몬스터 MoneyItem 드랍)
 
 ### 다중 지점 지면 스폰 폴백 체인 패턴 (`AC_TreasureChest::FindGroundSpawnPoint` 참고)
 "3인칭 카메라 지면 위치 탐색 패턴"의 변형 — 한 지점이 아니라 반경 안 여러 흩뿌림 지점 각각의 바닥을 구해야 하고, 일부 지점이 실패해도 스폰 자체는 반드시 이루어져야 하는 경우.
