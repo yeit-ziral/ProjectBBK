@@ -21,6 +21,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "Materials/MaterialInterface.h"
+#include "Engine/PostProcessVolume.h"
+#include "EngineUtils.h"
+#include "Camera/PlayerCameraManager.h"
+
+// 사망 연기에 가려진 몬스터를 다시 찾는 주기(초)
+static const float SMOKE_OUTLINE_UPDATE_INTERVAL = 0.1f;
 
 AC_BaseMonster::AC_BaseMonster()
 {
@@ -84,6 +90,19 @@ AC_BaseMonster::AC_BaseMonster()
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[AC_BaseMonster] NS_ForgeSparks를 찾지 못했습니다. 경로 확인: /Game/RPGEnvironmentVFX/VFX/Niagara/NS_ForgeSparks"));
+	}
+
+	// 사망 연기 속 윤곽선용 포스트프로세스 머티리얼 — 상인 NPC 외곽선과 같은 것(Custom Stencil 엣지 검출)
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DeathOutlineFinder(
+		TEXT("/Game/NPC/M_Outline_PP.M_Outline_PP"));
+
+	if (DeathOutlineFinder.Succeeded())
+	{
+		deathOutlineMaterial = DeathOutlineFinder.Object;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[AC_BaseMonster] M_Outline_PP를 찾지 못했습니다. 경로 확인: /Game/NPC/M_Outline_PP"));
 	}
 
 	// 돈 드랍 기본 클래스 — 몬스터 BP마다 수동 할당하지 않아도 되도록 여기서 잡는다.
@@ -378,6 +397,10 @@ void AC_BaseMonster::DropMoneyReward()
 
 void AC_BaseMonster::ExecuteDeathSequence()
 {
+	// 죽는 몬스터는 다른 몬스터의 사망 연기 윤곽선 대상에서 빠진다
+	bDeathSequenceStarted = true;
+	HideSmokeOutline();
+
 	// 0. ExpOrb 드랍
 	if (ExpOrbClass && dataComponent)
 	{
@@ -483,8 +506,24 @@ void AC_BaseMonster::OnDeathMontageVFXPoint()
 		);
 	}
 
-	// 2. 메시 숨김 (안개가 시체를 가리는 동안)
+	// 2. 메시 숨김 (안개가 시체를 가리는 동안) — 죽은 몬스터 자신은 윤곽선을 남기지 않는다
 	GetMesh()->SetVisibility(false);
+
+	// 2-1. 이 연기에 가려진 살아있는 몬스터는 윤곽선으로 보이게 한다
+	if (bOutlineMonstersInDeathSmoke && deathOutlineMaterial && deathSmokeDuration > 0.f)
+	{
+		EnsureOutlinePostProcess();
+
+		smokeOutlineEndTime = GetWorld()->GetTimeSeconds() + deathSmokeDuration;
+		GetWorld()->GetTimerManager().SetTimer(
+			smokeOutlineUpdateTimerHandle,
+			this,
+			&AC_BaseMonster::UpdateSmokeOutlines,
+			SMOKE_OUTLINE_UPDATE_INTERVAL,
+			true
+		);
+		UpdateSmokeOutlines();
+	}
 
 	// 3. deathDestroyDelay 후 액터 소멸
 	GetWorld()->GetTimerManager().SetTimer(
@@ -494,6 +533,90 @@ void AC_BaseMonster::OnDeathMontageVFXPoint()
 		deathDestroyDelay,
 		false
 	);
+}
+
+void AC_BaseMonster::UpdateSmokeOutlines()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	if (World->GetTimeSeconds() >= smokeOutlineEndTime)
+	{
+		World->GetTimerManager().ClearTimer(smokeOutlineUpdateTimerHandle);
+		return;
+	}
+
+	const APlayerCameraManager* Camera = UGameplayStatics::GetPlayerCameraManager(this, 0);
+	if (!Camera) return;
+
+	const FVector CameraLocation = Camera->GetCameraLocation();
+	const FVector SmokeLocation = GetActorLocation();
+
+	for (TActorIterator<AC_BaseMonster> It(World); It; ++It)
+	{
+		AC_BaseMonster* Other = *It;
+		if (Other == this || Other->bDeathSequenceStarted) continue;
+
+		// 카메라에서 몬스터로 가는 시선이 연기 구를 지나면 가려진 것 — 연기 안에 있는 경우와 연기 뒤에 있는 경우를 함께 잡는다
+		const float Reach = deathSmokeRadius + Other->GetCapsuleComponent()->GetScaledCapsuleRadius();
+		if (FMath::PointDistToSegment(SmokeLocation, CameraLocation, Other->GetActorLocation()) <= Reach)
+		{
+			Other->ShowSmokeOutline(deathOutlineStencilValue);
+		}
+	}
+}
+
+void AC_BaseMonster::ShowSmokeOutline(int32 StencilValue)
+{
+	USkeletalMeshComponent* mesh = GetMesh();
+	if (!mesh || bDeathSequenceStarted) return;
+
+	mesh->SetCustomDepthStencilValue(StencilValue);
+	mesh->SetRenderCustomDepth(true);
+
+	// 통보가 끊기면(연기가 걷혔거나 시야에서 벗어남) 스스로 끈다. 연기가 여러 개 겹쳐도 통보마다 연장되므로 깜빡이지 않는다
+	GetWorld()->GetTimerManager().SetTimer(
+		smokeOutlineHideTimerHandle,
+		this,
+		&AC_BaseMonster::HideSmokeOutline,
+		SMOKE_OUTLINE_UPDATE_INTERVAL * 2.5f,
+		false
+	);
+}
+
+void AC_BaseMonster::HideSmokeOutline()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(smokeOutlineHideTimerHandle);
+	}
+
+	if (USkeletalMeshComponent* mesh = GetMesh())
+	{
+		mesh->SetRenderCustomDepth(false);
+	}
+}
+
+void AC_BaseMonster::EnsureOutlinePostProcess()
+{
+	UWorld* World = GetWorld();
+	if (!World || !deathOutlineMaterial) return;
+
+	// 레벨에 이미 이 머티리얼을 쓰는 볼륨이 있으면(직접 배치했거나 다른 몬스터가 먼저 만든 경우) 그대로 사용
+	for (TActorIterator<APostProcessVolume> It(World); It; ++It)
+	{
+		for (const FWeightedBlendable& Blendable : It->Settings.WeightedBlendables.Array)
+		{
+			if (Blendable.Object == deathOutlineMaterial) return;
+		}
+	}
+
+	// 없으면 맵 전체에 적용되는 볼륨을 하나 만든다 — 맵마다 수동으로 배치하지 않아도 되도록
+	if (APostProcessVolume* Volume = World->SpawnActor<APostProcessVolume>())
+	{
+		Volume->bUnbound = true;
+		Volume->Settings.WeightedBlendables.Array.Add(FWeightedBlendable(1.f, deathOutlineMaterial));
+	}
 }
 
 void AC_BaseMonster::DestroyAfterDeath()

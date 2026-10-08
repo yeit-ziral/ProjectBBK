@@ -224,6 +224,37 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	float deathVFXDelay = 1.0f;
 
+	// 이 몬스터의 사망 연기에 가려진 "살아있는" 다른 몬스터에 윤곽선을 그려, 연기 속에서도 보고 대응할 수 있게 한다.
+	// 죽은 몬스터 자신은 연기가 나오는 순간 통째로 숨겨지고 윤곽선도 그리지 않는다
+	UPROPERTY(EditDefaultsOnly, Category = "Death|Outline")
+	bool bOutlineMonstersInDeathSmoke = true;
+
+	// 연기가 시야를 가리는 범위(반경). 카메라→몬스터 시선이 이 구를 지나면 가려진 것으로 본다
+	UPROPERTY(EditDefaultsOnly, Category = "Death|Outline", meta = (ClampMin = "0.0"))
+	float deathSmokeRadius = 250.f;
+
+	// 연기가 시야를 가리는 시간 — 이 동안만 윤곽선을 갱신한다. deathDestroyDelay보다 길 수 없다(액터 소멸 시 종료)
+	UPROPERTY(EditDefaultsOnly, Category = "Death|Outline", meta = (ClampMin = "0.0"))
+	float deathSmokeDuration = 2.0f;
+
+	// 연기가 떠 있는 동안 주기적으로 호출 — 연기에 가려진 살아있는 몬스터를 찾아 윤곽선을 켠다
+	void UpdateSmokeOutlines();
+
+	// 연기에 가려졌다고 통보받은 몬스터가 호출 — 윤곽선을 켜고, 통보가 끊기면 잠시 뒤 스스로 끈다
+	void ShowSmokeOutline(int32 StencilValue);
+	void HideSmokeOutline();
+
+	// 윤곽선 포스트프로세스 머티리얼 — 생성자에서 M_Outline_PP를 기본값으로 잡는다
+	UPROPERTY(EditDefaultsOnly, Category = "Death|Outline")
+	TObjectPtr<UMaterialInterface> deathOutlineMaterial;
+
+	// Custom Depth 스텐실 값 (상인 NPC 외곽선과 동일한 값)
+	UPROPERTY(EditDefaultsOnly, Category = "Death|Outline", meta = (ClampMin = "1", ClampMax = "255"))
+	int32 deathOutlineStencilValue = 1;
+
+	// 레벨에 윤곽선 포스트프로세스가 없으면 맵 전체 적용 볼륨을 하나 만든다
+	void EnsureOutlinePostProcess();
+
 	UPROPERTY(EditDefaultsOnly, Category = "Reward")
 	TSubclassOf<AC_ExpOrb> ExpOrbClass;
 
@@ -288,6 +319,10 @@ private:
 
 	FTimerHandle deathDestroyTimerHandle;
 	FTimerHandle deathVFXTimerHandle;
+	FTimerHandle smokeOutlineUpdateTimerHandle;
+	FTimerHandle smokeOutlineHideTimerHandle;
+	float smokeOutlineEndTime = 0.f;
+	bool bDeathSequenceStarted = false;
 	bool bDeathVFXTriggered = false;
 #pragma endregion
 };
