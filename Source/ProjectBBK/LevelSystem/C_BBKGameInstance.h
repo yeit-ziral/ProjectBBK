@@ -111,8 +111,11 @@ private:
 	TSharedPtr<float> SharedLoadingProgress;
 	// FTSTicker 핸들 — HideLoadingOverlay에서 반드시 제거
 	FTSTicker::FDelegateHandle ProgressTickerHandle;
+	//지호: 2026-10-13 추가
+	FTSTicker::FDelegateHandle HideTickerHandle;
 
 	// ── 캐릭터 상태 저장 ──────────────────────────────────
+	UPROPERTY() // 지호: 2026-10-13 추가 저장된 퍽 아이콘(UTexture2D) 참조를 GC가 추적하도록 — 없으면 레벨 이동 중 해제돼 크래시
 	FPersistentGameState PersistedState;
 
 	// ── 볼륨 설정 ─────────────────────────────────────────

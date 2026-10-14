@@ -180,24 +180,38 @@ void UC_BBKGameInstance::LoadComplete(const float LoadTime, const FString& MapNa
 
 	if (LoadingScreenOverlay.IsValid())
 	{
-		float Elapsed = (float)(FPlatformTime::Seconds() - LoadingStartTime);
+		const float Elapsed = (float)(FPlatformTime::Seconds() - LoadingStartTime);
 		// MinLoadingTime 남은 시간을 기다리되, 최소 0.3초는 100% 상태를 표시
-		float HideDelay = FMath::Max(PendingMinLoadingTime - Elapsed, 0.3f);
+		const float HideDelay = FMath::Max(PendingMinLoadingTime - Elapsed, 0.3f);
 
-		if (UWorld* World = GetWorld())
-		{
-			World->GetTimerManager().SetTimer(
-				HideOverlayTimerHandle,
-				this,
-				&UC_BBKGameInstance::HideLoadingOverlay,
-				HideDelay,
-				false
-			);
-		}
-		else
-		{
-			HideLoadingOverlay();
-		}
+		//wl지호: 2026-10-13 FTSTicker로 변경. 기존 TimerManager는 UWorld가 없으면 작동하지 않음
+		//if (UWorld* World = GetWorld())
+		//{
+		//	World->GetTimerManager().SetTimer(
+		//		HideOverlayTimerHandle,
+		//		this,
+		//		&UC_BBKGameInstance::HideLoadingOverlay,
+		//		HideDelay,
+		//		false
+		//	);
+		//}
+		//else
+		//{
+		//	HideLoadingOverlay();
+		//}
+		
+		// 지호: 2026-10-13 추가
+		FTSTicker::GetCoreTicker().RemoveTicker(HideTickerHandle);
+		TWeakObjectPtr<UC_BBKGameInstance> WeakThis(this);
+		HideTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+			FTickerDelegate::CreateLambda([WeakThis](float) -> bool
+				{
+					if (WeakThis.IsValid())
+						WeakThis->HideLoadingOverlay();
+					return false;
+				}),
+			HideDelay
+		);
 	}
 }
 
@@ -290,6 +304,10 @@ void UC_BBKGameInstance::ShowLoadingOverlay(const FLevelEntry& Entry)
 
 void UC_BBKGameInstance::HideLoadingOverlay()
 {
+	// 지호: 2026-10-13
+	FTSTicker::GetCoreTicker().RemoveTicker(HideTickerHandle);
+	HideTickerHandle = FTSTicker::FDelegateHandle();
+	
 	// 틱커 중단 — 반드시 위젯 제거 전에 처리
 	FTSTicker::GetCoreTicker().RemoveTicker(ProgressTickerHandle);
 	ProgressTickerHandle = FTSTicker::FDelegateHandle();
@@ -404,6 +422,11 @@ void UC_BBKGameInstance::RestoreGameState(TArray<AC_BasePlayerCharactor*>& Roste
 		{
 			Perk->RestoreElementState(PersistedState.perkElements);
 			Perk->RestoreCritState(PersistedState.perkCrit);
+
+			// 복원이 모두 끝난 뒤 한 번만 알린다.
+			// 위젯은 이 시점보다 먼저 만들어져 있으므로(OnCharacterSwitched가 앞) 신호가 도달한다.
+			// 중간에 알리면 크리가 아직 비어 있는 상태를 UI가 읽게 된다.
+			Perk->BroadcastCurrentState();
 		}
 	}
 
