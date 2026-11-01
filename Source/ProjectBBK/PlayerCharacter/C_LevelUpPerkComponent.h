@@ -51,6 +51,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	void SetIgnoreLevelChanges(bool bIgnore) { bIgnoreLevelChanges = bIgnore; }
 
+	UFUNCTION(BlueprintPure, Category = "Perk")
+	bool IsIgnoringLevelChanges() const { return bIgnoreLevelChanges; }
+
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	TArray<FPerkDisplayInfo> GetOwnedPerks() const;
 

@@ -112,6 +112,11 @@ bool FPrdChannelTest::RunTest(const FString& Parameters)
 		FPrdChannel Ch;
 		Ch.SetTargetChance(Target);
 		const float Back = FPrdChannel::EffectiveChance(Ch.GetConstant());
+		// TestTrue의 설명문은 실패할 때만 출력된다. 통과했을 때도 수치를 남기려면 AddInfo를 따로 써야 한다.
+		AddInfo(FString::Printf(
+			TEXT("역산 왕복  목표 p=%.2f -> C=%.7f -> 검증 p=%.7f  (최대 연속 실패 %d회)"),
+			Target, Ch.GetConstant(), Back,
+			FMath::CeilToInt(1.f / Ch.GetConstant()) - 1));
 		TestTrue(FString::Printf(TEXT("역산 왕복 p=%.2f -> C=%.6f -> p=%.6f"),
 			Target, Ch.GetConstant(), Back), FMath::Abs(Back - Target) < 1e-4f);
 	}
@@ -124,10 +129,16 @@ bool FPrdChannelTest::RunTest(const FString& Parameters)
 		const int32 HardCap = FMath::CeilToInt(1.f / Ch.GetConstant());
 
 		bool bHit = false;
+		int32 AttemptsUsed = 0;
 		for (int32 i = 0; i < HardCap; ++i)
 		{
-			if (Ch.RollWith(0.999f)) { bHit = true; break; }
+			if (Ch.RollWith(0.999f)) { bHit = true; AttemptsUsed = i + 1; break; }   // ← 기록
 		}
+
+		AddInfo(FString::Printf(
+			TEXT("하드 상한  p=0.10 -> 이론 상한 %d회, 실제 %d회째 성공"),
+			HardCap - 1, AttemptsUsed));
+
 		TestTrue(TEXT("PRD는 연속 실패에 하드 상한이 있어야 한다"), bHit);
 	}
 
@@ -144,6 +155,11 @@ bool FPrdChannelTest::RunTest(const FString& Parameters)
 			if (Ch.RollWith(Rng.GetFraction())) ++Hits;
 		}
 		const float Rate = static_cast<float>(Hits) / Trials;
+
+		AddInfo(FString::Printf(
+			TEXT("실측 발동률  %.4f  (목표 0.2000, 시행 %d회, 성공 %d회)"),
+			Rate, Trials, Hits));
+
 		TestTrue(FString::Printf(TEXT("경험적 발동률 %.4f (목표 0.20)"), Rate),
 			FMath::Abs(Rate - 0.20f) < 0.01f);
 	}

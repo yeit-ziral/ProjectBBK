@@ -508,10 +508,21 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	// ASC가 로스터 전체에 공유되므로, 비활성화될 캐릭터의 장착 보너스 GE를 먼저 떼어둔다.
 	// (SaveCharacterState보다 먼저 — 보너스가 반영된 채로 Health/Stamina를 저장하면 안 됨)
 	if (UC_EquipmentComponent* OldEquip = OldChar->FindComponentByClass<UC_EquipmentComponent>())
+	{
 		OldEquip->SuspendEquipBonuses();
+		/////
+		UE_LOG(LogTemp, Warning, TEXT("[HP] 0.장비해제 후  health=%.0f/%.0f"),
+			OldChar->GetHealth(), OldChar->GetMaxHealth());
+	}
 
 	if (!OldChar->bIsDead)
+	{
 		OldChar->SaveCharacterState();
+		/////
+		UE_LOG(LogTemp, Warning, TEXT("[HP] 0.장비해제 후  health=%.0f/%.0f"),
+			OldChar->GetHealth(), OldChar->GetMaxHealth());
+
+	}
 
 	UAbilitySystemComponent *ASC = nullptr;
 	if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
@@ -542,10 +553,19 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	// (내부에서 RestoreCharacterState()까지 끝난 뒤에 리턴됨)
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
+	/////
+	UE_LOG(LogTemp, Warning, TEXT("[HP] 0.장비해제 후  health=%.0f/%.0f"),
+		OldChar->GetHealth(), OldChar->GetMaxHealth());
+
 
 	// 새로 활성화된 캐릭터 자신의 장비 보너스만 다시 건다 (SuspendEquipBonuses와 짝)
 	if (UC_EquipmentComponent* NewEquip = NewChar->FindComponentByClass<UC_EquipmentComponent>())
 		NewEquip->ReapplyEquipBonuses();
+
+	/////
+	UE_LOG(LogTemp, Warning, TEXT("[HP] 3.장비복원 후  health=%.0f/%.0f"),
+		NewChar->GetHealth(), NewChar->GetMaxHealth());
+
 
 	SetControlRotation(savedControlRotation);
 
@@ -557,6 +577,11 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 		FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
 		ASC->RemoveLooseGameplayTag(DeadTag);
 	}
+
+	/////	
+	UE_LOG(LogTemp, Warning, TEXT("[HP] 4.GE복원 후  health=%.0f/%.0f"),
+	NewChar->GetHealth(), NewChar->GetMaxHealth());
+
 
 	// 레벨 복원이 끝났으니 퍽 감지 다시 켬
 	if (PerkComp)
