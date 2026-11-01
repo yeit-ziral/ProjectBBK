@@ -127,20 +127,22 @@ void AC_PlayerState::MaxStaminaChanged(const FOnAttributeChangeData& Data)
 
 void AC_PlayerState::CharacterLevelChanged(const FOnAttributeChangeData& Data)
 {
+	// 맵 로드나 캐릭터 교체 중에는 InitializeAttributes가 레벨을 1로 리셋했다가
+	// 저장값으로 되돌린다. 어트리뷰트 입장에서는 이것도 "레벨 상승"으로 보이므로,
+	// 이 구간의 변화는 퍽 UI도 스탯 보정도 건너뛰어야 한다
+	const bool bTrustLevelChange = perkComponent && !perkComponent->IsIgnoringLevelChanges();
+
 	const int32 LevelsGained = (int32)Data.NewValue - (int32)Data.OldValue;
 
-	// 한 번에 여러 레벨이 오를 수 있으므로 차이만큼 전달한다
-	if (LevelsGained > 0)
+	if (bTrustLevelChange && LevelsGained > 0)
 	{
 		if (AC_PlayerController* PC = Cast<AC_PlayerController>(GetPlayerController()))
 			PC->ApplyLevelUpToInactiveCharacters(LevelsGained);
 	}
 
-	// level 어트리뷰트가 바뀌면 호출됨. 실제 상승 판정/후보 추출은 컴포넌트가 담당.
-	if (perkComponent)
-	{
+	// 퍽 쪽은 자기 안에서 같은 플래그를 다시 확인하므로 그대로 호출한다
+	if(perkComponent)
 		perkComponent->HandleLevelUp((int32)Data.NewValue, (int32)Data.OldValue);
-	}
 }
 
 void AC_PlayerState::StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount)

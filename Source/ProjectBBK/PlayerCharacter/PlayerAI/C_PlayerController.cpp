@@ -135,24 +135,19 @@ void AC_PlayerController::BeginPlay()
 		// Possess 완료(= AddCharacterAbilities 완료) 후 브로드캐스트해야 HUD 초기화 가능.
 		OnCharacterSwitched.Broadcast(startIndex);
 
+		AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+
 		// HUD 초기화 완료 후 이전 레벨의 저장 상태 복원 (activeCharacterIndex 기반 어트리뷰트 적용)
 		if (GI_Ref)
 		{
-			UAbilitySystemComponent *SharedASC = nullptr;
-			AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
-			if (PS)
-				SharedASC = PS->GetAbilitySystemComponent();
-
-			UC_LevelUpPerkComponent* PerkComp =
-				PS ? PS->FindComponentByClass<UC_LevelUpPerkComponent>() : nullptr;
-
-			if (PerkComp)
-				PerkComp->SetIgnoreLevelChanges(true); // 캐릭터 교체 시 레벨업 퍽 UI가 뜨지 않도록 잠깐 끔
+			UAbilitySystemComponent* SharedASC = PS ? PS->GetAbilitySystemComponent() : nullptr;
 			GI_Ref->RestoreGameState(characterRoster, startIndex, SharedASC, inventory);
-			if(PerkComp)
-				PerkComp->SetIgnoreLevelChanges(false);
 		}
+
+		ReleasePerkLevelGuard(); // 레벨업 시점에만 활성화되도록 잠금 해제
 	}
+	else
+		ReleasePerkLevelGuard(); // 인덱스가 유효하지 않으면 레벨업 시점에만 활성화되도록 잠금 해제
 
 	// 게임 클리어 이벤트 바인딩 — 마지막 레벨 포탈 진입 시 엔딩 화면 표시
 	if (UC_BBKGameInstance *GI = Cast<UC_BBKGameInstance>(GetGameInstance()))
@@ -513,10 +508,21 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	// ASC가 로스터 전체에 공유되므로, 비활성화될 캐릭터의 장착 보너스 GE를 먼저 떼어둔다.
 	// (SaveCharacterState보다 먼저 — 보너스가 반영된 채로 Health/Stamina를 저장하면 안 됨)
 	if (UC_EquipmentComponent* OldEquip = OldChar->FindComponentByClass<UC_EquipmentComponent>())
+	{
 		OldEquip->SuspendEquipBonuses();
+		/////
+		UE_LOG(LogTemp, Warning, TEXT("[HP] 0.장비해제 후  health=%.0f/%.0f"),
+			OldChar->GetHealth(), OldChar->GetMaxHealth());
+	}
 
 	if (!OldChar->bIsDead)
+	{
 		OldChar->SaveCharacterState();
+		/////
+		UE_LOG(LogTemp, Warning, TEXT("[HP] 0.장비해제 후  health=%.0f/%.0f"),
+			OldChar->GetHealth(), OldChar->GetMaxHealth());
+
+	}
 
 	UAbilitySystemComponent *ASC = nullptr;
 	if (AC_PlayerState *PS = GetPlayerState<AC_PlayerState>())
@@ -547,10 +553,19 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 	// (내부에서 RestoreCharacterState()까지 끝난 뒤에 리턴됨)
 	Possess(NewChar);
 	currentCharacterIndex = NextIndex;
+	/////
+	UE_LOG(LogTemp, Warning, TEXT("[HP] 0.장비해제 후  health=%.0f/%.0f"),
+		OldChar->GetHealth(), OldChar->GetMaxHealth());
+
 
 	// 새로 활성화된 캐릭터 자신의 장비 보너스만 다시 건다 (SuspendEquipBonuses와 짝)
 	if (UC_EquipmentComponent* NewEquip = NewChar->FindComponentByClass<UC_EquipmentComponent>())
 		NewEquip->ReapplyEquipBonuses();
+
+	/////
+	UE_LOG(LogTemp, Warning, TEXT("[HP] 3.장비복원 후  health=%.0f/%.0f"),
+		NewChar->GetHealth(), NewChar->GetMaxHealth());
+
 
 	SetControlRotation(savedControlRotation);
 
@@ -562,6 +577,11 @@ void AC_PlayerController::ExecuteCharacterSwitch(int32 NextIndex)
 		FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("State.Dead"));
 		ASC->RemoveLooseGameplayTag(DeadTag);
 	}
+
+	/////	
+	UE_LOG(LogTemp, Warning, TEXT("[HP] 4.GE복원 후  health=%.0f/%.0f"),
+	NewChar->GetHealth(), NewChar->GetMaxHealth());
+
 
 	// 레벨 복원이 끝났으니 퍽 감지 다시 켬
 	if (PerkComp)
@@ -779,6 +799,22 @@ void AC_PlayerController::UpdateMerchantGaze()
 		newFocus->SetFocused(true);
 
 	focusedMerchant = newFocus;
+}
+
+void AC_PlayerController::ReleasePerkLevelGuard()
+{
+	AC_PlayerState* PS = GetPlayerState<AC_PlayerState>();
+	UC_LevelUpPerkComponent* PerkComp = PS ? PS->FindComponentByClass<UC_LevelUpPerkComponent>() : nullptr;
+
+	if(PerkComp)
+	{
+		PerkComp->SetIgnoreLevelChanges(false);
+		return;
+	}
+
+	// 가드가 안 풀리면 레벨업을 해도 퍽 선택창이 영영 안 뜬다.
+	// PS와 컴포넌트 중 어느 쪽이 없었는지까지 남겨야 추적이 된다.
+	UE_LOG(LogTemp, Error, TEXT("[Perk] 가드 해제 실패 - PlayerState=%d  PerkComp=%d"), PS ? 1 : 0, PerkComp ? 1 : 0);
 }
 
 void AC_PlayerController::OnTalkToNPCInput()

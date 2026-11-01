@@ -298,6 +298,10 @@ private:
 	// 시선 트레이스 → 포커스 상인 갱신 (매 틱)
 	void UpdateMerchantGaze();
 
+	// 퍽 레벨 가드를 푼다. 초기화 경로마다 중복으로 쓰이므로 한 곳에 모았다.
+	void ReleasePerkLevelGuard();
+
+private:
 	// 현재 시선이 향한 상인 (외곽선 표시 + G키 대상)
 	TWeakObjectPtr<AC_MerchantNPC> focusedMerchant;
 

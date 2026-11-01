@@ -70,7 +70,9 @@ struct FPersistentGameState
 	float damage              = -1.f;
 	int32 activeCharacterIndex = 0;
 	bool  bHasSavedState      = false;
+	UPROPERTY()//지호: 2026-10-13 추가 레벨 이동 시 GameInstance가 보관하는 전체 게임 상태 
 	TMap<FGameplayTag, FElementState> perkElements;
+	UPROPERTY() //지호: 2026-10-13 추가 레벨 이동 시 GameInstance가 보관하는 전체 게임 상태
 	FCritState perkCrit;
 
 	// 인벤토리(PlayerController 소유, 로스터 공유 1벌) — slots 배열을 itemID/quantity 병렬 배열로 그대로 보관(빈칸 포함, 자유배치 위치 보존)

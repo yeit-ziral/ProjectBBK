@@ -51,6 +51,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	void SetIgnoreLevelChanges(bool bIgnore) { bIgnoreLevelChanges = bIgnore; }
 
+	UFUNCTION(BlueprintPure, Category = "Perk")
+	bool IsIgnoringLevelChanges() const { return bIgnoreLevelChanges; }
+
 	UFUNCTION(BlueprintCallable, Category = "Perk")
 	TArray<FPerkDisplayInfo> GetOwnedPerks() const;
 
@@ -157,5 +160,5 @@ private:
 	// 세 갈래(스탯/속성/크리)가 똑같은 마무리를 해야 해서 한 곳으로 모았다.
 	void FinishSelection();
 
-	bool bIgnoreLevelChanges = false; // 캐릭터 바꿀 때 레벨 변화가 퍽 띄우지 않게 잠깐 끔
+	bool bIgnoreLevelChanges = true; // 캐릭터 바꿀 때 레벨 변화가 퍽 띄우지 않게 잠깐 끔
 };

@@ -307,11 +307,6 @@ void AC_BasePlayerCharactor::InitializeStartingValues(AC_PlayerState *PS)
 		abilitySystemComponent->SetNumericAttributeBase(
 			UC_ChracterAttributeSetBase::GetdamageAttribute(),
 			baseDamage + bonusLevel * 30.f);
-
-		// TEMP(맵 테스트용): 공격력·체력 10000 고정 — 테스트 끝나면 이 블록 삭제, 커밋 금지
-		abilitySystemComponent->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetdamageAttribute(), 10000.f);
-		abilitySystemComponent->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GetmaxHealthAttribute(), 10000.f);
-		abilitySystemComponent->SetNumericAttributeBase(UC_ChracterAttributeSetBase::GethealthAttribute(), 10000.f);
 	}
 
 	if (!bCharacterInitiailized)
@@ -930,6 +925,10 @@ void AC_BasePlayerCharactor::RestoreCharacterState()
 	}
 	// 스킬 인덱스는 AddCharacterAbilities 이후에 적용해야 하므로 여기서 처리하지 않음
 	// → activeSkillIndex는 OnCharacterSwitched 핸들러(HUD)가 SwitchCommonSkill 호출 시 반영됨
+	
+	UE_LOG(LogTemp, Warning, TEXT("[HP] Restore 직후  saved=%.0f  health=%.0f/%.0f"),
+		savedState.health, GetHealth(), GetMaxHealth());
+
 }
 
 void AC_BasePlayerCharactor::InjectPreSavedState(float Health, float Stamina, float Shield, float Mana)
