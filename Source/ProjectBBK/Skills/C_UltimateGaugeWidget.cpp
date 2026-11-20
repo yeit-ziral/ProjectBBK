@@ -131,7 +131,7 @@ void UC_UltimateGaugeWidget::SetGaugeReady(bool bReady)
 	if (bReady == bIsReady)
 		return;
 
-	bReady = bIsReady;
+	bIsReady = bReady;
 
 	if (bReady)
 	{
